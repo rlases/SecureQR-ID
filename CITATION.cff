@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+title: >-
+  SecureQR-ID: Modelo criptográfico con anclaje blockchain para la validación
+  inmutable de credenciales digitales en entornos organizacionales
+message: >-
+  Si utiliza este software o el modelo que implementa, por favor cítelo
+  usando los metadatos de este archivo.
+type: software
+authors:
+  - given-names: Duverney
+    family-names: Torres Figueroa
+    email: dtorresfi@unadvirtual.edu.co
+    affiliation: Universidad Nacional Abierta y a Distancia (UNAD)
+    # orcid: 'https://orcid.org/0000-0000-0000-0000'   # TODO
+  - given-names: Jhunier Libardo
+    family-names: Hernández Calderón
+    email: jlhernandezcal@unadvirtual.edu.co
+    affiliation: Universidad Nacional Abierta y a Distancia (UNAD)
+    # orcid: 'https://orcid.org/0000-0000-0000-0000'   # TODO
+repository-code: 'https://github.com/rlases/SecureQR-ID'
+abstract: >-
+  SecureQR-ID es un modelo criptográfico para la validación segura de códigos QR
+  utilizados en credenciales organizacionales. Integra firma digital ECDSA y tokens
+  efímeros para garantizar la autenticidad de la credencial y resistencia a ataques
+  de repetición; una bitácora de eventos encadenada por hash para la integridad local
+  de los registros de acceso; y el anclaje periódico de raíces de Merkle en una
+  blockchain permisionada para proporcionar evidencia externa de inmutabilidad sin
+  exponer datos personales.
+keywords:
+  - códigos QR seguros
+  - firma digital
+  - ECDSA
+  - criptografía asimétrica
+  - árbol de Merkle
+  - hash encadenado
+  - blockchain
+  - Hyperledger Fabric
+  - identidad digital
+  - control de acceso
+  - trazabilidad verificable
+license: Apache-2.0
+version: 0.1.0
+date-released: '2026-01-01'   # TODO: fecha real del primer release

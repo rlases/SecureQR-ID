@@ -1,0 +1,52 @@
+# Modelo de amenazas
+
+## Supuesto de partida
+
+La credencial es un **transportador pasivo y temporal**, no una garantía de identidad.
+El atacante puede leer, copiar y reproducir cualquier código QR que vea. El diseño asume
+además un adversario interno: alguien con privilegios sobre la base de datos institucional
+que quiere alterar registros después de que ocurrieron.
+
+## Amenazas y controles
+
+| Amenaza | Riesgo | Control | Módulo |
+|---|---|---|---|
+| Clonación de QR | Reutilización no autorizada de una credencial válida | Firma ECDSA + token de corta duración | `issuer`, `verifier` |
+| Reemplazo de QR | Presentación de un código falsificado | Verificación con clave pública del emisor | `verifier` |
+| Ataque de repetición | Reutilización de una captura previa | Marca temporal + nonce de un solo uso | `verifier` |
+| Manipulación de registros | Modificación de accesos o asistencia | Encadenamiento de hashes + pruebas de Merkle | `evidence-log` |
+| Abuso de privilegios | Alteración interna de la evidencia | Anclaje de raíces de Merkle en blockchain | `anchor` |
+| Credencial comprometida | Uso de una identidad revocada | Lista de revocación firmada | `revocation` |
+
+## Fuera del alcance
+
+Nombrarlo explícitamente es más honesto que dejarlo implícito, y anticipa la pregunta
+en la sustentación.
+
+**Cesión voluntaria.** Si el titular entrega su credencial a otra persona, el sistema la
+acepta. Es un token válido presentado dentro de su ventana de vigencia. Mitigarlo exige
+un segundo factor o biometría, fuera de esta fase.
+
+**Omisión en el registro.** El modelo garantiza que un evento registrado no pudo
+alterarse después. No garantiza que todo evento ocurrido se haya registrado. Un operador
+que simplemente no escanea deja un hueco que la criptografía no cierra.
+
+**Compromiso de la clave privada del emisor.** Si se filtra, el atacante emite
+credenciales válidas indistinguibles de las legítimas. La mitigación es de custodia y
+rotación (`kid` en el formato del token), no criptográfica.
+
+**Ataque físico al punto de control.** Manipulación del hardware lector o del torniquete.
+
+**Gobernanza de la red permisionada.** Si todos los nodos los opera la misma institución
+cuyos registros se quieren proteger, el anclaje ofrece una garantía debilitada. Es una
+limitación real del diseño, no un detalle de implementación. Ver ADR-0007.
+
+## Ventana de riesgo residual
+
+Entre que un evento se registra localmente y que su raíz de Merkle queda anclada existe
+un intervalo en el que un adversario interno con acceso suficiente podría reescribir la
+cadena local completa. Acortar el periodo de anclaje reduce la ventana; eliminarla del
+todo exigiría anclar por evento, lo que el diseño descarta por latencia (ADR-0003).
+
+**Este intervalo debe medirse y reportarse** en la evaluación del prototipo. Es un
+resultado del trabajo, no una debilidad que ocultar.

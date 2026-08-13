@@ -1,0 +1,81 @@
+# ─────────────────────────────────────────────────────────────
+# CRÍTICO — material criptográfico. Nunca versionar.
+# ─────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.csr
+private/
+keys/
+secrets/
+wallet/                  # identidades de Hyperledger Fabric
+crypto-config/           # material generado por cryptogen
+connection-*.json        # perfiles de conexión de Fabric
+
+# ─────────────────────────────────────────────────────────────
+# CRÍTICO — datos personales (Ley 1581 de 2012)
+# ─────────────────────────────────────────────────────────────
+data/real/
+data/piloto/
+*.csv
+!data/ejemplo/*.csv      # excepción: datos sintéticos de prueba
+consentimientos/
+encuestas/
+
+# ─────────────────────────────────────────────────────────────
+# Entorno y configuración
+# ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+config.local.*
+
+# ─────────────────────────────────────────────────────────────
+# Bitácoras y evidencia generada en ejecución
+# ─────────────────────────────────────────────────────────────
+*.log
+logs/
+evidence-log/data/
+anchor/proofs/
+
+# ─────────────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ─────────────────────────────────────────────────────────────
+# Node / builds de escritorio (incluye mi-app-qr/)
+# ─────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+.next/
+coverage/
+dist/
+build/
+*.egg-info/
+
+# ─────────────────────────────────────────────────────────────
+# Editores y sistema operativo
+# ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ─────────────────────────────────────────────────────────────
+# Material crudo de la destilación — los originales quedan fuera de git
+# (ver docs/raw/README.md); solo se versiona la versión .md destilada.
+# ─────────────────────────────────────────────────────────────
+docs/raw/*.pdf
+docs/raw/*.docx
