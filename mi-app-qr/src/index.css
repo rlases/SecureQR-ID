@@ -1,0 +1,30 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Importa la fuente Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Animación para registros recientes --- */
+@keyframes highlight-and-fade {
+  0% {
+    background-color: rgba(6, 182, 212, 0.2);
+    /* Teal-300 con opacidad */
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlight-row {
+  animation: highlight-and-fade 2s ease-out forwards;
+}
