@@ -28,6 +28,20 @@
   decodifica un QR de texto plano por expresión regular, sin firma ni anti-repetición.
   Es la línea base que motiva el problema de investigación, no un avance de `issuer/` o
   `verifier/`. Ver "Relación con el prototipo existente" en `ARCHITECTURE.md`.
+- **Flujo de colaboración con Duverney Torres Figueroa (`Duverney24`):** invitado como
+  colaborador del repositorio; issues creados para los dos ADR bloqueantes, el ajuste de
+  objetivos específicos y los cinco módulos, con dependencias y milestones por fase de
+  `ROADMAP.md`. Repartición inicial: `issuer/`+`verifier/` (núcleo de credencial) para
+  Jhunier, `evidence-log/`+`revocation/`+`anchor/` (integridad y anclaje) para Duverney;
+  los ADR y el ajuste de objetivos quedan como decisión conjunta.
+- **Metodología de trabajo estipulada en `CONTRIBUTING.md`:** rama por tarea, PR
+  obligatorio, revisión cruzada antes de fusionar, CI en verde como condición de merge.
+  Rama `main` protegida en GitHub (PR + 1 aprobación + check de CI; el dueño del repo
+  conserva push directo solo para emergencias justificadas).
+- **Infraestructura de pruebas de `mi-app-qr/` reparada:** faltaban las dependencias de
+  `@testing-library` (el test por defecto de Create React App nunca había corrido
+  realmente). Se agregaron, se reescribió el smoke test para que valide contra la UI
+  real de la app, y se añadió `.github/workflows/ci.yml` que lo ejecuta en cada PR.
 
 ## En curso
 
