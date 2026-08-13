@@ -62,6 +62,7 @@ Lee esto antes de tocar código:
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — plan por fases
 - [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — vocabulario del dominio
 - [`docs/raw/`](docs/raw/) — material fuente destilado (propuesta de grado, entregas por etapa, artículo SMS)
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — cómo trabajamos: ramas, PR, revisión cruzada y pruebas
 
 ## Instalación
 

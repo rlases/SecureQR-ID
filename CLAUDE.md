@@ -10,6 +10,7 @@ Maestría en Ciberseguridad, UNAD. Prototipo de investigación, no producción.
 - `docs/THREAT-MODEL.md` — obligatorio antes de cambiar cualquier control de seguridad
 - `docs/DECISIONS.md` — por qué las cosas son como son; consulta antes de proponer cambios
 - `docs/STATE.md` — dónde quedó el trabajo
+- `CONTRIBUTING.md` — flujo de ramas, PR, revisión cruzada y pruebas obligatorias
 
 Este archivo es un índice, no una enciclopedia. El detalle vive en `docs/`.
 
