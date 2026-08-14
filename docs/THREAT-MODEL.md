@@ -18,6 +18,23 @@ que quiere alterar registros después de que ocurrieron.
 | Abuso de privilegios | Alteración interna de la evidencia | Anclaje de raíces de Merkle en blockchain | `anchor` |
 | Credencial comprometida | Uso de una identidad revocada | Lista de revocación firmada | `revocation` |
 
+## Amenazas del servidor multiusuario (ADR-0008)
+
+Al pasar `mi-app-qr/` de aplicación monopuesto a servidor en la red institucional
+aparece una superficie de ataque que antes sencillamente no existía: mientras los datos
+vivían en el `localStorage` de un solo equipo, no había red que interceptar ni cuentas
+que comprometer. Estas amenazas son independientes del modelo criptográfico de la
+credencial y se materializan aunque el QR sea perfecto.
+
+| Amenaza | Riesgo | Control |
+|---|---|---|
+| Credenciales débiles o reutilizadas del personal | Acceso no autorizado a datos personales de estudiantes | Hashing con librería establecida, política de contraseñas, bloqueo tras intentos fallidos |
+| Escucha de la red institucional | Captura de contraseñas y datos personales en tránsito por WiFi | Transporte cifrado — decisión pendiente en ADR-0008 |
+| Secuestro de sesión | Suplantación de un usuario ya autenticado | Cookies de sesión con expiración, invalidación al cerrar sesión |
+| Escalada entre roles | Un usuario de registro accede a informes o edita registros ajenos | Autorización por rol verificada en el servidor, nunca solo en la interfaz |
+| Edición silenciosa de registros | Un administrativo corrige un registro sin dejar rastro | Corrección como evento nuevo con autor y motivo, nunca sobrescritura (ver ADR-0008) |
+| Exposición del servidor fuera de la LAN | Acceso desde internet a datos personales | Escucha restringida a la red institucional; nunca exponer el puerto a internet |
+
 ## Fuera del alcance
 
 Nombrarlo explícitamente es más honesto que dejarlo implícito, y anticipa la pregunta
