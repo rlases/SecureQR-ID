@@ -122,3 +122,57 @@ pública mediante un servicio de sellado temporal, que elimina el problema de go
 a costa de introducir dependencia externa.
 
 **Pendiente.** Esta es la objeción más probable en la sustentación. Resolverla antes.
+
+---
+
+## ADR-0008 — `mi-app-qr` pasa de app monopuesto a servidor en red con usuarios
+
+**Estado:** Propuesta
+
+**Contexto.** Hoy `mi-app-qr/` es una aplicación de escritorio de un solo puesto: los
+registros viven en el `localStorage` del equipo donde corre. Eso implica que solo una
+persona registra, que los datos no se comparten, y que no hay forma de saber quién hizo
+qué. El requerimiento nuevo es que, al ejecutarse, la aplicación levante un servidor
+accesible por su IP en la red institucional, con inicio de sesión, para que varias
+personas del CCAV puedan registrar, consultar, corregir y generar informes desde sus
+propios equipos.
+
+**Decisión.** `mi-app-qr/` evoluciona a cliente-servidor: el proceso de escritorio actúa
+como servidor en la red local y sirve una interfaz web a los demás puestos. Los usuarios
+que inician sesión son **exclusivamente personal institucional** (vigilancia,
+administrativos, docentes), con roles diferenciados. El estudiante nunca inicia sesión:
+solo presenta su credencial QR.
+
+**Consecuencias — y no son menores:**
+
+- **`localStorage` deja de servir.** Se necesita almacenamiento persistente compartido y
+  con control de concurrencia. Es un cambio de fondo, no un ajuste.
+- **Aparece gestión de identidades donde antes no había ninguna.** Contraseñas
+  (con hashing mediante librería establecida, nunca propia — ver `SECURITY.md`),
+  sesiones, cierre de sesión, bloqueo de cuentas. Todo eso es superficie de ataque nueva.
+- **Los datos personales dejan de vivir en un solo equipo y pasan a viajar por la red.**
+  Bajo la Ley 1581 de 2012 esto exige control de acceso por rol y trazabilidad de quién
+  consultó o modificó qué. El modelo de amenazas se actualiza en consecuencia
+  (ver `THREAT-MODEL.md`).
+- **Tensión real con el invariante append-only de `evidence-log/`.** La app actual
+  permite *editar* registros (`EditRecordModal`). Si el servidor conserva esa operación
+  tal cual, y más adelante los eventos alimentan la bitácora encadenada, se rompe la
+  invariante central del modelo. La salida es que una "corrección" se registre como
+  **evento correctivo nuevo**, con autor y motivo, en lugar de sobrescribir el anterior.
+  Conviene adoptar esa forma desde ya, aunque `evidence-log/` no exista todavía: migrar
+  después datos ya sobrescritos es imposible.
+- **Condiciona ADR-0005.** Si el servidor nace dentro del proceso Electron, el stack de
+  esta parte queda de hecho en Node.js. Debe resolverse junto con ADR-0005, no aparte.
+
+**Pendiente de decidir.**
+
+- Motor de almacenamiento (embebido tipo SQLite vs. servidor de base de datos aparte) y
+  estrategia de respaldo.
+- **Transporte:** HTTP plano en la LAN expone las credenciales del personal a cualquiera
+  que escuche la red WiFi institucional. HTTPS con certificado autofirmado es incómodo en
+  navegadores pero es lo mínimo defendible. Decidir explícitamente y justificar.
+- Catálogo de roles y qué puede hacer cada uno: registrar, consultar, corregir, exportar
+  informes, administrar usuarios. El principio rector es mínimo privilegio.
+- Qué se audita y por cuánto tiempo se conserva.
+- Descubrimiento del servidor por los demás puestos: IP fija, nombre en la red o
+  configuración manual.

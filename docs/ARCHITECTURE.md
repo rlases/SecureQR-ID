@@ -102,3 +102,15 @@ No implementa ninguno de los cinco módulos de este documento y no debe confundi
 fase de evaluación (Fase 4 de `ROADMAP.md`), la reducción de suplantación y el tiempo de
 registro del modelo SecureQR-ID frente a un sistema QR convencional real, tal como plantea
 el diseño cuasi-experimental de la propuesta de grado.
+
+**Evolución en curso (ADR-0008).** El prototipo pasa de monopuesto a cliente-servidor: al
+ejecutarse levanta un servidor accesible por su IP en la red institucional, con inicio de
+sesión para personal (nunca para estudiantes) y roles diferenciados para registrar,
+consultar, corregir y generar informes. Esto no lo convierte en `verifier/` — sigue sin
+validación criptográfica alguna — pero sí cambia dos cosas que importan para este diseño:
+
+1. **Aparece almacenamiento compartido y persistente**, que es donde eventualmente se
+   apoyaría `evidence-log/`.
+2. **Aparece la noción de "quién hizo qué"**, ausente hasta ahora. Las correcciones deben
+   registrarse como eventos nuevos, no como sobrescrituras, para no chocar de frente con
+   la invariante append-only de `evidence-log/` cuando ambos convivan.

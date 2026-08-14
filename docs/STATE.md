@@ -47,6 +47,12 @@
 
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
+- **ADR-0008 — `mi-app-qr` pasa a servidor multiusuario en red.** Requerimiento nuevo:
+  al ejecutarse, la app debe levantar un servidor accesible por IP en la red
+  institucional, con login para personal (no estudiantes), roles diferenciados y
+  generación de informes. Registrado como ADR en estado *Propuesta*; quedan pendientes
+  el motor de almacenamiento, el transporte cifrado, el catálogo de roles y la política
+  de auditoría. Ver `DECISIONS.md` y las amenazas nuevas en `THREAT-MODEL.md`.
 
 ## Pendiente
 
