@@ -44,9 +44,14 @@
   real de la app, y se añadió `.github/workflows/ci.yml` que lo ejecuta en cada PR.
 - **`mi-app-qr/server`**: fundación del servidor multiusuario (ADR-0008) — Express +
   TypeScript + SQLite, autenticación con sesión, bloqueo tras intentos fallidos, y
-  endpoints de registros protegidos. Probado con Vitest + Supertest, sin conectar
-  todavía al cliente ni a Electron — eso es el siguiente plan
-  (`docs/superpowers/plans/`).
+  endpoints de registros protegidos. Probado con Vitest + Supertest.
+- **`mi-app-qr/client`**: cliente web walking skeleton — Vite + React + TypeScript,
+  Tailwind con el tema claro/índigo aprobado, shadcn/ui, `AuthContext`, `LoginPage`,
+  `RequireAuth` + `Sidebar`, `RegistrosPage` (crear y listar con refetch cada 7s).
+  Verificado de punta a punta contra el servidor real (login, crear y listar
+  registros vía la API, no solo con mocks). 20 tests con Vitest + Testing Library.
+  Dashboard, Informes, Usuarios y la integración con Electron quedan pendientes —
+  ver "Implementación" abajo.
 
 ## En curso
 
@@ -81,6 +86,11 @@
 - `evidence-log/` — bitácora encadenada
 - `anchor/` — Merkle + Hyperledger Fabric
 - `revocation/` — lista firmada
+- `mi-app-qr/client`: Dashboard, Informes, Usuarios (pantallas adicionales, cada una
+  con su propio ciclo TDD); migración de los componentes de dominio existentes
+  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`);
+  integración con Electron (requiere que el servidor sirva el build estático del
+  cliente); WebSockets si el polling de 7s resulta insuficiente.
 
 ### Evaluación
 
