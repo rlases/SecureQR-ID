@@ -25,6 +25,25 @@ jobs:
       - run: npm ci
       - run: CI=true npm test -- --watchAll=false
 
+  server-test:
+    name: mi-app-qr/server — tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mi-app-qr/server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mi-app-qr/server/package-lock.json
+
+      - run: npm install
+      - run: npm run build
+      - run: npm test
+
   # Los módulos del modelo criptográfico (issuer/, verifier/, evidence-log/, anchor/,
   # revocation/) no tienen job propio todavía: el stack no está decidido (ADR-0005,
   # issue #2). Añadir aquí su job de pruebas al resolverse — ver CONTRIBUTING.md.
