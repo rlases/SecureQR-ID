@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import type Database from 'better-sqlite3';
 import { createSessionMiddleware } from './auth/session.js';
+import { createAuthRouter } from './auth/routes.js';
 
 export interface AppDependencies {
   db: Database.Database;
@@ -22,6 +23,8 @@ export function createApp(deps: AppDependencies): Express {
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
+
+  app.use('/api/auth', createAuthRouter());
 
   return app;
 }
