@@ -42,6 +42,11 @@
   `@testing-library` (el test por defecto de Create React App nunca había corrido
   realmente). Se agregaron, se reescribió el smoke test para que valide contra la UI
   real de la app, y se añadió `.github/workflows/ci.yml` que lo ejecuta en cada PR.
+- **`mi-app-qr/server`**: fundación del servidor multiusuario (ADR-0008) — Express +
+  TypeScript + SQLite, autenticación con sesión, bloqueo tras intentos fallidos, y
+  endpoints de registros protegidos. Probado con Vitest + Supertest, sin conectar
+  todavía al cliente ni a Electron — eso es el siguiente plan
+  (`docs/superpowers/plans/`).
 
 ## En curso
 
