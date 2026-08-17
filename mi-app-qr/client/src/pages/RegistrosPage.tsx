@@ -26,7 +26,7 @@ export default function RegistrosPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: CreateRegistroRequest) => createRegistro(data),
+    mutationFn: (values: CreateRegistroRequest) => createRegistro(values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registros'] });
       reset();
