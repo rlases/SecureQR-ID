@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import type Database from 'better-sqlite3';
 import { createSessionMiddleware } from './auth/session.js';
 import { createAuthRouter } from './auth/routes.js';
+import { createRegistrosRouter } from './registros/routes.js';
 
 export interface AppDependencies {
   db: Database.Database;
@@ -25,6 +26,7 @@ export function createApp(deps: AppDependencies): Express {
   });
 
   app.use('/api/auth', createAuthRouter());
+  app.use('/api/registros', createRegistrosRouter());
 
   return app;
 }
