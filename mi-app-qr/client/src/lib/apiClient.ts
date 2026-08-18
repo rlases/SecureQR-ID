@@ -1,0 +1,64 @@
+import type {
+  LoginRequest,
+  LoginResponse,
+  CreateRegistroRequest,
+  Registro,
+  User,
+} from '@mi-app-qr/shared';
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(path, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  const body = await res.json();
+
+  if (!res.ok) {
+    throw new ApiError(body.error ?? 'Error desconocido', res.status);
+  }
+
+  return body as T;
+}
+
+export function login(credentials: LoginRequest): Promise<LoginResponse> {
+  return request<LoginResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  });
+}
+
+export function getMe(): Promise<{ user: User }> {
+  return request<{ user: User }>('/api/auth/me');
+}
+
+export function logout(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' });
+}
+
+export function createRegistro(
+  data: CreateRegistroRequest
+): Promise<{ registro: Registro }> {
+  return request<{ registro: Registro }>('/api/registros', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function listRegistros(): Promise<{ registros: Registro[] }> {
+  return request<{ registros: Registro[] }>('/api/registros');
+}

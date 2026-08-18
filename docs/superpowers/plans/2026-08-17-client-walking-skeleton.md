@@ -121,6 +121,7 @@ mi-app-qr/client/
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "strict": true,
     "baseUrl": ".",
@@ -138,6 +139,7 @@ mi-app-qr/client/
 ```json
 {
   "compilerOptions": {
+    "composite": true,
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -147,6 +149,8 @@ mi-app-qr/client/
   "include": ["vite.config.ts", "vitest.config.ts"]
 }
 ```
+
+**Nota:** `"composite": true` es obligatorio aquí porque `tsconfig.json` referencia este archivo vía `"references"` — sin él, `tsc -b` falla con `TS6306`. `"allowImportingTsExtensions": true` en `tsconfig.json` (arriba) es necesario porque `main.tsx` importa `./App.tsx` con la extensión explícita — sin él, falla con `TS5097`.
 
 - [ ] **Step 4: Crear `mi-app-qr/client/vite.config.ts`**
 
