@@ -13,7 +13,7 @@ describe('apiClient', () => {
   it('login() envía credenciales y devuelve el usuario', async () => {
     (global.fetch as any).mockResolvedValue({
       ok: true,
-      json: async () => ({ user: { id: 1, username: 'admin', role: 'administrativo', createdAt: '2026-01-01' } }),
+      json: async () => ({ user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' } }),
     });
 
     const result = await login({ username: 'admin', password: 'x' });
@@ -46,7 +46,7 @@ describe('apiClient', () => {
   it('getMe() consulta /api/auth/me con credenciales incluidas', async () => {
     (global.fetch as any).mockResolvedValue({
       ok: true,
-      json: async () => ({ user: { id: 1, username: 'admin', role: 'administrativo', createdAt: '2026-01-01' } }),
+      json: async () => ({ user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' } }),
     });
 
     await getMe();

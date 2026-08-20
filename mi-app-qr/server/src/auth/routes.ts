@@ -16,6 +16,7 @@ interface UserRow {
   username: string;
   password_hash: string;
   role: string;
+  cargo: string | null;
   failed_attempts: number;
   locked_until: string | null;
   created_at: string;
@@ -26,6 +27,7 @@ function toPublicUser(row: UserRow) {
     id: row.id,
     username: row.username,
     role: row.role,
+    cargo: row.cargo,
     createdAt: row.created_at,
   };
 }

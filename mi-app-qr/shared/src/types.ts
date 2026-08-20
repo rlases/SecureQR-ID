@@ -1,9 +1,14 @@
-export type UserRole = 'vigilancia' | 'administrativo' | 'docente';
+// Nivel de permiso: fijo y universal, no depende de ninguna institución (ADR-0009).
+// 'admin' gestiona usuarios y ve todo; 'operador' registra y consulta.
+export type UserRole = 'admin' | 'operador';
 
 export interface User {
   id: number;
   username: string;
   role: UserRole;
+  // Puesto de trabajo, en texto libre — "vigilancia", "docente", "recepción", lo que
+  // corresponda a cada institución. Nunca se usa para autorización (ADR-0009).
+  cargo: string | null;
   createdAt: string;
 }
 

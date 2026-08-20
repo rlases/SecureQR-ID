@@ -39,7 +39,7 @@ describe('AuthContext', () => {
 
   it('carga el usuario si ya hay sesión activa', async () => {
     vi.mocked(apiClient.getMe).mockResolvedValue({
-      user: { id: 1, username: 'admin', role: 'administrativo', createdAt: '2026-01-01' },
+      user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' },
     });
 
     render(
@@ -54,7 +54,7 @@ describe('AuthContext', () => {
   it('login() actualiza el usuario tras autenticar', async () => {
     vi.mocked(apiClient.getMe).mockRejectedValue(new apiClient.ApiError('no autenticado', 401));
     vi.mocked(apiClient.login).mockResolvedValue({
-      user: { id: 1, username: 'admin', role: 'administrativo', createdAt: '2026-01-01' },
+      user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' },
     });
 
     render(
@@ -72,7 +72,7 @@ describe('AuthContext', () => {
 
   it('logout() limpia el usuario', async () => {
     vi.mocked(apiClient.getMe).mockResolvedValue({
-      user: { id: 1, username: 'admin', role: 'administrativo', createdAt: '2026-01-01' },
+      user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' },
     });
     vi.mocked(apiClient.logout).mockResolvedValue({ ok: true });
 

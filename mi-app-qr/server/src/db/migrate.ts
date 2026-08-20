@@ -6,7 +6,8 @@ export function runMigrations(db: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('admin', 'operador')),
+      cargo TEXT,
       failed_attempts INTEGER NOT NULL DEFAULT 0,
       locked_until TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))

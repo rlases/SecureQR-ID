@@ -75,8 +75,19 @@
   al ejecutarse, la app debe levantar un servidor accesible por IP en la red
   institucional, con login para personal (no estudiantes), roles diferenciados y
   generación de informes. Registrado como ADR en estado *Propuesta*; quedan pendientes
-  el motor de almacenamiento, el transporte cifrado, el catálogo de roles y la política
-  de auditoría. Ver `DECISIONS.md` y las amenazas nuevas en `THREAT-MODEL.md`.
+  el transporte cifrado y la política de auditoría (el motor de almacenamiento ya se
+  resolvió: SQLite embebido, y el catálogo de roles se resolvió en ADR-0009 — ver abajo).
+  Ver `DECISIONS.md` y las amenazas nuevas en `THREAT-MODEL.md`.
+- **ADR-0009 — Modelo de roles genérico (permiso fijo + cargo en texto libre).**
+  El `UserRole` original (`vigilancia`/`administrativo`/`docente`) estaba hardcodeado al
+  vocabulario de la UNAD y nunca fue ratificado como decisión de producto. Se corrigió a
+  dos niveles de permiso universales (`admin`/`operador`, con `CHECK` en la base de
+  datos) más un campo `cargo` en texto libre, puramente descriptivo, sin efecto en
+  autorización — así el proyecto puede usarse en instituciones distintas sin tocar
+  código. Aplicado ya en `shared/src/types.ts`, el esquema de `users`, el seed de admin,
+  y todos los tests afectados (27 en servidor, 20 en cliente, todos en verde). Principio
+  general para todo el diseño en adelante: lo que varía por institución es
+  configuración/texto libre, no código.
 
 ## Pendiente
 

@@ -42,7 +42,7 @@ describe('RequireAuth', () => {
 
   it('muestra el contenido protegido si hay sesión', async () => {
     vi.mocked(apiClient.getMe).mockResolvedValue({
-      user: { id: 1, username: 'admin', role: 'administrativo', createdAt: '2026-01-01' },
+      user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' },
     });
 
     renderWithRoute('/');
