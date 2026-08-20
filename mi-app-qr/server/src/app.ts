@@ -1,8 +1,14 @@
 import express, { type Express } from 'express';
 import type Database from 'better-sqlite3';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createSessionMiddleware } from './auth/session.js';
 import { createAuthRouter } from './auth/routes.js';
 import { createRegistrosRouter } from './registros/routes.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CLIENT_DIST_PATH = path.resolve(__dirname, '../../client/dist');
 
 export interface AppDependencies {
   db: Database.Database;
@@ -27,6 +33,19 @@ export function createApp(deps: AppDependencies): Express {
 
   app.use('/api/auth', createAuthRouter());
   app.use('/api/registros', createRegistrosRouter());
+
+  // 404 explícito para cualquier ruta de /api que no exista — debe ir ANTES del
+  // fallback estático, o el fallback SPA le devolvería HTML a una API rota.
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'no encontrado' });
+  });
+
+  if (fs.existsSync(CLIENT_DIST_PATH)) {
+    app.use(express.static(CLIENT_DIST_PATH));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(CLIENT_DIST_PATH, 'index.html'));
+    });
+  }
 
   return app;
 }
