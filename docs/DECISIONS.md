@@ -177,6 +177,25 @@ solo presenta su credencial QR.
 
 (El catálogo de roles, que estaba pendiente aquí, se resolvió en ADR-0009.)
 
+**Aclaración de foco (2026-08-20).** El texto original de esta decisión mezclaba dos
+cosas distintas bajo "registrar, consultar, corregir y generar informes": el propósito
+**principal** del cliente multiusuario y una capacidad secundaria. Quedando explícito:
+
+- **Foco principal:** gestión, verificación y extracción de datos — consultar registros,
+  generar informes, administrar usuarios (`Dashboard`, `Informes`, `Usuarios`). Es un
+  módulo de administración y ajustes, no una terminal de registro.
+- **Capacidad secundaria, no el objetivo:** el personal con sesión (incluidos docentes)
+  también puede registrar una entrada/salida directamente desde el cliente
+  (`RegistrosPage`), sin depender de escanear un QR en el punto físico de control. Es una
+  funcionalidad valiosa —da más flexibilidad a un docente, por ejemplo— pero no es la
+  razón de ser del servidor.
+
+Esto no cambia nada ya construido (`RegistrosPage` sigue sin restricción de rol, cualquier
+personal con sesión puede usarla — eso ya estaba bien) ni el trabajo en curso
+(`UsuariosPage`, que encaja exactamente con el foco principal). Sí orienta la prioridad de
+lo que sigue: `Dashboard` e `Informes` — el foco real del producto — van antes que
+cualquier ampliación de `RegistrosPage`.
+
 ---
 
 ## ADR-0009 — Modelo de roles genérico: permiso fijo + cargo en texto libre

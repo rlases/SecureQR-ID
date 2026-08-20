@@ -77,7 +77,12 @@
   generación de informes. Registrado como ADR en estado *Propuesta*; quedan pendientes
   el transporte cifrado y la política de auditoría (el motor de almacenamiento ya se
   resolvió: SQLite embebido, y el catálogo de roles se resolvió en ADR-0009 — ver abajo).
-  Ver `DECISIONS.md` y las amenazas nuevas en `THREAT-MODEL.md`.
+  **Aclaración de foco (2026-08-20):** el cliente multiusuario es principalmente un
+  módulo de gestión/verificación/extracción de datos (`Dashboard`, `Informes`,
+  `Usuarios`) — no una terminal de registro. Que el personal también pueda registrar
+  una entrada desde ahí es una capacidad secundaria que suma (útil para docentes), no
+  el objetivo. Esto prioriza `Dashboard`/`Informes` por delante de ampliar
+  `RegistrosPage`. Ver `DECISIONS.md` y las amenazas nuevas en `THREAT-MODEL.md`.
 - **ADR-0009 — Modelo de roles genérico (permiso fijo + cargo en texto libre).**
   El `UserRole` original (`vigilancia`/`administrativo`/`docente`) estaba hardcodeado al
   vocabulario de la UNAD y nunca fue ratificado como decisión de producto. Se corrigió a
