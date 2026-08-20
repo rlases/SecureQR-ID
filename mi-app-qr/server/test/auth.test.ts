@@ -31,7 +31,7 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.user.username).toBe('admin');
-    expect(res.body.user.role).toBe('administrativo');
+    expect(res.body.user.role).toBe('admin');
     expect(res.body.user.passwordHash).toBeUndefined();
     expect(res.headers['set-cookie']).toBeDefined();
   });

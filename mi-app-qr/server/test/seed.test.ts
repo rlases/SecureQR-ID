@@ -23,7 +23,7 @@ describe('seedAdminUser', () => {
       .get('admin') as { password_hash: string; role: string } | undefined;
 
     expect(user).toBeDefined();
-    expect(user!.role).toBe('administrativo');
+    expect(user!.role).toBe('admin');
     expect(await verifyPassword('cambia-esto-ya', user!.password_hash)).toBe(true);
     db.close();
   });

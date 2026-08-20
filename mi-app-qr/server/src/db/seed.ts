@@ -20,5 +20,5 @@ export async function seedAdminUser(
 
   db.prepare(
     `INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)`
-  ).run(options.username, passwordHash, 'administrativo');
+  ).run(options.username, passwordHash, 'admin');
 }

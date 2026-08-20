@@ -37,7 +37,18 @@ describe('migraciones', () => {
 
     insertUser.run('user1', 'hash1', 'admin');
     expect(() => {
-      insertUser.run('user1', 'hash2', 'user');
+      insertUser.run('user1', 'hash2', 'operador');
+    }).toThrow();
+  });
+
+  it("fuerza CHECK (role IN ('admin', 'operador'))", () => {
+    const insertUser = db.prepare(`
+      INSERT INTO users (username, password_hash, role)
+      VALUES (?, ?, ?)
+    `);
+
+    expect(() => {
+      insertUser.run('user1', 'hash1', 'docente');
     }).toThrow();
   });
 

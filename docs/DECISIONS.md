@@ -171,8 +171,50 @@ solo presenta su credencial QR.
 - **Transporte:** HTTP plano en la LAN expone las credenciales del personal a cualquiera
   que escuche la red WiFi institucional. HTTPS con certificado autofirmado es incómodo en
   navegadores pero es lo mínimo defendible. Decidir explícitamente y justificar.
-- Catálogo de roles y qué puede hacer cada uno: registrar, consultar, corregir, exportar
-  informes, administrar usuarios. El principio rector es mínimo privilegio.
 - Qué se audita y por cuánto tiempo se conserva.
 - Descubrimiento del servidor por los demás puestos: IP fija, nombre en la red o
   configuración manual.
+
+(El catálogo de roles, que estaba pendiente aquí, se resolvió en ADR-0009.)
+
+---
+
+## ADR-0009 — Modelo de roles genérico: permiso fijo + cargo en texto libre
+
+**Estado:** Aceptada
+
+**Contexto.** ADR-0008 dejó pendiente el catálogo de roles. La primera implementación
+(`shared/src/types.ts`) fijó un `UserRole` con tres valores hardcodeados —
+`'vigilancia' | 'administrativo' | 'docente'` — tomados literalmente del texto de
+ADR-0008, sin que nadie los ratificara como decisión de producto. El problema no es solo
+que "docente" no aplique fuera de un entorno educativo: es que **el proyecto debe poder
+usarse en instituciones distintas a la UNAD**, y ningún catálogo cerrado de puestos de
+trabajo generaliza a "cualquier institución" — la vigilancia de un CCAV no es lo mismo
+que la recepción de una clínica ni la portería de una empresa, y una nueva institución no
+debería requerir tocar el enum de TypeScript para dar de alta su propio vocabulario.
+
+**Decisión.** Separar dos cosas que el diseño anterior mezclaba en un solo campo:
+
+1. **Nivel de permiso** (`role`): fijo, universal, no depende de ninguna institución.
+   Dos valores: `admin` (gestiona usuarios, ve todo) y `operador` (registra y consulta,
+   no administra usuarios). Esto es lo único que la lógica de autorización del servidor
+   puede depender — y precisamente por eso debe quedar chico y estable.
+2. **Cargo** (`cargo`): texto libre, puramente descriptivo, sin efecto en autorización.
+   Cada institución escribe el suyo al crear un usuario — "vigilancia", "docente",
+   "recepción", lo que corresponda. Mismo principio que ya regía para `registros.rol`
+   (nunca fue un enum) — aquí se extiende a `users`.
+
+**Consecuencias.** El esquema de `users` gana una columna `cargo TEXT` nullable (no
+rompe usuarios existentes, que quedan sin cargo asignado). El seed de administrador pasa
+de `role: 'administrativo'` a `role: 'admin'`. Cualquier lógica de autorización futura
+(quién puede ver Informes, quién puede administrar Usuarios) se escribe contra `role`
+(`admin`/`operador`), nunca contra `cargo`.
+
+**Principio general, no solo para roles — aplica hacia adelante en todo el proyecto:**
+no hardcodear vocabulario específico de una institución en el modelo de datos ni en la
+lógica del sistema. Lo que varía entre instituciones (nombres de puestos, terminología)
+es configuración o texto libre; lo que no varía (niveles de permiso, invariantes de
+seguridad) es lo único que se fija en el código. Esto no cambia lo ya documentado sobre
+la UNAD y el piloto en CCAV Pitalito como caso de uso concreto de este trabajo de
+grado (ver ADR-0006) — es sobre el diseño del software, no sobre a quién se le presenta
+el proyecto.
