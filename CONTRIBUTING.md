@@ -57,6 +57,8 @@ GitHub para que la mecánica coincida con lo que dice este archivo — ver
   carpeta.
 - **`mi-app-qr/server`** usa Vitest + Supertest (`npm test` dentro de `mi-app-qr/server`).
   El flujo de CI lo ejecuta en cada PR que toque esa carpeta.
+- **`mi-app-qr/client`** usa Vitest + React Testing Library (`npm test` dentro de
+  `mi-app-qr/client`). El flujo de CI lo ejecuta en cada PR que toque esa carpeta.
 - **Los módulos del modelo criptográfico** (`issuer/`, `verifier/`, `evidence-log/`,
   `anchor/`, `revocation/`) todavía no tienen framework de pruebas definido porque
   depende del stack (ADR-0005, issue #2). Cuando se resuelva, este documento se
