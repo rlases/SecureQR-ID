@@ -16,14 +16,20 @@ Este archivo es un índice, no una enciclopedia. El detalle vive en `docs/`.
 
 ## Comandos
 
-<!-- TODO: completar al fijar el stack (ADR-0005) -->
+Stack decidido en ADR-0005: **Python** para `issuer/`, `verifier/`, `evidence-log/`;
+**Node.js/TypeScript** para `anchor/` (SDK oficial de Hyperledger Fabric). Cada módulo
+Python es su propio paquete, con su propio entorno virtual — no un monolito compartido.
 
 ```bash
-# instalar
-# test
-# lint
-# ejecutar issuer
-# ejecutar verifier
+# issuer/, verifier/, evidence-log/ (Python — cada uno en su carpeta)
+python -m venv .venv && source .venv/bin/activate   # o .venv\Scripts\activate en Windows
+pip install -r requirements.txt
+pytest
+
+# anchor/ (Node.js/TypeScript — mismo patrón que mi-app-qr/server)
+npm install
+npm test
+npm run build
 ```
 
 ## Los cuatro módulos y su frontera
@@ -68,8 +74,10 @@ código de uno con el otro. Ver "Relación con el prototipo existente" en
 ## Trampas conocidas
 
 - **SDK de Hyperledger Fabric:** el SDK de Python está sin mantenimiento activo; el de
-  Node.js (`fabric-network`) es el oficial. Esto condiciona el stack de `anchor/` y puede
-  forzar un repositorio políglota. Sin resolver — ver ADR-0005.
+  Node.js (`fabric-network`) es el oficial. Por eso `anchor/` es Node mientras el resto
+  de los módulos criptográficos son Python — repositorio políglota, decisión ya cerrada
+  en ADR-0005. El puente entre `evidence-log/` (Python) y `anchor/` (Node) es un límite
+  de proceso, no una llamada de función — no importes código de un lenguaje desde el otro.
 - **"SecureQR" a secas ya está tomado** por una app de terceros. Usa siempre el nombre
   completo `SecureQR-ID` en código, documentos y publicaciones.
 - **CCAV vs CEAD Pitalito:** los documentos fuente alternan entre ambos. La forma

@@ -98,8 +98,6 @@
 
 ### Bloqueantes
 
-- **ADR-0005: definir el stack.** Nada de código de los módulos seguros puede empezar
-  antes de esto.
 - **ADR-0007: gobernanza de la red blockchain.** Es la objeción más probable en la
   sustentación; conviene resolverla antes de implementar `anchor/`.
 - **Unificar el número de objetivos específicos.** La propuesta define tres; la tabla de

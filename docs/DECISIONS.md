@@ -79,18 +79,44 @@ sobre el piloto en la UNAD.
 
 ## ADR-0005 — Stack de implementación
 
-**Estado:** Abierta
+**Estado:** Aceptada
 
 **Contexto.** El SDK de Hyperledger Fabric para Python no tiene mantenimiento activo;
 el oficial y mantenido es el de Node.js (`fabric-network`). Python, por su parte, ofrece
 mejor ergonomía para la parte criptográfica y para el análisis estadístico de la fase de
 evaluación.
 
-**Opciones.** (a) Todo en Node.js. (b) Todo en Python, con un puente mínimo a Fabric.
-(c) Repositorio políglota: Python para `issuer`/`verifier`/`evidence-log`, Node para
-`anchor`.
+**Opciones consideradas.** (a) Todo en Node.js. (b) Todo en Python, con un puente mínimo
+a Fabric. (c) Repositorio políglota: Python para `issuer`/`verifier`/`evidence-log`, Node
+para `anchor`.
 
-**Pendiente de decidir.** Al resolverse, actualizar `CLAUDE.md`, el README y esta entrada.
+**Decisión.** Opción (c) — repositorio políglota:
+
+- **Python** para `issuer/`, `verifier/`, `evidence-log/` — mejor ergonomía para
+  criptografía (librerías como `cryptography`) y para el análisis estadístico de la fase
+  de evaluación, que también es Python.
+- **Node.js/TypeScript** para `anchor/` — el SDK oficial y mantenido de Hyperledger
+  Fabric (`fabric-network`) es Node; usar el SDK de Python sin mantenimiento activo para
+  la pieza que más depende de Fabric sería la peor combinación posible. Consistente,
+  además, con `mi-app-qr/server` y `mi-app-qr/client`, que ya son Node/TypeScript.
+
+**Consecuencias.**
+
+- Dos toolchains en el mismo repositorio: `pyproject.toml`/`requirements.txt` (o
+  equivalente) para los módulos Python, `package.json` para `anchor/` — igual que ya
+  conviven `mi-app-qr/server`, `client` y `shared` como paquetes Node independientes.
+- El puente entre `evidence-log/` (Python) y `anchor/` (Node) es un límite de proceso
+  real, no una llamada de función — probablemente `evidence-log/` expone los lotes de
+  eventos a anclar en un formato serializado simple (JSON/archivo) que `anchor/` consume,
+  sin que ninguno de los dos importe código del otro directamente. Definir el contrato
+  exacto es trabajo de quien implemente `evidence-log/`/`anchor/`, no de este ADR.
+- `issuer/`, `verifier/`, `evidence-log/` deben seguir las mismas convenciones de calidad
+  que ya rigen para el resto del repositorio (TDD, PR + revisión cruzada, sin datos
+  reales en pruebas) — el framework de pruebas de Python (pytest, recomendado) y su job
+  correspondiente en `.github/workflows/ci.yml` quedan pendientes de agregar cuando
+  arranque la implementación real (ver `CONTRIBUTING.md`).
+
+**Actualizado en consecuencia:** `CLAUDE.md` (sección "Comandos" y "Trampas conocidas").
 
 ---
 
