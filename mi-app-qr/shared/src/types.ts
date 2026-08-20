@@ -41,3 +41,20 @@ export interface CreateRegistroRequest {
 export interface ApiErrorResponse {
   error: string;
 }
+
+export interface CreateUserRequest {
+  username: string;
+  role: UserRole;
+  cargo?: string;
+}
+
+export interface CreateUserResponse {
+  user: User;
+  // Se devuelve UNA sola vez, generada por el servidor. No se puede recuperar
+  // después — no se guarda en texto plano en ningún lado, solo su hash.
+  generatedPassword: string;
+}
+
+export interface ListUsersResponse {
+  users: User[];
+}
