@@ -6,6 +6,8 @@ const fs = require('fs').promises;
 const fetch = require('node-fetch');
 const sudo = require('sudo-prompt');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
+const http = require('http');
 
 const isDev = !app.isPackaged;
 
@@ -90,6 +92,99 @@ ipcMain.handle('check-license', async () => {
 });
 // --- FIN: LÓGICA DE LICENCIA ---
 
+// --- INICIO: ARRANQUE DEL SERVIDOR REAL ---
+const SERVER_DIR = path.join(__dirname, 'server');
+const SERVER_PORT = 4000;
+const serverSecretsPath = path.join(userDataPath, 'server-secrets.json');
+
+let serverProcess = null;
+
+async function loadOrCreateServerSecrets() {
+    try {
+        const raw = await fs.readFile(serverSecretsPath, 'utf-8');
+        return JSON.parse(raw);
+    } catch (error) {
+        const secrets = {
+            sessionSecret: crypto.randomBytes(32).toString('hex'),
+            adminUsername: 'admin',
+            adminPassword: crypto.randomBytes(9).toString('base64url'),
+        };
+        await fs.writeFile(serverSecretsPath, JSON.stringify(secrets, null, 2), 'utf-8');
+        return secrets;
+    }
+}
+
+function waitForServerHealth(port, timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    return new Promise((resolve, reject) => {
+        function attempt() {
+            const req = http.get(`http://localhost:${port}/api/health`, (res) => {
+                if (res.statusCode === 200) {
+                    resolve();
+                } else if (Date.now() > deadline) {
+                    reject(new Error(`El servidor respondió ${res.statusCode} tras esperar ${timeoutMs}ms`));
+                } else {
+                    setTimeout(attempt, 300);
+                }
+            });
+            req.on('error', () => {
+                if (Date.now() > deadline) {
+                    reject(new Error(`El servidor no respondió tras esperar ${timeoutMs}ms`));
+                } else {
+                    setTimeout(attempt, 300);
+                }
+            });
+        }
+        attempt();
+    });
+}
+
+async function startServer() {
+    const secrets = await loadOrCreateServerSecrets();
+    const isFirstRun = !serverProcess && secrets.adminPassword;
+
+    // NOTA: se usa el binario "node" del sistema (resuelto por PATH), no
+    // process.execPath (el propio Electron) con ELECTRON_RUN_AS_NODE=1. Se probó
+    // ese camino y falla: better-sqlite3 está compilado contra la ABI de Node del
+    // sistema (NODE_MODULE_VERSION 115), que no coincide con la ABI del Node que
+    // empaqueta Electron 30 (123) — el proceso hijo moría con un error de
+    // NODE_MODULE_VERSION al cargar el módulo nativo. Usar un Node real evita el
+    // mismatch sin recompilar nada.
+    //
+    // Esto significa que, por ahora, el equipo donde corre esta app como servidor
+    // necesita tener Node.js instalable en el PATH — aceptable en esta fase, ya que
+    // solo se corre sin empaquetar (`npm run electron-dev`). El plan de empaquetado
+    // con electron-builder (fuera de alcance aquí) tendrá que resolver esto de raíz,
+    // probablemente con electron-rebuild como paso del empaquetado — sin romper el
+    // desarrollo/pruebas standalone de server/, que sigue usando Node del sistema.
+    serverProcess = spawn('node', [path.join(SERVER_DIR, 'dist', 'index.js')], {
+        env: {
+            ...process.env,
+            PORT: String(SERVER_PORT),
+            SESSION_SECRET: secrets.sessionSecret,
+            DB_PATH: path.join(userDataPath, 'server-data', 'app.db'),
+            SEED_ADMIN_USERNAME: secrets.adminUsername,
+            SEED_ADMIN_PASSWORD: secrets.adminPassword,
+        },
+        stdio: 'pipe',
+        shell: process.platform === 'win32',
+    });
+
+    serverProcess.stdout.on('data', (data) => console.log(`[servidor] ${data}`.trim()));
+    serverProcess.stderr.on('data', (data) => console.error(`[servidor] ${data}`.trim()));
+
+    await waitForServerHealth(SERVER_PORT, 15000);
+
+    return { isFirstRun, adminUsername: secrets.adminUsername, adminPassword: secrets.adminPassword };
+}
+
+function stopServer() {
+    if (serverProcess) {
+        serverProcess.kill();
+        serverProcess = null;
+    }
+}
+// --- FIN: ARRANQUE DEL SERVIDOR REAL ---
 
 let win;
 
@@ -120,11 +215,7 @@ function createWindow() {
         return { action: 'deny' };
     });
 
-    win.loadURL(
-        isDev
-            ? 'http://localhost:3000'
-            : `file://${path.join(__dirname, 'build', 'index.html')}`
-    );
+    win.loadURL(`http://localhost:${SERVER_PORT}`);
 
     if (isDev) {
         win.webContents.openDevTools();
@@ -146,14 +237,36 @@ if (!gotTheLock) {
         }
     });
     // Cargar la configuración ANTES de crear la ventana
-    app.whenReady().then(loadConfiguration).then(createWindow);
+    app.whenReady()
+        .then(loadConfiguration)
+        .then(startServer)
+        .then(({ isFirstRun, adminUsername, adminPassword }) => {
+            createWindow();
+            if (isFirstRun) {
+                dialog.showMessageBox(win, {
+                    type: 'info',
+                    title: 'Primer inicio del servidor',
+                    message: 'Se generó un usuario administrador para este equipo.',
+                    detail: `Usuario: ${adminUsername}\nContraseña: ${adminPassword}\n\nGuarda esta contraseña — no se volverá a mostrar. Se guardó en:\n${serverSecretsPath}`,
+                });
+            }
+        })
+        .catch((error) => {
+            dialog.showErrorBox('No se pudo iniciar el servidor', error.message);
+            app.quit();
+        });
 }
 
 
 app.on('window-all-closed', () => {
+    stopServer();
     if (process.platform !== 'darwin') {
         app.quit();
     }
+});
+
+app.on('before-quit', () => {
+    stopServer();
 });
 
 app.on('activate', () => {
