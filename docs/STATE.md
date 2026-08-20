@@ -50,8 +50,22 @@
   `RequireAuth` + `Sidebar`, `RegistrosPage` (crear y listar con refetch cada 7s).
   Verificado de punta a punta contra el servidor real (login, crear y listar
   registros vía la API, no solo con mocks). 20 tests con Vitest + Testing Library.
-  Dashboard, Informes, Usuarios y la integración con Electron quedan pendientes —
-  ver "Implementación" abajo.
+  Dashboard, Informes y Usuarios quedan pendientes — ver "Implementación" abajo.
+- **Electron arranca el servidor real (ADR-0008 cerrado en su forma mínima):**
+  `mi-app-qr/server` ahora sirve el build de `mi-app-qr/client` (fallback SPA), y
+  `main.js` arranca ese servidor como proceso hijo al abrir la app, genera y
+  persiste `SESSION_SECRET` + credenciales de admin en `userData` (primer
+  arranque muestra un diálogo con la contraseña generada), y carga
+  `http://localhost:4000` en la ventana — reemplazando por completo el dev
+  server de Create React App al que apuntaba antes. Verificado de punta a punta
+  con `npm run electron-dev`: login, crear/listar registros, y persistencia
+  entre reinicios. Bloqueo real encontrado y resuelto durante la verificación:
+  `better-sqlite3` está compilado contra la ABI de Node del sistema, no la que
+  empaqueta Electron — se arrancó el servidor con un binario `node` real en vez
+  de `process.execPath`, documentado en el propio código. **Limitación
+  conocida:** el equipo que actúa como servidor necesita Node.js instalado
+  mientras no exista un instalador empaquetado (`electron-builder`, fuera de
+  alcance — ver "Implementación").
 
 ## En curso
 
@@ -89,8 +103,20 @@
 - `mi-app-qr/client`: Dashboard, Informes, Usuarios (pantallas adicionales, cada una
   con su propio ciclo TDD); migración de los componentes de dominio existentes
   (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`);
-  integración con Electron (requiere que el servidor sirva el build estático del
-  cliente); WebSockets si el polling de 7s resulta insuficiente.
+  WebSockets si el polling de 7s resulta insuficiente.
+- **Empaquetado con `electron-builder`** de la app integrada (instalador `.exe`
+  distribuible con `server/dist`, `server/node_modules` — incluyendo el binario
+  nativo de `better-sqlite3` recompilado contra la ABI de Electron, probablemente
+  con `electron-rebuild` — y `client/dist`). Riesgo real de problemas específicos
+  de plataforma; necesita su propio plan con su propia verificación (construir el
+  instalador, instalarlo, correrlo). Hasta que esto exista, la app solo corre sin
+  empaquetar (`npm run electron-dev`), lo que exige Node.js instalado en el
+  equipo que actúa como servidor.
+- **Decisión de producto pendiente:** qué hacer con el sistema de licencia/prueba
+  existente en `main.js` frente al modelo multiusuario — el cliente nuevo no lo
+  llama, quedó como código muerto sin que nadie lo haya decidido explícitamente.
+- Catálogo de roles y gestión de usuarios más allá del admin semilla; HTTPS en la
+  red del CCAV — ambos ya señalados como pendientes en ADR-0008.
 
 ### Evaluación
 
