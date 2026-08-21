@@ -5,16 +5,15 @@ import RequireAuth from './auth/RequireAuth';
 import { Sidebar } from './components/Sidebar';
 import LoginPage from './pages/LoginPage';
 import RegistrosPage from './pages/RegistrosPage';
+import UsuariosPage from './pages/UsuariosPage';
 
 const queryClient = new QueryClient();
 
-function AppLayout() {
+function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex">
       <Sidebar />
-      <main className="flex-1 p-8">
-        <RegistrosPage />
-      </main>
+      <main className="flex-1 p-8">{children}</main>
     </div>
   );
 }
@@ -30,7 +29,19 @@ function App() {
               path="/"
               element={
                 <RequireAuth>
-                  <AppLayout />
+                  <AppLayout>
+                    <RegistrosPage />
+                  </AppLayout>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/usuarios"
+              element={
+                <RequireAuth>
+                  <AppLayout>
+                    <UsuariosPage />
+                  </AppLayout>
                 </RequireAuth>
               }
             />
