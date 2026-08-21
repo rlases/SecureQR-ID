@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateRegistroRequest } from '@mi-app-qr/shared';
-import { createRegistro, listRegistros } from '../lib/apiClient';
+import type { CorregirRegistroRequest, CreateRegistroRequest, Registro } from '@mi-app-qr/shared';
+import { correctRegistro, createRegistro, listRegistros } from '../lib/apiClient';
+import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { CorregirRegistroModal } from '../components/CorregirRegistroModal';
 
 const registroSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
@@ -18,6 +21,8 @@ type RegistroFormValues = z.infer<typeof registroSchema>;
 
 export default function RegistrosPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [registroACorregir, setRegistroACorregir] = useState<Registro | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['registros'],
@@ -30,6 +35,14 @@ export default function RegistrosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registros'] });
       reset();
+    },
+  });
+
+  const correccionMutation = useMutation({
+    mutationFn: (values: CorregirRegistroRequest) => correctRegistro(registroACorregir!.id, values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['registros'] });
+      setRegistroACorregir(null);
     },
   });
 
@@ -86,6 +99,7 @@ export default function RegistrosPage() {
                 <th className="py-2 font-medium">Rol</th>
                 <th className="py-2 font-medium">Tipo</th>
                 <th className="py-2 font-medium">Hora</th>
+                {user?.role === 'admin' && <th className="py-2 font-medium" />}
               </tr>
             </thead>
             <tbody>
@@ -95,12 +109,26 @@ export default function RegistrosPage() {
                   <td className="py-2 text-foreground">{registro.rol}</td>
                   <td className="py-2 text-foreground">{registro.tipo}</td>
                   <td className="py-2 text-muted-foreground">{registro.timestamp}</td>
+                  {user?.role === 'admin' && (
+                    <td className="py-2 text-right">
+                      <Button variant="outline" size="sm" onClick={() => setRegistroACorregir(registro)}>
+                        Corregir
+                      </Button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      <CorregirRegistroModal
+        registro={registroACorregir}
+        onCancel={() => setRegistroACorregir(null)}
+        onSubmit={(values) => correccionMutation.mutate(values)}
+        isSubmitting={correccionMutation.isPending}
+      />
     </div>
   );
 }
