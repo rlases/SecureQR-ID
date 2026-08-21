@@ -27,7 +27,8 @@
   firmas compactas *low-S*, nonces CSPRNG y claves PKCS#8 cifradas fuera del repositorio.
   ADR-0010 cierra el esquema criptográfico y la codificación. La batería de pytest cubre
   firma, canonicalización, `kid`, unicidad y no exposición de la clave privada; CI tiene
-  un job propio. Pendiente de commit, PR y revisión cruzada antes de fusionar el issue #5.
+  un job propio. Publicado en el PR draft #27 con CI en verde; pendiente de revisión
+  cruzada antes de fusionar el issue #5.
 - **Prototipo funcional "Registro QR" (`mi-app-qr/`)**: app de escritorio Electron + React
   para registro de asistencia por QR, con formulario de registro, panel de control,
   edición de registros, exportación a CSV, selección de rol y sistema de licencia/prueba.
