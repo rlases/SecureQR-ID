@@ -71,10 +71,13 @@ firmas fuera de rango, de longitud distinta a 64 bytes o con `s` alto antes de e
 expiración, nonce o revocación. Estas reglas se documentan aquí para que ambos módulos
 firmen los mismos bytes; su implementación no pertenece a `issuer/`.
 
+La política temporal se cerró en ADR-0011: `clock_skew_seconds` es configuración externa
+obligatoria entre 0 y 60 segundos. El token es vigente si `iat <= now + skew`,
+`now < exp + skew` y `exp > iat`; un retroceso del reloj mayor que la tolerancia se
+rechaza usando un máximo temporal persistente.
+
 ## Decisiones pendientes de evaluación
 
-- Tolerancia admitida al desfase de reloj en `verifier/`. No cambia la codificación Unix
-  UTC decidida aquí.
 - Densidad y legibilidad del token Base64url/CBOR impreso o mostrado en pantalla, con
   cámaras de gama baja y desgaste físico.
 
