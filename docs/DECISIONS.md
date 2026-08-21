@@ -263,3 +263,56 @@ seguridad) es lo único que se fija en el código. Esto no cambia lo ya document
 la UNAD y el piloto en CCAV Pitalito como caso de uso concreto de este trabajo de
 grado (ver ADR-0006) — es sobre el diseño del software, no sobre a quién se le presenta
 el proyecto.
+
+---
+
+## ADR-0010 — Esquema criptográfico y codificación canónica de `SQRID/1`
+
+**Estado:** Aceptada
+
+**Contexto.** ADR-0001 eligió ECDSA por su menor tamaño frente a RSA, pero dejó abiertas
+la curva, la función hash, la representación de la firma y la serialización exacta. Sin
+esas decisiones, `issuer/` y `verifier/` podrían firmar bytes distintos para el mismo
+contenido. Además, una firma DER tiene longitud variable y una representación ECDSA con
+`s` alto admite otra firma válida para el mismo mensaje, propiedades inconvenientes para
+un token que debe ser compacto y canónico.
+
+**Decisión.** La versión `SQRID/1` usa las reglas siguientes:
+
+- Firma ECDSA con la curva NIST P-256 (`secp256r1`) y SHA-256, exclusivamente mediante
+  una biblioteca criptográfica mantenida (`cryptography` en Python).
+- Los campos firmados son el mapa formado por `v`, `kid`, `cid`, `iat`, `exp` y `n`.
+  Se serializa como CBOR determinista conforme a RFC 8949. La firma nunca depende del
+  orden de inserción de un diccionario ni de espacios o formato textual.
+- El mapa final contiene exactamente esos seis campos y `sig`; no admite campos
+  adicionales sin firmar. Un campo desconocido requiere una nueva versión del formato.
+- La firma se transporta como `r || s` de ancho fijo: 32 bytes para cada entero, según
+  la representación IEEE P1363. El emisor normaliza `s` al intervalo inferior de la
+  curva (*low-S*), por lo que `sig` siempre ocupa 64 bytes y tiene una sola forma
+  canónica. El mapa completo, ahora con `sig`, vuelve a codificarse como CBOR
+  determinista.
+- El token que se coloca en el QR es la codificación Base64url sin relleno del mapa CBOR
+  completo. La versión sigue dentro del campo firmado `v`; no se añade un prefijo
+  textual duplicado.
+- `iat` y `exp` son enteros de segundos Unix en UTC. La duración se suministra mediante
+  configuración externa y debe ser un entero positivo; no existe una vigencia por
+  defecto en el código. La tolerancia de reloj del verificador se decidirá al
+  implementar ese módulo y no cambia esta representación.
+- `cid` es un identificador opaco de 128 bits generado con CSPRNG y representado en
+  Base64url sin relleno. `n` contiene 128 bits nuevos de CSPRNG por cada token.
+- `kid` son los primeros 128 bits de SHA-256 sobre la clave pública codificada como DER
+  SubjectPublicKeyInfo, representados en Base64url sin relleno. Así el identificador se
+  deriva de la clave utilizada y no puede configurarse por error con un valor ajeno.
+- Para el prototipo, la clave privada se almacena fuera del repositorio como PKCS#8 PEM
+  cifrado. La ruta y la contraseña se reciben por configuración; el módulo no devuelve
+  la clave privada, no la registra y no sobrescribe un archivo de clave existente.
+
+**Consecuencias.** El formato adquiere dependencias explícitas de `cryptography` y de
+una implementación de CBOR determinista. `verifier/` deberá reconstruir exactamente el
+mapa sin `sig`, exigir P-256/SHA-256, rechazar firmas que no midan 64 bytes o tengan `s`
+alto, y luego convertir `r || s` al formato que requiera su biblioteca. La
+serialización del contenido es determinista, aunque dos emisiones deliberadamente no
+producen el mismo token porque el nonce del token y el nonce interno de ECDSA cambian.
+Los 128 bits usados en `cid`, `kid` y `n` mantienen el payload acotado y ofrecen un
+espacio suficiente para evitar colisiones en la escala del prototipo; la legibilidad
+física del QR deberá medirse en la fase de evaluación.

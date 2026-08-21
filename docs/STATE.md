@@ -4,8 +4,9 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-08-12
-**Fase actual:** diseño y levantamiento de requerimientos (Fase 2 de `ROADMAP.md`)
+**Última actualización:** 2026-08-20
+**Fase actual:** diseño (Fase 2) con desarrollo tecnológico iniciado (Fase 3 de
+`ROADMAP.md`); ADR-0007 todavía impide cerrar formalmente la Fase 2.
 
 ---
 
@@ -21,6 +22,13 @@
 - Propuesta de grado presentada y sustentada.
 - Estructura del repositorio y documentación base (`docs/`, ADRs, glosario, modelo de
   amenazas, especificación `SQRID/1`).
+- **`issuer/` implementado en la rama `modulo/5-issuer-ecdsa`:** paquete Python
+  independiente para emitir tokens `SQRID/1` con ECDSA P-256/SHA-256, CBOR determinista,
+  firmas compactas *low-S*, nonces CSPRNG y claves PKCS#8 cifradas fuera del repositorio.
+  ADR-0010 cierra el esquema criptográfico y la codificación. La batería de pytest cubre
+  firma, canonicalización, `kid`, unicidad y no exposición de la clave privada; CI tiene
+  un job propio. Publicado en el PR draft #27 con CI en verde; pendiente de revisión
+  cruzada antes de fusionar el issue #5.
 - **Prototipo funcional "Registro QR" (`mi-app-qr/`)**: app de escritorio Electron + React
   para registro de asistencia por QR, con formulario de registro, panel de control,
   edición de registros, exportación a CSV, selección de rol y sistema de licencia/prueba.
@@ -50,7 +58,10 @@
   `RequireAuth` + `Sidebar`, `RegistrosPage` (crear y listar con refetch cada 7s).
   Verificado de punta a punta contra el servidor real (login, crear y listar
   registros vía la API, no solo con mocks). 20 tests con Vitest + Testing Library.
-  Dashboard, Informes y Usuarios quedan pendientes — ver "Implementación" abajo.
+  Dashboard e Informes quedan pendientes — ver "Implementación" abajo.
+- **Gestión de usuarios integrada en `main` (PR #25):** endpoints de creación y listado
+  restringidos a administradores, `UsuariosPage`, ruta protegida y acceso condicional
+  desde el `Sidebar`, con pruebas de servidor y cliente.
 - **Electron arranca el servidor real (ADR-0008 cerrado en su forma mínima):**
   `mi-app-qr/server` ahora sirve el build de `mi-app-qr/client` (fallback SPA), y
   `main.js` arranca ese servidor como proceso hijo al abrir la app, genera y
@@ -109,13 +120,12 @@
 
 ### Implementación
 
-- `issuer/` — emisión y firma ECDSA
 - `verifier/` — portal de validación
 - `evidence-log/` — bitácora encadenada
 - `anchor/` — Merkle + Hyperledger Fabric
 - `revocation/` — lista firmada
-- `mi-app-qr/client`: Dashboard, Informes, Usuarios (pantallas adicionales, cada una
-  con su propio ciclo TDD); migración de los componentes de dominio existentes
+- `mi-app-qr/client`: Dashboard e Informes (pantallas adicionales, cada una con su propio
+  ciclo TDD); migración de los componentes de dominio existentes
   (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`);
   WebSockets si el polling de 7s resulta insuficiente.
 - **Empaquetado con `electron-builder`** de la app integrada (instalador `.exe`
@@ -150,7 +160,17 @@
 
 ---
 
-## Notas de la última sesión
+## Notas de sesiones recientes
+
+**2026-08-20 — `issuer/` (issue #5).** Se creó un worktree y una rama aislados para no
+interferir con el desarrollo paralelo de `mi-app-qr/`. Antes del código se registró
+ADR-0010 y se concretó `SQRID/1`: P-256/SHA-256, CBOR determinista, firma P1363 de 64
+bytes con `s` bajo, timestamps Unix UTC y transporte Base64url. Se implementó la CLI y
+la API de emisión, se añadieron 26 pruebas y el job `issuer-test`. No se generó ni se
+versionó material criptográfico persistente; las pruebas crean claves efímeras dentro de
+los temporales de pytest.
+
+**2026-08-12 — inicio del repositorio.**
 
 Se creó el repositorio remoto `SecureQR-ID` en GitHub y se publicó el código existente de
 `mi-app-qr/` (el commit inicial incluía por error los binarios de build de Electron —

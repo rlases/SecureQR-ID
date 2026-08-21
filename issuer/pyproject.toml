@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secureqr-id-issuer"
+version = "0.1.0"
+description = "Emision y firma ECDSA de tokens SQRID/1"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "cbor2>=5.6.5,<6",
+  "cryptography>=44,<47",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.3,<10"]
+
+[project.scripts]
+secureqr-issuer = "secureqr_issuer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]

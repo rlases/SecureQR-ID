@@ -21,10 +21,12 @@ Stack decidido en ADR-0005: **Python** para `issuer/`, `verifier/`, `evidence-lo
 Python es su propio paquete, con su propio entorno virtual — no un monolito compartido.
 
 ```bash
-# issuer/, verifier/, evidence-log/ (Python — cada uno en su carpeta)
+# issuer/ (Python — entorno propio dentro del módulo)
 python -m venv .venv && source .venv/bin/activate   # o .venv\Scripts\activate en Windows
-pip install -r requirements.txt
-pytest
+python -m pip install -e ".[test]"
+python -m pytest
+
+# verifier/ y evidence-log/ seguirán el mismo patrón cuando existan
 
 # anchor/ (Node.js/TypeScript — mismo patrón que mi-app-qr/server)
 npm install

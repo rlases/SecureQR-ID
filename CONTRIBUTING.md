@@ -59,14 +59,18 @@ GitHub para que la mecánica coincida con lo que dice este archivo — ver
   El flujo de CI lo ejecuta en cada PR que toque esa carpeta.
 - **`mi-app-qr/client`** usa Vitest + React Testing Library (`npm test` dentro de
   `mi-app-qr/client`). El flujo de CI lo ejecuta en cada PR que toque esa carpeta.
-- **Los módulos del modelo criptográfico** (`issuer/`, `verifier/`, `evidence-log/`,
-  `anchor/`, `revocation/`) todavía no tienen framework de pruebas definido porque
-  depende del stack (ADR-0005, issue #2). Cuando se resuelva, este documento se
-  actualiza con el comando exacto y se añade su job correspondiente al workflow de CI.
+- **`issuer/`** usa pytest. Desde esa carpeta: crear y activar un entorno virtual,
+  ejecutar `python -m pip install -e ".[test]"` y luego `python -m pytest`. El job
+  `issuer-test` de CI reproduce esos dos últimos comandos.
+- **Los futuros módulos Python** (`verifier/` y `evidence-log/`) deben usar pytest y un
+  entorno virtual propio siguiendo el patrón de `issuer/`. `anchor/` definirá su runner
+  de Node.js al implementarse.
 - **Pruebas mínimas exigidas por módulo, una vez exista código:**
-  - `issuer/` y `verifier/`: casos de firma válida, firma inválida, token expirado,
-    nonce repetido, credencial revocada — cada rechazo debe probarse por separado, no
-    solo el camino feliz (ver orden de validación en `docs/ARCHITECTURE.md`).
+  - `issuer/`: token bien formado y verificable con su clave pública, `kid` derivado de
+    esa clave, nonce único, serialización canónica y ausencia de clave privada en logs,
+    errores o retornos serializables.
+  - `verifier/`: firma válida e inválida, token expirado, nonce repetido y credencial
+    revocada — cada rechazo por separado y en el orden de `docs/ARCHITECTURE.md`.
   - `evidence-log/`: cadena de hashes íntegra, detección de un eslabón alterado,
     verificación completa de la cadena.
   - `anchor/`: cálculo de raíz de Merkle, generación y verificación de prueba de
