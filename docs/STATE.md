@@ -27,8 +27,15 @@
   firmas compactas *low-S*, nonces CSPRNG y claves PKCS#8 cifradas fuera del repositorio.
   ADR-0010 cierra el esquema criptográfico y la codificación. La batería de pytest cubre
   firma, canonicalización, `kid`, unicidad y no exposición de la clave privada; CI tiene
-  un job propio. Publicado en el PR draft #27 con CI en verde; pendiente de revisión
-  cruzada antes de fusionar el issue #5.
+  un job propio. PR #27 fusionado en `main` e issue #5 cerrado.
+- **`verifier/` implementado en la rama `modulo/6-verifier-portal`:** paquete Python
+  independiente que valida `SQRID/1` en el orden firma → vigencia → nonce → revocación,
+  rechaza firmas ECDSA no canónicas y falla cerrado ante claves o dependencias no
+  disponibles. ADR-0011 fija un clock skew obligatorio de 0–60 segundos, máximo de
+  reloj persistente, replay durable en SQLite y consumo atómico del nonce. La suite usa
+  el issuer real y cubre reinicios, concurrencia, revocación y respuestas públicas sin
+  datos sensibles; CI tiene un job propio. Pendiente de publicación y revisión cruzada
+  del issue #6.
 - **Prototipo funcional "Registro QR" (`mi-app-qr/`)**: app de escritorio Electron + React
   para registro de asistencia por QR, con formulario de registro, panel de control,
   edición de registros, exportación a CSV, selección de rol y sistema de licencia/prueba.
@@ -120,7 +127,6 @@
 
 ### Implementación
 
-- `verifier/` — portal de validación
 - `evidence-log/` — bitácora encadenada
 - `anchor/` — Merkle + Hyperledger Fabric
 - `revocation/` — lista firmada
@@ -161,6 +167,14 @@
 ---
 
 ## Notas de sesiones recientes
+
+**2026-08-20 — `verifier/` (issue #6).** Se creó la rama aislada
+`modulo/6-verifier-portal` desde `main` después del merge del issuer. Antes del código se
+registró ADR-0011 para cerrar tolerancia de reloj, persistencia anti-replay y revocación
+fail-closed. Se implementó el parser canónico, resolución de claves P-256, verificación
+ECDSA *low-S*, estado SQLite y la interfaz obligatoria de revocación. Se añadieron 44
+pruebas, incluidas interoperabilidad con `issuer/`, persistencia tras reinicio y carrera
+concurrente del mismo token. No se generó ni versionó material criptográfico persistente.
 
 **2026-08-20 — `issuer/` (issue #5).** Se creó un worktree y una rama aislados para no
 interferir con el desarrollo paralelo de `mi-app-qr/`. Antes del código se registró

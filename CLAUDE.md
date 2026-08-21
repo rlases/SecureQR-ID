@@ -26,7 +26,12 @@ python -m venv .venv && source .venv/bin/activate   # o .venv\Scripts\activate e
 python -m pip install -e ".[test]"
 python -m pytest
 
-# verifier/ y evidence-log/ seguirán el mismo patrón cuando existan
+# verifier/ (instala issuer solo para pruebas de interoperabilidad)
+python -m venv .venv && source .venv/bin/activate   # o .venv\Scripts\activate en Windows
+python -m pip install -e ../issuer -e ".[test]"
+python -m pytest
+
+# evidence-log/ seguirá el mismo patrón cuando exista
 
 # anchor/ (Node.js/TypeScript — mismo patrón que mi-app-qr/server)
 npm install
