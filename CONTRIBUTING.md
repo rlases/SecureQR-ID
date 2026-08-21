@@ -62,15 +62,19 @@ GitHub para que la mecánica coincida con lo que dice este archivo — ver
 - **`issuer/`** usa pytest. Desde esa carpeta: crear y activar un entorno virtual,
   ejecutar `python -m pip install -e ".[test]"` y luego `python -m pytest`. El job
   `issuer-test` de CI reproduce esos dos últimos comandos.
-- **Los futuros módulos Python** (`verifier/` y `evidence-log/`) deben usar pytest y un
-  entorno virtual propio siguiendo el patrón de `issuer/`. `anchor/` definirá su runner
-  de Node.js al implementarse.
+- **`verifier/`** usa pytest y comprueba interoperabilidad contra el paquete real del
+  emisor. Desde `verifier/`: ejecutar `python -m pip install -e ../issuer -e ".[test]"`
+  y luego `python -m pytest`. El job `verifier-test` reproduce esos comandos.
+- **El futuro módulo Python** `evidence-log/` debe usar pytest y un entorno virtual
+  propio siguiendo el mismo patrón. `anchor/` definirá su runner de Node.js al
+  implementarse.
 - **Pruebas mínimas exigidas por módulo, una vez exista código:**
   - `issuer/`: token bien formado y verificable con su clave pública, `kid` derivado de
     esa clave, nonce único, serialización canónica y ausencia de clave privada en logs,
     errores o retornos serializables.
-  - `verifier/`: firma válida e inválida, token expirado, nonce repetido y credencial
-    revocada — cada rechazo por separado y en el orden de `docs/ARCHITECTURE.md`.
+  - `verifier/`: firma válida e inválida, token expirado, nonce repetido, credencial
+    revocada, reinicio y concurrencia — cada rechazo por separado y en el orden de
+    `docs/ARCHITECTURE.md`.
   - `evidence-log/`: cadena de hashes íntegra, detección de un eslabón alterado,
     verificación completa de la cadena.
   - `anchor/`: cálculo de raíz de Merkle, generación y verificación de prueba de

@@ -43,7 +43,7 @@ un evento puntual se hace recalculando el camino desde su hash hasta la raíz an
 | Módulo | Responsabilidad | Estado |
 |---|---|---|
 | [`issuer/`](issuer/) | Emisión y firma ECDSA de tokens QR; gestión del par de claves institucional | Implementado y probado — issue #5 |
-| `verifier/` | Portal de escaneo; verificación de firma, marca temporal, nonce y revocación | Pendiente |
+| [`verifier/`](verifier/) | Motor del portal de escaneo; verifica firma, marca temporal, nonce y revocación | Implementado y probado — issue #6 |
 | `evidence-log/` | Bitácora local de eventos encadenada por hash | Pendiente |
 | `anchor/` | Construcción del árbol de Merkle y anclaje periódico en Hyperledger Fabric | Pendiente — ver ADR-0007 |
 | `revocation/` | Lista de revocación firmada y su distribución a los verificadores | Pendiente |
@@ -87,13 +87,27 @@ python -m pytest
 ```
 
 La configuración de claves y los comandos de emisión están documentados en
-[`issuer/README.md`](issuer/README.md). Los demás módulos se añadirán como paquetes
-independientes según ADR-0005.
+[`issuer/README.md`](issuer/README.md).
+
+### Verificador criptográfico `verifier/`
+
+```bash
+cd SecureQR-ID/verifier
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m pip install -e ../issuer -e ".[test]"
+python -m pytest
+```
+
+La configuración obligatoria de claves confiables, almacenamiento de replay, reloj y
+revocación está documentada en [`verifier/README.md`](verifier/README.md). `issuer/` se
+instala en el comando anterior solo para las pruebas de interoperabilidad; no es una
+dependencia de producción del verificador.
 
 ## Estado
 
-**Fase actual:** diseño y comienzo del desarrollo tecnológico. `issuer/` es el primer
-módulo criptográfico funcional; `mi-app-qr/` sigue siendo la línea base de registro por
+**Fase actual:** diseño y desarrollo tecnológico. `issuer/` y `verifier/` forman el
+núcleo criptográfico funcional; `mi-app-qr/` sigue siendo la línea base de registro por
 QR sin esas capas de seguridad. El detalle vive en [`docs/STATE.md`](docs/STATE.md), que
 se actualiza al cierre de cada sesión de trabajo.
 

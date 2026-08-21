@@ -1,7 +1,7 @@
 # Arquitectura
 
-> Estado: **diseño**. Refleja el modelo definido en la revisión sistemática y en la
-> propuesta de grado. Aún sin implementación.
+> Estado: **implementación parcial**. `issuer/` y `verifier/` ya materializan la capa de
+> validación; consolidación local y anclaje siguen pendientes.
 
 ## Principio rector
 
@@ -49,16 +49,17 @@ Corresponde al Algoritmo 1 del artículo. La implementación debe seguir este or
 1. Decodificar el payload del QR (formato `SQRID/1`, ver `SQRID-1.md`).
 2. Extraer identificador de credencial, marca temporal, nonce y firma.
 3. **Verificar la firma** con la clave pública del emisor.
-4. Comprobar vigencia de la marca temporal y que el nonce no se haya visto antes.
-5. Consultar la lista de revocación firmada.
-6. Si algo falla → rechazar. Falla cerrado, siempre.
-7. Calcular el hash del evento a partir de: id de credencial, id del verificador,
+4. Comprobar vigencia de la marca temporal y consistencia del reloj.
+5. Comprobar que el nonce no se haya visto antes.
+6. Consultar la lista de revocación firmada.
+7. Si algo falla → rechazar. Falla cerrado, siempre.
+8. Calcular el hash del evento a partir de: id de credencial, id del verificador,
    marca temporal y hash del evento anterior.
-8. Añadir el evento a la bitácora encadenada local.
-9. *(Periódico)* Calcular la raíz de Merkle de los eventos recientes.
-10. *(Periódico)* Anclar la raíz en la blockchain permisionada.
+9. Añadir el evento a la bitácora encadenada local.
+10. *(Periódico)* Calcular la raíz de Merkle de los eventos recientes.
+11. *(Periódico)* Anclar la raíz en la blockchain permisionada.
 
-El orden de los pasos 3–5 no es negociable: verificar la firma antes de procesar
+El orden de los pasos 3–6 no es negociable: verificar la firma antes de procesar
 cualquier otro campo evita trabajar sobre un payload no confiable.
 
 ## Módulos y fronteras
@@ -75,10 +76,12 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 
 Registradas como ADR abiertos en `DECISIONS.md`:
 
-- Stack de implementación por módulo (ADR-0005).
 - Red blockchain concreta y su gobernanza en un contexto universitario (ADR-0007).
-- Estrategia de almacenamiento de nonces vistos: ventana temporal, tamaño y purga.
 - Distribución de la lista de revocación a verificadores con conectividad intermitente.
+
+El stack se cerró en ADR-0005. La tolerancia de reloj, la persistencia y purga de nonces,
+la atomicidad ante concurrencia y el comportamiento fail-closed de revocación se
+cerraron en ADR-0011.
 
 ## Lo que este diseño deliberadamente no resuelve
 

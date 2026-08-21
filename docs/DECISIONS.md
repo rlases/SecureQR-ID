@@ -316,3 +316,53 @@ producen el mismo token porque el nonce del token y el nonce interno de ECDSA ca
 Los 128 bits usados en `cid`, `kid` y `n` mantienen el payload acotado y ofrecen un
 espacio suficiente para evitar colisiones en la escala del prototipo; la legibilidad
 física del QR deberá medirse en la fase de evaluación.
+
+---
+
+## ADR-0011 — Política de tiempo, replay y revocación del verificador
+
+**Estado:** Aceptada
+
+**Contexto.** ADR-0010 fija los bytes y la firma de `SQRID/1`, pero deja al verificador
+tres decisiones de seguridad que no pueden depender de valores implícitos: cuánto
+desfase de reloj tolerar, cómo recordar nonces entre procesos y qué hacer cuando no se
+puede consultar la revocación. Una implementación permisiva en cualquiera de esos
+puntos aceptaría tokens fuera de vigencia, permitiría reutilizarlos tras reiniciar el
+proceso o convertiría una caída del servicio de revocación en una autorización.
+
+**Decisión.** El verificador aplica las reglas siguientes:
+
+- El orden de validación es obligatorio: **firma, vigencia, nonce no visto y
+  revocación**. Cualquier fallo detiene la cadena y produce el mismo rechazo público.
+- La tolerancia de reloj (`clock_skew_seconds`) es configuración externa obligatoria,
+  entera, sin valor por defecto y limitada al intervalo de 0 a 60 segundos. Un token
+  solo está vigente si `iat <= now + skew`, `now < exp + skew` y `exp > iat`.
+- El último tiempo observado se conserva en el mismo almacenamiento persistente. Si
+  `now + skew` queda por debajo de ese máximo, el reloj se considera inconsistente y
+  la verificación falla cerrada. El máximo solo avanza; reiniciar el proceso no borra
+  esta protección.
+- Los nonces aceptados se guardan en SQLite fuera del repositorio, con clave primaria
+  `(kid, nonce)` y vigencia mínima hasta `exp + skew`. El modo en memoria no es válido
+  para producción. Las filas solo se purgan cuando el token ya no puede ser aceptado.
+- La consulta de existencia ocurre en la etapa de nonce, antes de revocación. Después
+  de superar revocación, el nonce se consume con una inserción atómica y única; así,
+  ante verificaciones concurrentes, solo una puede aceptar el token. Un rechazo por
+  revocación o por indisponibilidad no consume el nonce.
+- La revocación se consulta mediante una interfaz inyectada y obligatoria. No existe
+  implementación permisiva ni lista vacía por defecto. Una excepción, una respuesta
+  inválida o la indisponibilidad del servicio se interpretan como rechazo.
+- Las claves públicas de confianza se resuelven desde un directorio externo mediante
+  archivos `<kid>.pem`. Cada clave debe ser P-256 y su `kid` se vuelve a derivar de su
+  DER SubjectPublicKeyInfo; la comparación se hace en tiempo constante. Una clave
+  desconocida, mal formada o cuyo identificador no coincida causa rechazo.
+- Todos los rechazos exponen el mismo resultado genérico y no revelan qué etapa falló.
+  Los registros internos solo incluyen códigos estables de motivo; nunca incluyen el
+  token, `cid`, `kid`, nonce, firma, material de clave ni mensajes de excepción.
+
+**Consecuencias.** El verificador necesita configuración explícita para el desfase de
+reloj, un directorio de claves, una base SQLite persistente y una implementación real
+de revocación antes de poder aceptar tokens. La disponibilidad se sacrifica de forma
+deliberada cuando cualquiera de esas dependencias no es confiable. La inserción atómica
+final resuelve carreras sin alterar el orden lógico exigido: el nonce se consulta antes
+de revocación y se confirma inmediatamente después. El módulo se limita a decidir si
+el token es aceptable; no firma, no ancla y no registra el evento de acceso aceptado.
