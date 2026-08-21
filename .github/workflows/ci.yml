@@ -63,6 +63,20 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  # Los módulos del modelo criptográfico (issuer/, verifier/, evidence-log/, anchor/,
-  # revocation/) no tienen job propio todavía: el stack no está decidido (ADR-0005,
-  # issue #2). Añadir aquí su job de pruebas al resolverse — ver CONTRIBUTING.md.
+  issuer-test:
+    name: issuer — tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: issuer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: issuer/pyproject.toml
+
+      - run: python -m pip install -e ".[test]"
+      - run: python -m pytest

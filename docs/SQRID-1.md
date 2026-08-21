@@ -1,20 +1,21 @@
 # Formato de token `SQRID/1`
 
-> Estado: **borrador**. Versión 1 del formato de payload que viaja dentro del código QR.
-> Darle nombre y versión al formato lo hace citable en la publicación y comparable con
-> otras propuestas. Los cambios incompatibles crean `SQRID/2`, no modifican esta versión.
+> Estado: **aceptado para implementación** mediante ADR-0010. Versión 1 del formato de
+> payload que viaja dentro del código QR. Darle nombre y versión al formato lo hace
+> citable en la publicación y comparable con otras propuestas. Los cambios incompatibles
+> crean `SQRID/2`, no modifican esta versión.
 
 ## Campos
 
 | Campo | Nombre | Descripción |
 |---|---|---|
-| `v` | versión | Identificador de formato. Valor fijo: `SQRID/1` |
-| `kid` | key id | Identifica qué clave pública del emisor verifica esta firma |
-| `cid` | credential id | Identificador opaco de la credencial. **No** el número de documento |
-| `iat` | issued at | Marca temporal de emisión |
-| `exp` | expires at | Marca temporal de expiración |
-| `n` | nonce | Valor de un solo uso, generado con CSPRNG |
-| `sig` | signature | Firma ECDSA sobre la concatenación canónica de los campos anteriores |
+| `v` | versión | Texto fijo `SQRID/1` |
+| `kid` | key id | Texto Base64url de 22 caracteres; huella de 128 bits de la clave pública |
+| `cid` | credential id | Texto Base64url de 22 caracteres; id opaco aleatorio de 128 bits |
+| `iat` | issued at | Entero de segundos Unix en UTC |
+| `exp` | expires at | Entero de segundos Unix en UTC; siempre mayor que `iat` |
+| `n` | nonce | Byte string CBOR de 16 bytes nuevos generados con CSPRNG |
+| `sig` | signature | Byte string CBOR de 64 bytes con la firma ECDSA P1363 `r || s` |
 
 ## Reglas de diseño
 
@@ -38,15 +39,44 @@ degradar el token a una versión futura más permisiva.
 contenido, mismos bytes, siempre. Una serialización con orden de campos variable produce
 firmas que no verifican, o peor, permite maleabilidad del payload.
 
-## Decisiones pendientes
+## Construcción normativa
 
-- Serialización concreta y su compacidad. El presupuesto de bytes del QR es el límite
-  real: hay que medir la densidad resultante contra la legibilidad en impresión sobre
-  carné plástico, con cámaras de gama baja y con desgaste.
-- Curva elíptica y función hash específicas.
-- Formato de la marca temporal y tolerancia admitida al desfase de reloj entre emisor
-  y verificador.
-- Si el token se transporta como texto en el QR o en una codificación binaria compacta.
+1. Generar un `cid` opaco de 16 bytes con CSPRNG cuando se crea la credencial y
+   representarlo como Base64url sin `=`. El emisor solo acepta esta forma canónica; un
+   número de documento no cumple el formato.
+2. Derivar `kid` como los primeros 16 bytes de SHA-256 sobre la clave pública P-256 en
+   DER SubjectPublicKeyInfo y representarlo como Base64url sin `=`.
+3. Para cada emisión, fijar `iat` al segundo Unix UTC actual, calcular `exp` con una
+   duración positiva recibida por configuración y generar `n` con 16 bytes nuevos de
+   CSPRNG.
+4. Formar un mapa con exactamente `v`, `kid`, `cid`, `iat`, `exp` y `n`. Codificarlo
+   mediante CBOR determinista conforme a RFC 8949. Esos son los bytes firmados.
+5. Firmar esos bytes con ECDSA P-256 + SHA-256. Convertir la firma DER de la biblioteca a
+   dos enteros sin signo de 32 bytes en orden de red (`r || s`) y normalizar `s` a la
+   mitad inferior del orden de P-256 (*low-S*).
+6. Añadir `sig` al mapa y codificar el mapa completo, con exactamente siete campos,
+   mediante CBOR determinista.
+7. Transportar el resultado como Base64url sin relleno. No se añade un prefijo textual:
+   la versión ya está dentro del contenido firmado.
+
+El mapa no acepta campos desconocidos. Añadir uno, cambiar un tipo o alterar cualquiera
+de estas reglas requiere `SQRID/2` y un ADR previo.
+
+## Reglas de validación que corresponden a `verifier/`
+
+El verificador deberá decodificar Base64url y CBOR en forma estricta, exigir exactamente
+los campos y tipos anteriores, reconstruir el mapa sin `sig`, comprobar que `kid`
+corresponde a la clave pública y validar la firma P-256/SHA-256. También deberá rechazar
+firmas fuera de rango, de longitud distinta a 64 bytes o con `s` alto antes de evaluar
+expiración, nonce o revocación. Estas reglas se documentan aquí para que ambos módulos
+firmen los mismos bytes; su implementación no pertenece a `issuer/`.
+
+## Decisiones pendientes de evaluación
+
+- Tolerancia admitida al desfase de reloj en `verifier/`. No cambia la codificación Unix
+  UTC decidida aquí.
+- Densidad y legibilidad del token Base64url/CBOR impreso o mostrado en pantalla, con
+  cámaras de gama baja y desgaste físico.
 
 ## Ejemplo
 

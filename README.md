@@ -42,7 +42,7 @@ un evento puntual se hace recalculando el camino desde su hash hasta la raíz an
 
 | Módulo | Responsabilidad | Estado |
 |---|---|---|
-| `issuer/` | Emisión y firma ECDSA de tokens QR; gestión del par de claves institucional | Pendiente — ver `docs/DECISIONS.md` (ADR-0005) |
+| [`issuer/`](issuer/) | Emisión y firma ECDSA de tokens QR; gestión del par de claves institucional | Implementado y probado — issue #5 |
 | `verifier/` | Portal de escaneo; verificación de firma, marca temporal, nonce y revocación | Pendiente |
 | `evidence-log/` | Bitácora local de eventos encadenada por hash | Pendiente |
 | `anchor/` | Construcción del árbol de Merkle y anclaje periódico en Hyperledger Fabric | Pendiente — ver ADR-0007 |
@@ -76,19 +76,26 @@ npm run electron-dev   # modo desarrollo
 npm run dist           # empaqueta el instalador de escritorio
 ```
 
-### Módulos del modelo criptográfico (`issuer/`, `verifier/`, `evidence-log/`, `anchor/`, `revocation/`)
+### Emisor criptográfico `issuer/`
 
-<!-- TODO: completar al fijar el stack. Ver ADR-0005 en docs/DECISIONS.md -->
+```bash
+cd SecureQR-ID/issuer
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m pip install -e ".[test]"
+python -m pytest
+```
 
-Sin instrucciones aún — el stack de implementación no está decidido (ADR-0005).
+La configuración de claves y los comandos de emisión están documentados en
+[`issuer/README.md`](issuer/README.md). Los demás módulos se añadirán como paquetes
+independientes según ADR-0005.
 
 ## Estado
 
-**Fase actual:** diseño y levantamiento de requerimientos. El modelo criptográfico no
-tiene prototipo funcional todavía; sí existe un prototipo de registro por QR sin las
-capas de seguridad de este diseño (`mi-app-qr/`), que sirve como línea base de
-comparación. El detalle vive en [`docs/STATE.md`](docs/STATE.md), que se actualiza al
-cierre de cada sesión de trabajo.
+**Fase actual:** diseño y comienzo del desarrollo tecnológico. `issuer/` es el primer
+módulo criptográfico funcional; `mi-app-qr/` sigue siendo la línea base de registro por
+QR sin esas capas de seguridad. El detalle vive en [`docs/STATE.md`](docs/STATE.md), que
+se actualiza al cierre de cada sesión de trabajo.
 
 ## Seguridad
 
