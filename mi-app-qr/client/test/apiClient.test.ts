@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { login, getMe, logout, createRegistro, listRegistros, ApiError } from '../src/lib/apiClient';
+import { login, getMe, logout, createRegistro, listRegistros, createUser, listUsers, ApiError } from '../src/lib/apiClient';
 
 describe('apiClient', () => {
   beforeEach(() => {
@@ -91,5 +91,32 @@ describe('apiClient', () => {
     const result = await listRegistros();
 
     expect(result.registros).toEqual([]);
+  });
+
+  it('createUser() envía los datos y devuelve el usuario más la contraseña generada', async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({
+        user: { id: 2, username: 'operador1', role: 'operador', cargo: 'vigilancia', createdAt: '2026-01-01' },
+        generatedPassword: 'xJ3-generada',
+      }),
+    });
+
+    const result = await createUser({ username: 'operador1', role: 'operador', cargo: 'vigilancia' });
+
+    expect(result.user.username).toBe('operador1');
+    expect(result.generatedPassword).toBe('xJ3-generada');
+  });
+
+  it('listUsers() devuelve la lista de usuarios', async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({ users: [] }),
+    });
+
+    const result = await listUsers();
+
+    expect(result.users).toEqual([]);
   });
 });
