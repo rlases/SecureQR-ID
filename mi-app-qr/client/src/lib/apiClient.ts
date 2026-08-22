@@ -67,6 +67,10 @@ export function listRegistros(): Promise<{ registros: Registro[] }> {
   return request<{ registros: Registro[] }>('/api/registros');
 }
 
+export function getRegistroHistory(id: number): Promise<{ historial: Registro[] }> {
+  return request<{ historial: Registro[] }>(`/api/registros/${id}/historial`);
+}
+
 export function createUser(
   data: CreateUserRequest
 ): Promise<CreateUserResponse> {

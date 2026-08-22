@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-08-21
+**Última actualización:** 2026-08-22
 **Fase actual:** diseño (Fase 2) con desarrollo tecnológico iniciado (Fase 3 de
 `ROADMAP.md`); con ADR-0005 y ADR-0007 ya resueltas, falta solo que `SQRID-1.md` deje de
 ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
@@ -96,6 +96,14 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ## En curso
 
+- **Historial completo de correcciones (issue #38):** implementado en la rama
+  `feat/38-historial-correcciones`, pendiente de revisión cruzada. El endpoint autenticado
+  `GET /api/registros/:id/historial` recorre `corrige_registro_id` hacia el original,
+  devuelve la cadena en orden cronológico y rechaza ciclos o referencias rotas. El
+  cliente abre desde cada registro vigente un modal de solo lectura, disponible para
+  administradores y operadores, con cierre por teclado y restauración del foco. No
+  incorpora deshacer ni permite que un operador corrija registros. Suites completas en
+  verde: 54 pruebas de servidor y 62 de cliente; ambos builds pasan.
 - **`verifier-web/` (issue #30):** portal React/TypeScript aislado de `mi-app-qr`, con
   escaneo por cámara bajo acción explícita, entrada manual protegida, estados accesibles
   y un historial volátil que no conserva tokens. El navegador delega toda decisión al
@@ -165,9 +173,9 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   existente en `main.js` frente al modelo multiusuario — el cliente nuevo no lo
   llama, quedó como código muerto sin que nadie lo haya decidido explícitamente.
 - HTTPS en la red del CCAV — ya señalado como pendiente en ADR-0008.
-- Ver historial completo de una cadena de correcciones de registro; que un operador
-  corrija sus propios registros; deshacer una corrección — los tres fuera de alcance
-  a propósito del plan de corrección de registros ya cerrado.
+- **Decisiones de producto pendientes sobre correcciones:** permitir que un operador
+  corrija sus propios registros y deshacer una corrección. Ambas capacidades siguen
+  fuera de alcance a propósito.
 
 ### Evaluación
 
@@ -188,6 +196,13 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 ---
 
 ## Notas de sesiones recientes
+
+**2026-08-22 — historial de correcciones (issue #38).** Se creó un worktree aislado
+desde `origin/main` y se implementó con TDD el recorrido completo de una cadena de
+correcciones. La API conserva el rol del registro como texto libre según ADR-0009 y
+aplica la misma autenticación de lectura que el listado; la autorización de escritura
+continúa limitada a `admin`. El modal presenta todas las versiones sin acciones de
+mutación y cubre carga, orden, acceso de operador, `Escape` y restauración del foco.
 
 **2026-08-22 — Limpieza de repositorio: `App.jsx` suelto.** Se eliminó `App.jsx` en la
 raíz del repo. Verificación antes de borrar: sin `package.json`/`index.html` en la raíz
