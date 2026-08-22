@@ -76,10 +76,12 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 
 Registradas como ADR abiertos en `DECISIONS.md`:
 
-- Red blockchain concreta y su gobernanza en un contexto universitario (ADR-0007).
 - Distribución de la lista de revocación a verificadores con conectividad intermitente.
 
-El stack se cerró en ADR-0005. La tolerancia de reloj, la persistencia y purga de nonces,
+El stack se cerró en ADR-0005. La gobernanza de la red blockchain se cerró en ADR-0007:
+anclaje híbrido — Hyperledger Fabric para la operación local, más un sellado periódico
+de la raíz de la ledger en Bitcoin vía OpenTimestamps para la garantía de no repudio que
+no depende de la institución. La tolerancia de reloj, la persistencia y purga de nonces,
 la atomicidad ante concurrencia y el comportamiento fail-closed de revocación se
 cerraron en ADR-0011.
 

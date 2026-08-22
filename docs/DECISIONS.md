@@ -135,19 +135,71 @@ de la entrega final.
 
 ## ADR-0007 — Red blockchain y su gobernanza
 
-**Estado:** Propuesta
+**Estado:** Aceptada
 
-**Contexto.** Se plantea Hyperledger Fabric por ser permisionada, con control de
+**Contexto.** Se planteó Hyperledger Fabric por ser permisionada, con control de
 participantes y gobernanza definida. Pero una red permisionada operada por la misma
 institución que podría querer alterar los registros ofrece una garantía debilitada:
-si la UNAD controla todos los nodos, el anclaje no protege contra la UNAD.
+si la UNAD controla todos los nodos, el anclaje no protege contra la UNAD — la
+evidencia se reduce a "confía en nosotros", justo lo que este diseño existe para evitar.
 
-**Propuesta.** Definir explícitamente quiénes son los pares de la red y por qué su
-independencia hace creíble la evidencia. Alternativa a evaluar: anclaje en una cadena
-pública mediante un servicio de sellado temporal, que elimina el problema de gobernanza
-a costa de introducir dependencia externa.
+**Opciones consideradas.**
 
-**Pendiente.** Esta es la objeción más probable en la sustentación. Resolverla antes.
+- **(a) Pares independientes reales en la red Fabric.** Exige que otra institución
+  (otra sede, una universidad aliada, un ente regulador) opere un nodo de verdad. Para
+  el alcance de este trabajo de grado, en el CCAV Pitalito, no existe hoy esa relación
+  institucional — cualquier "par independiente" sería simulado, y un par simulado no
+  resuelve nada: sigue siendo la UNAD confiando en la UNAD, solo que con más pasos.
+  Queda descartada para esta fase, no porque sea mala idea, sino porque no es real
+  todavía.
+- **(b) Reemplazar Fabric por anclaje directo en una cadena pública.** Elimina el
+  problema de gobernanza de raíz, pero descarta el diseño ya cerrado en ADR-0002/0003
+  (bitácora local encadenada + anclaje asíncrono de raíces de Merkle) y reabre ADR-0005
+  (que fijó Node.js específicamente porque el SDK de Fabric es el mantenido). Cambiar de
+  arquitectura para resolver un problema que tiene una solución más barata (ver (c)) no
+  se justifica.
+- **(c) Anclaje híbrido: Fabric interno + sellado periódico en cadena pública.** Se
+  conserva `anchor/` tal como ya está diseñado — Fabric sigue dando la propiedad rápida,
+  local y consultable de "esto se registró en tal momento, en tal orden", operada por la
+  institución. Periódicamente, la raíz vigente de la ledger de Fabric se sella además
+  mediante **OpenTimestamps** — un protocolo abierto que ancla hashes arbitrarios en la
+  cadena de Bitcoin, sin costo (agrupa las solicitudes de muchos usuarios en una sola
+  transacción periódica) y sin infraestructura propia que mantener.
+
+**Decisión.** Opción (c). Dos niveles de anclaje, no uno:
+
+1. **Nivel operativo — Hyperledger Fabric**, como ya establecen ADR-0002, ADR-0003 y
+   ADR-0005. Sin cambios sobre lo ya diseñado.
+2. **Nivel de no repudio externo — OpenTimestamps sobre Bitcoin.** `anchor/` sella
+   periódicamente (p. ej. una vez al día) la raíz vigente de la ledger de Fabric. El
+   resultado es un comprobante (`.ots`) verificable por cualquiera, indefinidamente, sin
+   depender de que la UNAD coopere ni de que sus servidores sigan existiendo — la
+   seguridad de esa capa la da Bitcoin, no la institución.
+
+Esto es lo que responde la objeción real: la UNAD puede alterar su propia Fabric, pero
+no puede alterar retroactivamente lo que ya quedó sellado en una cadena pública que no
+controla. La garantía deja de ser "confía en nosotros" y pasa a ser "verifícalo tú
+mismo, con herramientas públicas".
+
+**Consecuencias.**
+
+- `anchor/` gana una dependencia nueva (una librería de cliente OpenTimestamps —
+  `opentimestamps-client` en Python es la implementación de referencia, o el paquete de
+  Node equivalente si conviene mantener `anchor/` en un solo lenguaje) y un job
+  periódico adicional, separado del anclaje en Fabric.
+- Los comprobantes `.ots` son datos públicos por diseño (son hashes, nunca información
+  personal — mismo principio que ya rige el resto del anclaje) y deben conservarse junto
+  a la raíz que sellan para poder exhibir la prueba de no repudio ante el jurado o ante
+  una auditoría externa.
+- La confirmación en Bitcoin no es inmediata (puede tardar hasta varias horas) — el
+  nivel operativo (Fabric) sigue siendo la fuente de verdad para la validación en el
+  punto de control; el sellado público es una capa de refuerzo asíncrona, no bloquea
+  nada del flujo de `verifier/`.
+- Camino de evolución, no parte de esta decisión: si la UNAD suma en el futuro
+  instituciones aliadas reales como pares de Fabric, la opción (a) vuelve a ser viable
+  como defensa adicional — no compite con el sellado público, lo refuerza.
+- Issue #9 (`anchor/`) queda desbloqueado por este ADR, aunque sigue bloqueado en la
+  práctica por `evidence-log/` (issue #7), que todavía no existe.
 
 ---
 
