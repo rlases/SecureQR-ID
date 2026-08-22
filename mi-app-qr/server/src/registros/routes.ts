@@ -87,6 +87,39 @@ export function createRegistrosRouter(): Router {
     res.json({ registros: rows.map(toPublicRegistro) });
   });
 
+  router.get('/:id/historial', (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'id de registro inválido' });
+    }
+
+    const db = req.app.locals.db as Database.Database;
+    const findRegistro = db.prepare('SELECT * FROM registros WHERE id = ?');
+    const historial: RegistroRow[] = [];
+    const visitados = new Set<number>();
+    let currentId: number | null = id;
+
+    while (currentId !== null) {
+      if (visitados.has(currentId)) {
+        return res.status(409).json({ error: 'cadena de correcciones inconsistente' });
+      }
+      visitados.add(currentId);
+
+      const row = findRegistro.get(currentId) as RegistroRow | undefined;
+      if (!row) {
+        if (historial.length === 0) {
+          return res.status(404).json({ error: 'registro no encontrado' });
+        }
+        return res.status(409).json({ error: 'cadena de correcciones inconsistente' });
+      }
+
+      historial.push(row);
+      currentId = row.corrige_registro_id;
+    }
+
+    res.json({ historial: historial.reverse().map(toPublicRegistro) });
+  });
+
   router.post('/:id/correcciones', requireAdmin, (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) {

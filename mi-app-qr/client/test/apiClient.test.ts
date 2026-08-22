@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { login, getMe, logout, createRegistro, listRegistros, createUser, listUsers, correctRegistro, ApiError } from '../src/lib/apiClient';
+import { login, getMe, logout, createRegistro, listRegistros, getRegistroHistory, createUser, listUsers, correctRegistro, ApiError } from '../src/lib/apiClient';
 
 describe('apiClient', () => {
   beforeEach(() => {
@@ -91,6 +91,36 @@ describe('apiClient', () => {
     const result = await listRegistros();
 
     expect(result.registros).toEqual([]);
+  });
+
+  it('getRegistroHistory() consulta la cadena completa con credenciales incluidas', async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        historial: [
+          {
+            id: 7,
+            nombre: 'Ana Ríos',
+            documento: '1',
+            rol: 'Investigadora visitante',
+            tipo: 'entrada',
+            timestamp: '2026-01-01 10:00:00',
+            creadoPorUsuarioId: 1,
+            corrigeRegistroId: null,
+            motivo: null,
+          },
+        ],
+      }),
+    });
+
+    const result = await getRegistroHistory(7);
+
+    expect(result.historial).toHaveLength(1);
+    expect(result.historial[0].rol).toBe('Investigadora visitante');
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/registros/7/historial',
+      expect.objectContaining({ credentials: 'include' })
+    );
   });
 
   it('createUser() envía los datos y devuelve el usuario más la contraseña generada', async () => {

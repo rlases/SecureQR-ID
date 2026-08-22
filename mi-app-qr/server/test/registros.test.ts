@@ -148,6 +148,140 @@ describe('GET /api/registros', () => {
   });
 });
 
+describe('GET /api/registros/:id/historial', () => {
+  it('rechaza la petición sin sesión iniciada', async () => {
+    const res = await request(app).get('/api/registros/1/historial');
+    expect(res.status).toBe(401);
+  });
+
+  it('rechaza un id inválido y responde 404 para uno inexistente', async () => {
+    const agent = request.agent(app);
+    await agent.post('/api/auth/login').send({ username: 'admin', password: 'clave-correcta-123' });
+
+    const invalidRes = await agent.get('/api/registros/abc/historial');
+    const missingRes = await agent.get('/api/registros/9999/historial');
+
+    expect(invalidRes.status).toBe(400);
+    expect(missingRes.status).toBe(404);
+  });
+
+  it('devuelve la cadena completa desde el original hasta la versión solicitada', async () => {
+    const agent = request.agent(app);
+    await agent.post('/api/auth/login').send({ username: 'admin', password: 'clave-correcta-123' });
+
+    const originalRes = await agent
+      .post('/api/registros')
+      .send({ nombre: 'Ana Rios', documento: '1', rol: 'Investigadora visitante', tipo: 'entrada' });
+    const originalId = originalRes.body.registro.id;
+
+    const firstCorrectionRes = await agent
+      .post(`/api/registros/${originalId}/correcciones`)
+      .send({
+        nombre: 'Ana Ríos',
+        documento: '1',
+        rol: 'Investigadora visitante',
+        tipo: 'entrada',
+        timestamp: '2026-01-01 10:00:00',
+        motivo: 'faltaba la tilde',
+      });
+    const firstCorrectionId = firstCorrectionRes.body.registro.id;
+
+    const secondCorrectionRes = await agent
+      .post(`/api/registros/${firstCorrectionId}/correcciones`)
+      .send({
+        nombre: 'Ana Ríos Gómez',
+        documento: '1',
+        rol: 'Investigadora visitante',
+        tipo: 'entrada',
+        timestamp: '2026-01-01 10:00:00',
+        motivo: 'faltaba el segundo apellido',
+      });
+    const secondCorrectionId = secondCorrectionRes.body.registro.id;
+
+    const res = await agent.get(`/api/registros/${secondCorrectionId}/historial`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.historial.map((registro: { id: number }) => registro.id)).toEqual([
+      originalId,
+      firstCorrectionId,
+      secondCorrectionId,
+    ]);
+    expect(res.body.historial.map((registro: { motivo: string | null }) => registro.motivo)).toEqual([
+      null,
+      'faltaba la tilde',
+      'faltaba el segundo apellido',
+    ]);
+    expect(res.body.historial[2].rol).toBe('Investigadora visitante');
+  });
+
+  it('permite consultar el historial a un operador sin permitirle corregir', async () => {
+    const adminAgent = request.agent(app);
+    await adminAgent.post('/api/auth/login').send({ username: 'admin', password: 'clave-correcta-123' });
+    const registroRes = await adminAgent
+      .post('/api/registros')
+      .send({ nombre: 'Ana Ríos', documento: '1', rol: 'Recepción', tipo: 'entrada' });
+
+    const userRes = await adminAgent
+      .post('/api/users')
+      .send({ username: 'operador-historial', role: 'operador', cargo: 'Recepción' });
+    const operatorAgent = request.agent(app);
+    await operatorAgent
+      .post('/api/auth/login')
+      .send({ username: 'operador-historial', password: userRes.body.generatedPassword });
+
+    const historyRes = await operatorAgent.get(`/api/registros/${registroRes.body.registro.id}/historial`);
+
+    expect(historyRes.status).toBe(200);
+    expect(historyRes.body.historial).toHaveLength(1);
+  });
+
+  it('rechaza una cadena cíclica en lugar de entrar en un bucle', async () => {
+    const agent = request.agent(app);
+    await agent.post('/api/auth/login').send({ username: 'admin', password: 'clave-correcta-123' });
+    const originalRes = await agent
+      .post('/api/registros')
+      .send({ nombre: 'Ana Ríos', documento: '1', rol: 'Recepción', tipo: 'entrada' });
+    const originalId = originalRes.body.registro.id;
+    const correctionRes = await agent
+      .post(`/api/registros/${originalId}/correcciones`)
+      .send({
+        nombre: 'Ana Ríos',
+        documento: '1',
+        rol: 'Recepción',
+        tipo: 'salida',
+        timestamp: '2026-01-01 10:00:00',
+        motivo: 'tipo incorrecto',
+      });
+    const correctionId = correctionRes.body.registro.id;
+    db.prepare('UPDATE registros SET corrige_registro_id = ?, motivo = ? WHERE id = ?')
+      .run(correctionId, 'ciclo sintético', originalId);
+
+    const res = await agent.get(`/api/registros/${correctionId}/historial`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('cadena de correcciones inconsistente');
+  });
+
+  it('rechaza una cadena con una referencia anterior inexistente', async () => {
+    const agent = request.agent(app);
+    await agent.post('/api/auth/login').send({ username: 'admin', password: 'clave-correcta-123' });
+    const originalRes = await agent
+      .post('/api/registros')
+      .send({ nombre: 'Ana Ríos', documento: '1', rol: 'Recepción', tipo: 'entrada' });
+    const originalId = originalRes.body.registro.id;
+
+    db.pragma('foreign_keys = OFF');
+    db.prepare('UPDATE registros SET corrige_registro_id = ?, motivo = ? WHERE id = ?')
+      .run(9999, 'referencia rota sintética', originalId);
+    db.pragma('foreign_keys = ON');
+
+    const res = await agent.get(`/api/registros/${originalId}/historial`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('cadena de correcciones inconsistente');
+  });
+});
+
 describe('POST /api/registros/:id/correcciones', () => {
   it('rechaza la petición sin sesión iniciada', async () => {
     const res = await request(app)
