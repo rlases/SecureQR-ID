@@ -51,6 +51,39 @@ describe('RegistrosPage', () => {
     expect(await screen.findByText('Ana Ríos')).toBeInTheDocument();
   });
 
+  it('abre el historial completo desde el registro vigente', async () => {
+    const original = {
+      id: 1,
+      nombre: 'Ana Rios',
+      documento: '1',
+      rol: 'Investigadora visitante',
+      tipo: 'entrada' as const,
+      timestamp: '2026-01-01 10:00:00',
+      creadoPorUsuarioId: 1,
+      corrigeRegistroId: null,
+      motivo: null,
+    };
+    const vigente = {
+      ...original,
+      id: 2,
+      nombre: 'Ana Ríos',
+      corrigeRegistroId: 1,
+      motivo: 'faltaba la tilde',
+    };
+    vi.mocked(apiClient.listRegistros).mockResolvedValue({ registros: [vigente] });
+    vi.mocked(apiClient.getRegistroHistory).mockResolvedValue({ historial: [original, vigente] });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: /ver historial de ana ríos/i }));
+
+    expect(await screen.findByRole('dialog', { name: /historial de correcciones de ana ríos/i })).toBeInTheDocument();
+    expect(apiClient.getRegistroHistory).toHaveBeenCalledWith(2);
+    expect(screen.getByText('Registro original')).toBeInTheDocument();
+    expect(screen.getByText('Corrección 1')).toBeInTheDocument();
+    expect(screen.getByText('faltaba la tilde')).toBeInTheDocument();
+  });
+
   it('muestra un mensaje cuando no hay registros', async () => {
     vi.mocked(apiClient.listRegistros).mockResolvedValue({ registros: [] });
 
@@ -122,7 +155,7 @@ describe('RegistrosPage', () => {
     expect(apiClient.createRegistro).not.toHaveBeenCalled();
   });
 
-  it('NO muestra el botón Corregir si el usuario es operador', async () => {
+  it('permite al operador ver el historial pero no muestra el botón Corregir', async () => {
     vi.mocked(apiClient.getMe).mockResolvedValue({
       user: { id: 2, username: 'operador1', role: 'operador', cargo: 'vigilancia', createdAt: '2026-01-01' },
     });
@@ -146,6 +179,7 @@ describe('RegistrosPage', () => {
 
     await screen.findByText('Ana Ríos');
     expect(screen.queryByRole('button', { name: /^corregir$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ver historial de ana ríos/i })).toBeInTheDocument();
   });
 
   it('corrige un registro y refresca la lista con la versión corregida', async () => {

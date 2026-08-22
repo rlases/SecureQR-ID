@@ -76,8 +76,11 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   registros vía la API, no solo con mocks). Ampliado desde entonces con Dashboard,
   Informes (issue #32, PR #34), la migración de los componentes de dominio del
   prototipo Electron viejo (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`,
-  `qrParser` — issue #36, PR #39) y el historial de correcciones (issue #38, PR #41 en
-  revisión). 62 tests con Vitest + Testing Library.
+  `qrParser` — issue #36, PR #39) y el historial de correcciones (issue #38, PR #41
+  fusionado): `GET /:id/historial` recorre la cadena vía `corrige_registro_id`, con
+  protección real ante ciclos y referencias rotas (probada con casos sintéticos, no solo
+  el camino feliz), y un modal de solo lectura accesible a admin y operador — sin
+  deshacer ni autocorrección. 62 tests con Vitest + Testing Library.
 - **Gestión de usuarios integrada en `main` (PR #25):** endpoints de creación y listado
   restringidos a administradores, `UsuariosPage`, ruta protegida y acceso condicional
   desde el `Sidebar`, con pruebas de servidor y cliente.
@@ -115,12 +118,6 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ## En curso
 
-- **Historial de correcciones (issue #38):** `GET /:id/historial` recorre la cadena de
-  correcciones de un registro (`corrige_registro_id`), con protección real ante ciclos y
-  referencias rotas (probada con casos sintéticos, no solo el camino feliz), y un modal
-  de solo lectura en `RegistrosPage` accesible a admin y operador — sin deshacer ni
-  autocorrección. PR #41 abierto, listo para revisión (CI en verde, 54 tests de servidor y 62 de cliente
-  verificados de forma independiente), pendiente de aprobación.
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
 - **ADR-0008 — `mi-app-qr` pasa a servidor multiusuario en red.** Requerimiento nuevo:
@@ -187,9 +184,10 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   existente en `main.js` frente al modelo multiusuario — el cliente nuevo no lo
   llama, quedó como código muerto sin que nadie lo haya decidido explícitamente.
 - HTTPS en la red del CCAV — ya señalado como pendiente en ADR-0008.
-- Que un operador corrija sus propios registros; deshacer una corrección — ambos fuera
-  de alcance a propósito del plan de corrección de registros ya cerrado. (Ver historial
-  completo de la cadena ya no está pendiente: PR #41, issue #38.)
+- **Decisiones de producto pendientes sobre correcciones:** que un operador corrija sus
+  propios registros; deshacer una corrección. Ambas fuera de alcance a propósito del
+  plan de corrección de registros ya cerrado. (Ver historial completo de la cadena ya
+  no está pendiente: PR #41, issue #38.)
 
 ### Evaluación
 
@@ -233,6 +231,13 @@ forzar). **Pendiente:** que Antigravity pase a trabajar en su propia carpeta/clo
 que esto no se repita — mientras tanto, evitar operaciones de git propias justo después
 de pedirle una tarea a Antigravity sin verificar primero en qué rama quedó el directorio
 compartido.
+
+**2026-08-22 — historial de correcciones (issue #38).** Se creó un worktree aislado
+desde `origin/main` y se implementó con TDD el recorrido completo de una cadena de
+correcciones. La API conserva el rol del registro como texto libre según ADR-0009 y
+aplica la misma autenticación de lectura que el listado; la autorización de escritura
+continúa limitada a `admin`. El modal presenta todas las versiones sin acciones de
+mutación y cubre carga, orden, acceso de operador, `Escape` y restauración del foco.
 
 **2026-08-22 — Limpieza de repositorio: `App.jsx` suelto.** Se eliminó `App.jsx` en la
 raíz del repo. Verificación antes de borrar: sin `package.json`/`index.html` en la raíz
