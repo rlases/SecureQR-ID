@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-08-21
+**Última actualización:** 2026-08-22
 **Fase actual:** diseño (Fase 2) con desarrollo tecnológico iniciado (Fase 3 de
 `ROADMAP.md`); con ADR-0005 y ADR-0007 ya resueltas, falta solo que `SQRID-1.md` deje de
 ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
@@ -37,7 +37,7 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   el issuer real y cubre reinicios, concurrencia, revocación y respuestas públicas sin
   datos sensibles; CI tiene un job propio. PR #29 fusionado en `main` e issue #6
   cerrado. Duverney abrió el issue #30 (`verifier-web/`, portal visual de escaneo) como
-  seguimiento — en curso, ver más abajo.
+  seguimiento — hecho, ver más abajo.
 - **`mi-app-qr` — corrección de registros (PR #28 fusionado):** un `admin` corrige un
   registro mal capturado insertando una fila nueva que apunta a la que corrige
   (`corrige_registro_id`) con `motivo` obligatorio, nunca sobrescribiendo — consistente
@@ -73,11 +73,30 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   Tailwind con el tema claro/índigo aprobado, shadcn/ui, `AuthContext`, `LoginPage`,
   `RequireAuth` + `Sidebar`, `RegistrosPage` (crear y listar con refetch cada 7s).
   Verificado de punta a punta contra el servidor real (login, crear y listar
-  registros vía la API, no solo con mocks). 20 tests con Vitest + Testing Library.
-  Dashboard e Informes quedan pendientes — ver "Implementación" abajo.
+  registros vía la API, no solo con mocks). Ampliado desde entonces con Dashboard,
+  Informes (issue #32, PR #34), la migración de los componentes de dominio del
+  prototipo Electron viejo (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`,
+  `qrParser` — issue #36, PR #39) y el historial de correcciones (issue #38, PR #41 en
+  revisión). 62 tests con Vitest + Testing Library.
 - **Gestión de usuarios integrada en `main` (PR #25):** endpoints de creación y listado
   restringidos a administradores, `UsuariosPage`, ruta protegida y acceso condicional
   desde el `Sidebar`, con pruebas de servidor y cliente.
+- **`verifier-web/` (issue #30, PR #33 fusionado):** portal React/TypeScript aislado de
+  `mi-app-qr`, con escaneo por cámara bajo acción explícita, entrada manual protegida,
+  estados accesibles y un historial volátil que no conserva tokens. El navegador delega
+  toda decisión al adaptador HTTP fail-closed de `verifier/`. ADR-0012 fija la frontera
+  navegador/verificador. Vitest y Playwright/axe cubren privacidad, concurrencia, cámara
+  y layouts de escritorio, tableta y móvil.
+- **Dependencias vulnerables de `mi-app-qr/client` actualizadas (PR #37):** react-router
+  6→7, vite 5→8, vitest 2→4 — saltos de versión mayor, verificados uno por uno contra el
+  uso real del cliente (solo APIs declarativas de react-router, ninguna de las que
+  cambiaron en v7). 0 vulnerabilidades tras la actualización.
+- **Migración de componentes de dominio a TypeScript (issue #36→PR #39):**
+  `EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser` portados del
+  prototipo Electron viejo. La primera versión conservaba el esquema de datos del
+  prototipo (`record.Entrada`/`Rol`/`Nombre` en mayúsculas, tipado `any`) en vez del
+  tipo `Registro` real — corregido tras revisión. **Ninguno está cableado a
+  `RegistrosPage` todavía** — ver "Pendiente → Implementación".
 - **Electron arranca el servidor real (ADR-0008 cerrado en su forma mínima):**
   `mi-app-qr/server` ahora sirve el build de `mi-app-qr/client` (fallback SPA), y
   `main.js` arranca ese servidor como proceso hijo al abrir la app, genera y
@@ -96,12 +115,12 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ## En curso
 
-- **`verifier-web/` (issue #30):** portal React/TypeScript aislado de `mi-app-qr`, con
-  escaneo por cámara bajo acción explícita, entrada manual protegida, estados accesibles
-  y un historial volátil que no conserva tokens. El navegador delega toda decisión al
-  adaptador HTTP fail-closed de `verifier/`. Vitest y Playwright cubren privacidad,
-  concurrencia, cámara, axe y layouts de escritorio, tableta y móvil. Trabajo local en
-  `modulo/30-verifier-web`, pendiente de publicación y revisión cruzada.
+- **Historial de correcciones (issue #38):** `GET /:id/historial` recorre la cadena de
+  correcciones de un registro (`corrige_registro_id`), con protección real ante ciclos y
+  referencias rotas (probada con casos sintéticos, no solo el camino feliz), y un modal
+  de solo lectura en `RegistrosPage` accesible a admin y operador — sin deshacer ni
+  autocorrección. PR #41 abierto, listo para revisión (CI en verde, 54 tests de servidor y 62 de cliente
+  verificados de forma independiente), pendiente de aprobación.
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
 - **ADR-0008 — `mi-app-qr` pasa a servidor multiusuario en red.** Requerimiento nuevo:
@@ -149,10 +168,13 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 - `evidence-log/` — bitácora encadenada
 - `anchor/` — Merkle + Hyperledger Fabric
 - `revocation/` — lista firmada
-- `mi-app-qr/client`: migración de los componentes de dominio existentes
-  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`) y WebSockets
-  si el polling de 7s resulta insuficiente. Dashboard e Informes están en curso en el
-  issue #32.
+- `mi-app-qr/client`: cablear en `RegistrosPage` los componentes migrados en PR #39
+  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser`) — existen pero
+  ninguno está en uso todavía. Ojo: `EditRecordModal` edita en sitio (esquema del
+  prototipo viejo); `RegistrosPage` ya tiene un flujo de corrección con `motivo`
+  obligatorio y traza append-only (`CorregirRegistroModal`, ADR-0008) — decidir si
+  `EditRecordModal` se descarta a favor de ese flujo en vez de introducir una segunda
+  vía de edición que lo contradiga. WebSockets si el polling de 7s resulta insuficiente.
 - **Empaquetado con `electron-builder`** de la app integrada (instalador `.exe`
   distribuible con `server/dist`, `server/node_modules` — incluyendo el binario
   nativo de `better-sqlite3` recompilado contra la ABI de Electron, probablemente
@@ -165,9 +187,9 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   existente en `main.js` frente al modelo multiusuario — el cliente nuevo no lo
   llama, quedó como código muerto sin que nadie lo haya decidido explícitamente.
 - HTTPS en la red del CCAV — ya señalado como pendiente en ADR-0008.
-- Ver historial completo de una cadena de correcciones de registro; que un operador
-  corrija sus propios registros; deshacer una corrección — los tres fuera de alcance
-  a propósito del plan de corrección de registros ya cerrado.
+- Que un operador corrija sus propios registros; deshacer una corrección — ambos fuera
+  de alcance a propósito del plan de corrección de registros ya cerrado. (Ver historial
+  completo de la cadena ya no está pendiente: PR #41, issue #38.)
 
 ### Evaluación
 
@@ -188,6 +210,29 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 ---
 
 ## Notas de sesiones recientes
+
+**2026-08-22 — PR #37, #39, #40, #41: dependencias, migración de componentes,
+historial de correcciones.** Codex resolvió issue #36 (dependencias, PR #37, fusionado)
+y issue #38 (historial de correcciones, PR #41). Antigravity resolvió issue #36→#39
+(migración de componentes). Cada PR se revisó con código en mano, no solo el reporte de
+la herramienta: en PR #39 se encontró que los componentes migrados usaban el esquema de
+datos del prototipo viejo en vez del tipo `Registro` real (corregido tras pedir el
+ajuste); en PR #41 se encontró que la afirmación "accesibilidad validada con Playwright
+y axe" era falsa — `mi-app-qr/client` no tiene esa dependencia ni un solo `.spec.ts`
+(la accesibilidad del modal nuevo sí es real: trap de foco, Escape, ARIA, con test
+propio en Testing Library; se pidió corregir solo la afirmación, no bloqueante).
+
+**Hallazgo operativo importante:** Antigravity trabaja directo sobre este mismo
+directorio de trabajo (`C:\Users\rlas\Documents\CODE\RegistroQR`), no en una copia
+aislada como Codex (que usa worktrees en `.superpowers/codex-issue-XX/`). Su checkout
+de rama chocó con uno propio en curso y terminó filtrando archivos de PR #39 dentro de
+la rama de limpieza de `App.jsx` (PR #40) sin que nadie lo pidiera. Se detectó por
+`git status` mostrando archivos inesperados, se reconstruyó la rama afectada desde
+`main` limpio y se corrigió con `--force-with-lease` (autorizado explícitamente antes de
+forzar). **Pendiente:** que Antigravity pase a trabajar en su propia carpeta/clon para
+que esto no se repita — mientras tanto, evitar operaciones de git propias justo después
+de pedirle una tarea a Antigravity sin verificar primero en qué rama quedó el directorio
+compartido.
 
 **2026-08-22 — Limpieza de repositorio: `App.jsx` suelto.** Se eliminó `App.jsx` en la
 raíz del repo. Verificación antes de borrar: sin `package.json`/`index.html` en la raíz
