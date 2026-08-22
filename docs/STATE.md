@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-08-20
+**Última actualización:** 2026-08-21
 **Fase actual:** diseño (Fase 2) con desarrollo tecnológico iniciado (Fase 3 de
 `ROADMAP.md`); ADR-0007 todavía impide cerrar formalmente la Fase 2.
 
@@ -95,6 +95,13 @@
 
 ## En curso
 
+- **Dashboard e Informes de `mi-app-qr/client` (issue #32):** implementación local en
+  `feat/32-dashboard-informes`, aislada desde `main`. Dashboard pasa a `/`, Registros a
+  `/registros` e Informes a `/informes`; los conteos, filtros y CSV se calculan en el
+  cliente sobre los endpoints existentes. El catálogo de roles del informe se deriva
+  de los registros cargados, sin vocabulario institucional hardcodeado (ADR-0009).
+  Suite completa del cliente en 40 pruebas y build en verde; pendiente de publicación y
+  revisión cruzada.
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
 - **ADR-0008 — `mi-app-qr` pasa a servidor multiusuario en red.** Requerimiento nuevo:
@@ -138,10 +145,10 @@
 - `evidence-log/` — bitácora encadenada
 - `anchor/` — Merkle + Hyperledger Fabric
 - `revocation/` — lista firmada
-- `mi-app-qr/client`: Dashboard e Informes (pantallas adicionales, cada una con su propio
-  ciclo TDD); migración de los componentes de dominio existentes
-  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`);
-  WebSockets si el polling de 7s resulta insuficiente.
+- `mi-app-qr/client`: migración de los componentes de dominio existentes
+  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`) y WebSockets
+  si el polling de 7s resulta insuficiente. Dashboard e Informes están en curso en el
+  issue #32.
 - **Empaquetado con `electron-builder`** de la app integrada (instalador `.exe`
   distribuible con `server/dist`, `server/node_modules` — incluyendo el binario
   nativo de `better-sqlite3` recompilado contra la ABI de Electron, probablemente
@@ -177,6 +184,13 @@
 ---
 
 ## Notas de sesiones recientes
+
+**2026-08-21 — Dashboard e Informes (issue #32).** Se creó el worktree aislado
+`feat/32-dashboard-informes` desde `origin/main`. Con TDD se añadieron Dashboard,
+Informes, las rutas explícitas de Registros y navegación responsive. Los datos se
+agregan y filtran en el cliente; el CSV exporta únicamente las filas visibles y protege
+campos interpretables como fórmulas. No se modificaron servidor, tipos compartidos,
+`RegistrosPage` ni `UsuariosPage`.
 
 **2026-08-20/21 — corrección de registros y limpieza de documentación.** Se diseñó
 (brainstorming + spec aprobada) y se implementó en 6 tareas TDD, con revisión de dos

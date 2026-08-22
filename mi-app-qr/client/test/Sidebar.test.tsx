@@ -30,6 +30,9 @@ describe('Sidebar', () => {
     renderSidebar();
 
     await waitFor(() => expect(screen.getByText('operador1')).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: /dashboard/i })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: /registros/i })).toHaveAttribute('href', '/registros');
+    expect(screen.getByRole('link', { name: /informes/i })).toHaveAttribute('href', '/informes');
     expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();
   });
 
