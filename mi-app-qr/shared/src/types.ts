@@ -29,6 +29,12 @@ export interface Registro {
   tipo: 'entrada' | 'salida';
   timestamp: string;
   creadoPorUsuarioId: number;
+  // NULL en un registro original. En una corrección, apunta a la fila que
+  // reemplaza (el original o una corrección previa, si se encadena).
+  corrigeRegistroId: number | null;
+  // NULL en un registro original. Obligatorio en una corrección: por qué se
+  // corrigió (ADR-0008, invariante append-only — nunca se sobrescribe).
+  motivo: string | null;
 }
 
 export interface CreateRegistroRequest {
@@ -36,6 +42,15 @@ export interface CreateRegistroRequest {
   documento: string;
   rol: string;
   tipo: 'entrada' | 'salida';
+}
+
+export interface CorregirRegistroRequest {
+  nombre: string;
+  documento: string;
+  rol: string;
+  tipo: 'entrada' | 'salida';
+  timestamp: string;
+  motivo: string;
 }
 
 export interface ApiErrorResponse {

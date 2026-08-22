@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { login, getMe, logout, createRegistro, listRegistros, createUser, listUsers, ApiError } from '../src/lib/apiClient';
+import { login, getMe, logout, createRegistro, listRegistros, createUser, listUsers, correctRegistro, ApiError } from '../src/lib/apiClient';
 
 describe('apiClient', () => {
   beforeEach(() => {
@@ -118,5 +118,51 @@ describe('apiClient', () => {
     const result = await listUsers();
 
     expect(result.users).toEqual([]);
+  });
+
+  it('correctRegistro() envía la corrección al endpoint anidado y devuelve el registro corregido', async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({
+        registro: {
+          id: 2,
+          nombre: 'Ana Ríos',
+          documento: '1',
+          rol: 'estudiante',
+          tipo: 'entrada',
+          timestamp: '2026-01-01 10:00:00',
+          creadoPorUsuarioId: 1,
+          corrigeRegistroId: 1,
+          motivo: 'faltaba la tilde',
+        },
+      }),
+    });
+
+    const result = await correctRegistro(1, {
+      nombre: 'Ana Ríos',
+      documento: '1',
+      rol: 'estudiante',
+      tipo: 'entrada',
+      timestamp: '2026-01-01 10:00:00',
+      motivo: 'faltaba la tilde',
+    });
+
+    expect(result.registro.corrigeRegistroId).toBe(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/registros/1/correcciones',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({
+          nombre: 'Ana Ríos',
+          documento: '1',
+          rol: 'estudiante',
+          tipo: 'entrada',
+          timestamp: '2026-01-01 10:00:00',
+          motivo: 'faltaba la tilde',
+        }),
+      })
+    );
   });
 });

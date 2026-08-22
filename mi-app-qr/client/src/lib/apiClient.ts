@@ -7,6 +7,7 @@ import type {
   CreateUserRequest,
   CreateUserResponse,
   ListUsersResponse,
+  CorregirRegistroRequest,
 } from '@mi-app-qr/shared';
 
 export class ApiError extends Error {
@@ -77,4 +78,14 @@ export function createUser(
 
 export function listUsers(): Promise<ListUsersResponse> {
   return request<ListUsersResponse>('/api/users');
+}
+
+export function correctRegistro(
+  id: number,
+  data: CorregirRegistroRequest
+): Promise<{ registro: Registro }> {
+  return request<{ registro: Registro }>(`/api/registros/${id}/correcciones`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

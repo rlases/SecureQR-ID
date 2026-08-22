@@ -21,7 +21,13 @@ export function runMigrations(db: Database.Database): void {
       tipo TEXT NOT NULL CHECK (tipo IN ('entrada', 'salida')),
       timestamp TEXT NOT NULL DEFAULT (datetime('now')),
       creado_por_usuario_id INTEGER NOT NULL,
-      FOREIGN KEY (creado_por_usuario_id) REFERENCES users(id)
+      corrige_registro_id INTEGER REFERENCES registros(id),
+      motivo TEXT,
+      FOREIGN KEY (creado_por_usuario_id) REFERENCES users(id),
+      CHECK (
+        (corrige_registro_id IS NULL AND motivo IS NULL) OR
+        (corrige_registro_id IS NOT NULL AND motivo IS NOT NULL)
+      )
     );
   `);
 }

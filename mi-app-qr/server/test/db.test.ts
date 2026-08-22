@@ -80,4 +80,44 @@ describe('migraciones', () => {
       insertRegistro.run('Juan', '123456', 'admin', 'entrada', 9999);
     }).toThrow();
   });
+
+  it('fuerza el CHECK entre corrige_registro_id y motivo', () => {
+    const insertUser = db.prepare(`
+      INSERT INTO users (username, password_hash, role)
+      VALUES (?, ?, ?)
+    `);
+    const insertRegistro = db.prepare(`
+      INSERT INTO registros (nombre, documento, rol, tipo, creado_por_usuario_id)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const userResult = insertUser.run('user1', 'hash1', 'admin');
+    const userId = userResult.lastInsertRowid as number;
+    const original = insertRegistro.run('Juan', '123456', 'estudiante', 'entrada', userId);
+    const originalId = original.lastInsertRowid as number;
+
+    expect(() => {
+      db.prepare(`
+        INSERT INTO registros
+          (nombre, documento, rol, tipo, creado_por_usuario_id, corrige_registro_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run('Juan Pérez', '123456', 'estudiante', 'entrada', userId, originalId);
+    }).toThrow();
+
+    expect(() => {
+      db.prepare(`
+        INSERT INTO registros
+          (nombre, documento, rol, tipo, creado_por_usuario_id, motivo)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run('Juan Pérez', '123456', 'estudiante', 'entrada', userId, 'typo en el nombre');
+    }).toThrow();
+
+    expect(() => {
+      db.prepare(`
+        INSERT INTO registros
+          (nombre, documento, rol, tipo, creado_por_usuario_id, corrige_registro_id, motivo)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run('Juan Pérez', '123456', 'estudiante', 'entrada', userId, originalId, 'typo en el nombre');
+    }).not.toThrow();
+  });
 });

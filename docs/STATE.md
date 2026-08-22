@@ -35,7 +35,15 @@
   reloj persistente, replay durable en SQLite y consumo atómico del nonce. La suite usa
   el issuer real y cubre reinicios, concurrencia, revocación y respuestas públicas sin
   datos sensibles; CI tiene un job propio. PR #29 fusionado en `main` e issue #6
-  cerrado.
+  cerrado. Duverney abrió el issue #30 (`verifier-web/`, portal visual de escaneo) como
+  seguimiento — en curso, ver más abajo.
+- **`mi-app-qr` — corrección de registros (PR #28 fusionado):** un `admin` corrige un
+  registro mal capturado insertando una fila nueva que apunta a la que corrige
+  (`corrige_registro_id`) con `motivo` obligatorio, nunca sobrescribiendo — consistente
+  con la invariante append-only de ADR-0008. `GET /api/registros` solo devuelve la
+  punta vigente de cada cadena. Autorización real en `requireAdmin` (servidor); el
+  botón "Corregir" en `RegistrosPage` es UX, no seguridad. 48 tests en servidor, 35 en
+  cliente, todos en verde.
 - **Prototipo funcional "Registro QR" (`mi-app-qr/`)**: app de escritorio Electron + React
   para registro de asistencia por QR, con formulario de registro, panel de control,
   edición de registros, exportación a CSV, selección de rol y sistema de licencia/prueba.
@@ -99,8 +107,8 @@
   al ejecutarse, la app debe levantar un servidor accesible por IP en la red
   institucional, con login para personal (no estudiantes), roles diferenciados y
   generación de informes. Registrado como ADR en estado *Propuesta*; quedan pendientes
-  el transporte cifrado y la política de auditoría (el motor de almacenamiento ya se
-  resolvió: SQLite embebido, y el catálogo de roles se resolvió en ADR-0009 — ver abajo).
+  el transporte cifrado y la política de auditoría (el motor de almacenamiento y el
+  catálogo de roles ya se resolvieron — ver `DECISIONS.md` y ADR-0009 abajo).
   **Aclaración de foco (2026-08-20):** el cliente multiusuario es principalmente un
   módulo de gestión/verificación/extracción de datos (`Dashboard`, `Informes`,
   `Usuarios`) — no una terminal de registro. Que el personal también pueda registrar
@@ -151,8 +159,10 @@
 - **Decisión de producto pendiente:** qué hacer con el sistema de licencia/prueba
   existente en `main.js` frente al modelo multiusuario — el cliente nuevo no lo
   llama, quedó como código muerto sin que nadie lo haya decidido explícitamente.
-- Catálogo de roles y gestión de usuarios más allá del admin semilla; HTTPS en la
-  red del CCAV — ambos ya señalados como pendientes en ADR-0008.
+- HTTPS en la red del CCAV — ya señalado como pendiente en ADR-0008.
+- Ver historial completo de una cadena de correcciones de registro; que un operador
+  corrija sus propios registros; deshacer una corrección — los tres fuera de alcance
+  a propósito del plan de corrección de registros ya cerrado.
 
 ### Evaluación
 
@@ -180,7 +190,24 @@ la frontera navegador/verificador y la política de datos efímeros. Se implemen
 portal responsive, el adaptador FastAPI y suites unitarias/E2E con auditoría de
 accesibilidad. El fixture HTTP incluido sirve solo para recorrer estados visuales en
 loopback; la operación real exige el `Verifier` configurado y HTTPS bajo el mismo
-origen.
+origen. Después de una primera revisión visual ("no me gustó el diseño"), se rehizo la
+capa de presentación sobre los mismos tokens de marca — resultado dominante a pantalla
+completa en vez de una card pequeña, token en texto plano, header con más profundidad —
+sin tocar la lógica ya probada; los mismos 13 tests Vitest y 9 Playwright/Axe siguen en
+verde.
+
+**2026-08-20/21 — corrección de registros y limpieza de documentación.** Se diseñó
+(brainstorming + spec aprobada) y se implementó en 6 tareas TDD, con revisión de dos
+etapas por tarea más una revisión final holística, la corrección de registros en
+`mi-app-qr` — ver "Hecho" arriba. PR #28 fusionado. Aparte, se cerró formalmente en
+`DECISIONS.md` el motor de almacenamiento de ADR-0008 (ya estaba implementado de facto
+desde hace varias sesiones, nunca se había vuelto a cerrar el ítem) y se puso al día
+`STATE.md` con el cierre de `issuer/`/`verifier/` (issues #5 y #6) y de la gestión de
+usuarios (issue #12) — esta rama (`docs/state-cierre-sesion`) tuvo que reconciliarse dos
+veces porque `main` avanzó con el trabajo de `issuer/` y luego `verifier/` mientras
+seguía abierta; en ambos casos se resolvió reconstruyendo sobre el `main` real en vez de
+forzar el contenido viejo encima, para no revertir ADR-0010/ADR-0011 ni las notas de
+sesión que esos merges ya habían agregado.
 
 **2026-08-20 — `verifier/` (issue #6).** Se creó la rama aislada
 `modulo/6-verifier-portal` desde `main` después del merge del issuer. Antes del código se

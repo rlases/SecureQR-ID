@@ -192,16 +192,20 @@ solo presenta su credencial QR.
 
 **Pendiente de decidir.**
 
-- Motor de almacenamiento (embebido tipo SQLite vs. servidor de base de datos aparte) y
-  estrategia de respaldo.
 - **Transporte:** HTTP plano en la LAN expone las credenciales del personal a cualquiera
   que escuche la red WiFi institucional. HTTPS con certificado autofirmado es incómodo en
   navegadores pero es lo mínimo defendible. Decidir explícitamente y justificar.
 - Qué se audita y por cuánto tiempo se conserva.
 - Descubrimiento del servidor por los demás puestos: IP fija, nombre en la red o
   configuración manual.
+- Estrategia de respaldo del almacenamiento (el motor en sí ya se resolvió de facto,
+  ver nota abajo).
 
-(El catálogo de roles, que estaba pendiente aquí, se resolvió en ADR-0009.)
+(El catálogo de roles, que estaba pendiente aquí, se resolvió en ADR-0009. El motor de
+almacenamiento también quedó resuelto de facto: SQLite embebido vía `better-sqlite3`, ya
+implementado en `mi-app-qr/server` desde la fundación del servidor — nunca se volvió a
+esta sección para cerrarlo formalmente hasta ahora. Sin estrategia de respaldo definida
+todavía, eso sigue abierto.)
 
 **Aclaración de foco (2026-08-20).** El texto original de esta decisión mezclaba dos
 cosas distintas bajo "registrar, consultar, corregir y generar informes": el propósito

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import RegistrosPage from '../src/pages/RegistrosPage';
+import { AuthProvider } from '../src/auth/AuthContext';
 import * as apiClient from '../src/lib/apiClient';
 
 vi.mock('../src/lib/apiClient');
@@ -13,7 +14,9 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <RegistrosPage />
+      <AuthProvider>
+        <RegistrosPage />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
@@ -21,12 +24,25 @@ function renderPage() {
 describe('RegistrosPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(apiClient.getMe).mockResolvedValue({
+      user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' },
+    });
   });
 
   it('lista los registros existentes', async () => {
     vi.mocked(apiClient.listRegistros).mockResolvedValue({
       registros: [
-        { id: 1, nombre: 'Ana Ríos', documento: '1', rol: 'estudiante', tipo: 'entrada', timestamp: '2026-01-01 10:00:00', creadoPorUsuarioId: 1 },
+        {
+          id: 1,
+          nombre: 'Ana Ríos',
+          documento: '1',
+          rol: 'estudiante',
+          tipo: 'entrada',
+          timestamp: '2026-01-01 10:00:00',
+          creadoPorUsuarioId: 1,
+          corrigeRegistroId: null,
+          motivo: null,
+        },
       ],
     });
 
@@ -48,11 +64,31 @@ describe('RegistrosPage', () => {
       .mockResolvedValueOnce({ registros: [] })
       .mockResolvedValueOnce({
         registros: [
-          { id: 1, nombre: 'Luis Gómez', documento: '2', rol: 'docente', tipo: 'entrada', timestamp: '2026-01-01 10:05:00', creadoPorUsuarioId: 1 },
+          {
+            id: 1,
+            nombre: 'Luis Gómez',
+            documento: '2',
+            rol: 'docente',
+            tipo: 'entrada',
+            timestamp: '2026-01-01 10:05:00',
+            creadoPorUsuarioId: 1,
+            corrigeRegistroId: null,
+            motivo: null,
+          },
         ],
       });
     vi.mocked(apiClient.createRegistro).mockResolvedValue({
-      registro: { id: 1, nombre: 'Luis Gómez', documento: '2', rol: 'docente', tipo: 'entrada', timestamp: '2026-01-01 10:05:00', creadoPorUsuarioId: 1 },
+      registro: {
+        id: 1,
+        nombre: 'Luis Gómez',
+        documento: '2',
+        rol: 'docente',
+        tipo: 'entrada',
+        timestamp: '2026-01-01 10:05:00',
+        creadoPorUsuarioId: 1,
+        corrigeRegistroId: null,
+        motivo: null,
+      },
     });
 
     renderPage();
@@ -84,5 +120,97 @@ describe('RegistrosPage', () => {
 
     expect(await screen.findByText(/obligatorio/i)).toBeInTheDocument();
     expect(apiClient.createRegistro).not.toHaveBeenCalled();
+  });
+
+  it('NO muestra el botón Corregir si el usuario es operador', async () => {
+    vi.mocked(apiClient.getMe).mockResolvedValue({
+      user: { id: 2, username: 'operador1', role: 'operador', cargo: 'vigilancia', createdAt: '2026-01-01' },
+    });
+    vi.mocked(apiClient.listRegistros).mockResolvedValue({
+      registros: [
+        {
+          id: 1,
+          nombre: 'Ana Ríos',
+          documento: '1',
+          rol: 'estudiante',
+          tipo: 'entrada',
+          timestamp: '2026-01-01 10:00:00',
+          creadoPorUsuarioId: 1,
+          corrigeRegistroId: null,
+          motivo: null,
+        },
+      ],
+    });
+
+    renderPage();
+
+    await screen.findByText('Ana Ríos');
+    expect(screen.queryByRole('button', { name: /^corregir$/i })).not.toBeInTheDocument();
+  });
+
+  it('corrige un registro y refresca la lista con la versión corregida', async () => {
+    vi.mocked(apiClient.listRegistros)
+      .mockResolvedValueOnce({
+        registros: [
+          {
+            id: 1,
+            nombre: 'Ana Rios',
+            documento: '1',
+            rol: 'estudiante',
+            tipo: 'entrada',
+            timestamp: '2026-01-01 10:00:00',
+            creadoPorUsuarioId: 1,
+            corrigeRegistroId: null,
+            motivo: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        registros: [
+          {
+            id: 2,
+            nombre: 'Ana Ríos',
+            documento: '1',
+            rol: 'estudiante',
+            tipo: 'entrada',
+            timestamp: '2026-01-01 10:00:00',
+            creadoPorUsuarioId: 1,
+            corrigeRegistroId: 1,
+            motivo: 'faltaba la tilde',
+          },
+        ],
+      });
+    vi.mocked(apiClient.correctRegistro).mockResolvedValue({
+      registro: {
+        id: 2,
+        nombre: 'Ana Ríos',
+        documento: '1',
+        rol: 'estudiante',
+        tipo: 'entrada',
+        timestamp: '2026-01-01 10:00:00',
+        creadoPorUsuarioId: 1,
+        corrigeRegistroId: 1,
+        motivo: 'faltaba la tilde',
+      },
+    });
+
+    renderPage();
+    await screen.findByText('Ana Rios');
+
+    await userEvent.click(screen.getByRole('button', { name: /^corregir$/i }));
+
+    const dialog = within(screen.getByRole('dialog'));
+    await userEvent.clear(dialog.getByLabelText(/^nombre$/i));
+    await userEvent.type(dialog.getByLabelText(/^nombre$/i), 'Ana Ríos');
+    await userEvent.type(dialog.getByLabelText(/motivo/i), 'faltaba la tilde');
+    await userEvent.click(dialog.getByRole('button', { name: /guardar corrección/i }));
+
+    await waitFor(() =>
+      expect(apiClient.correctRegistro).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ nombre: 'Ana Ríos', motivo: 'faltaba la tilde' })
+      )
+    );
+    expect(await screen.findByText('Ana Ríos')).toBeInTheDocument();
   });
 });

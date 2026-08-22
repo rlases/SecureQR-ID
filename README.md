@@ -143,6 +143,8 @@ trabajos de grado.
 ## Autores
 
 - Duverney Torres Figueroa — <dtorresfi@unadvirtual.edu.co>
-- Jhunier Libardo Hernández Calderón — <jlhernandezcal@unadvirtual.edu.co>
+- <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/authors/rlases-icon-dark.png"><img src="docs/assets/authors/rlases-icon-light.png" width="16" height="16" alt=""></picture>
+  Jhunier Libardo Hernández Calderón — <jlhernandezcal@unadvirtual.edu.co> —
+  [rlases.dev](https://rlases.dev) · [@rlases](https://github.com/rlases)
 
 Asesor: Edgar Roberto Dulce Villareal
