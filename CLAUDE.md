@@ -37,6 +37,12 @@ python -m pytest
 npm install
 npm test
 npm run build
+
+# verifier-web/ (Node.js 22.12+)
+npm ci
+npm test
+npm run build
+npm run test:e2e
 ```
 
 ## Los cuatro módulos y su frontera
@@ -45,6 +51,7 @@ npm run build
 |---|---|---|
 | `issuer/` | firma tokens con la clave privada institucional | no valida, no registra eventos |
 | `verifier/` | verifica firma, frescura, nonce, revocación | no firma, no ancla |
+| `verifier-web/` | captura QR y presenta la decisión pública | no interpreta ni persiste tokens |
 | `evidence-log/` | encadena eventos por hash | no decide aceptar/rechazar |
 | `anchor/` | construye Merkle y ancla la raíz | no ve datos personales, solo hashes |
 

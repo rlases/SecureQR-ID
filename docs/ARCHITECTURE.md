@@ -19,7 +19,8 @@ Ocurre en el punto de control cuando alguien presenta su credencial. Debe ser lo
 ultraligera: en un campus pasan cientos de personas por hora y ninguna espera a que una
 transacción blockchain confirme.
 
-Participan `issuer/` (offline, emitió el token antes) y `verifier/` (en línea, decide).
+Participan `issuer/` (offline, emitió el token antes), `verifier-web/` (captura y
+presenta) y `verifier/` (en línea, decide).
 
 ### 2. Consolidación local (sincrónica, ligera)
 
@@ -68,6 +69,7 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 |---|---|---|
 | `issuer/` | Firma ECDSA de tokens; custodia del par de claves institucional | La clave privada no sale de aquí |
 | `verifier/` | Decide aceptar o rechazar | No firma, no ancla |
+| `verifier-web/` | Captura el QR y presenta la decisión | No interpreta el token, no decide, no persiste identificadores |
 | `evidence-log/` | Encadena eventos por hash; append-only | No decide, solo registra lo aceptado |
 | `anchor/` | Merkle + Hyperledger Fabric | Solo ve hashes, nunca datos personales |
 | `revocation/` | Lista firmada de credenciales invalidadas | Su firma se verifica igual que la de un token |
@@ -84,6 +86,9 @@ de la raíz de la ledger en Bitcoin vía OpenTimestamps para la garantía de no 
 no depende de la institución. La tolerancia de reloj, la persistencia y purga de nonces,
 la atomicidad ante concurrencia y el comportamiento fail-closed de revocación se
 cerraron en ADR-0011.
+
+La frontera navegador/API, el tratamiento opaco del token y la ausencia de persistencia
+en el portal se cerraron en ADR-0012.
 
 ## Lo que este diseño deliberadamente no resuelve
 

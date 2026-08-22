@@ -18,6 +18,21 @@ que quiere alterar registros después de que ocurrieron.
 | Abuso de privilegios | Alteración interna de la evidencia | Anclaje de raíces de Merkle en blockchain | `anchor` |
 | Credencial comprometida | Uso de una identidad revocada | Lista de revocación firmada | `revocation` |
 
+## Amenazas del portal de verificación (ADR-0012)
+
+El portal añade cámara y transporte HTTP a la capa de validación. No cambia la decisión
+criptográfica, pero sí puede filtrar o enviar más veces un token si se implementa mal.
+
+| Amenaza | Riesgo | Control |
+|---|---|---|
+| Captura o persistencia del QR en el navegador | Reutilización o exposición posterior del token | Procesamiento local de fotogramas; sin capturas, analítica, `localStorage` ni token en historial |
+| Envíos duplicados por lecturas sucesivas de cámara | El primer intento consume el nonce y produce resultados confusos | Detener el lector al primer resultado y bloquear nuevas solicitudes mientras se verifica |
+| Escucha o alteración del tráfico del portal | Robo o sustitución del token antes de validarlo | Mismo origen y HTTPS obligatorio fuera de `localhost` |
+| Lógica criptográfica replicada en JavaScript | Divergencia frente al verificador y aceptación incorrecta | El navegador trata el token como texto opaco; solo Python decide |
+| Mensajes de rechazo detallados | Oráculo para iterar ataques contra firma, vigencia o revocación | Respuesta y presentación genéricas para todo rechazo criptográfico |
+| Permiso de cámara denegado o dispositivo ausente | Bloqueo operativo o presión para desactivar controles | Entrada manual accesible y estados de recuperación sin aceptar localmente |
+| Animación o contraste deficientes | Personas con discapacidad no pueden operar el punto de control | WCAG AA, teclado, foco visible, `aria-live` y movimiento reducido |
+
 ## Amenazas del servidor multiusuario (ADR-0008)
 
 Al pasar `mi-app-qr/` de aplicación monopuesto a servidor en la red institucional

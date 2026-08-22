@@ -35,9 +35,9 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   disponibles. ADR-0011 fija un clock skew obligatorio de 0–60 segundos, máximo de
   reloj persistente, replay durable en SQLite y consumo atómico del nonce. La suite usa
   el issuer real y cubre reinicios, concurrencia, revocación y respuestas públicas sin
-  datos sensibles; CI tiene un job propio. PR #29 fusionado en `main` e issue #6 cerrado.
-  Duverney abrió el issue #30 (`verifier-web/`, portal visual de escaneo) como
-  seguimiento — todavía sin triage.
+  datos sensibles; CI tiene un job propio. PR #29 fusionado en `main` e issue #6
+  cerrado. Duverney abrió el issue #30 (`verifier-web/`, portal visual de escaneo) como
+  seguimiento — en curso, ver más abajo.
 - **`mi-app-qr` — corrección de registros (PR #28 fusionado):** un `admin` corrige un
   registro mal capturado insertando una fila nueva que apunta a la que corrige
   (`corrige_registro_id`) con `motivo` obligatorio, nunca sobrescribiendo — consistente
@@ -96,13 +96,12 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ## En curso
 
-- **Dashboard e Informes de `mi-app-qr/client` (issue #32):** implementación local en
-  `feat/32-dashboard-informes`, aislada desde `main`. Dashboard pasa a `/`, Registros a
-  `/registros` e Informes a `/informes`; los conteos, filtros y CSV se calculan en el
-  cliente sobre los endpoints existentes. El catálogo de roles del informe se deriva
-  de los registros cargados, sin vocabulario institucional hardcodeado (ADR-0009).
-  Suite completa del cliente en 40 pruebas y build en verde; pendiente de publicación y
-  revisión cruzada.
+- **`verifier-web/` (issue #30):** portal React/TypeScript aislado de `mi-app-qr`, con
+  escaneo por cámara bajo acción explícita, entrada manual protegida, estados accesibles
+  y un historial volátil que no conserva tokens. El navegador delega toda decisión al
+  adaptador HTTP fail-closed de `verifier/`. Vitest y Playwright cubren privacidad,
+  concurrencia, cámara, axe y layouts de escritorio, tableta y móvil. Trabajo local en
+  `modulo/30-verifier-web`, pendiente de publicación y revisión cruzada.
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
 - **ADR-0008 — `mi-app-qr` pasa a servidor multiusuario en red.** Requerimiento nuevo:
@@ -193,12 +192,24 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ## Notas de sesiones recientes
 
-**2026-08-21 — Dashboard e Informes (issue #32).** Se creó el worktree aislado
-`feat/32-dashboard-informes` desde `origin/main`. Con TDD se añadieron Dashboard,
-Informes, las rutas explícitas de Registros y navegación responsive. Los datos se
-agregan y filtran en el cliente; el CSV exporta únicamente las filas visibles y protege
-campos interpretables como fórmulas. No se modificaron servidor, tipos compartidos,
-`RegistrosPage` ni `UsuariosPage`.
+**2026-08-21 — `verifier-web/` (issue #30).** Se creó una rama y un worktree aislados
+desde `main` para no interferir con el trabajo paralelo sobre `mi-app-qr`. ADR-0012 fija
+la frontera navegador/verificador y la política de datos efímeros. Se implementó el
+portal responsive, el adaptador FastAPI y suites unitarias/E2E con auditoría de
+accesibilidad. El fixture HTTP incluido sirve solo para recorrer estados visuales en
+loopback; la operación real exige el `Verifier` configurado y HTTPS bajo el mismo
+origen. Después de una primera revisión visual ("no me gustó el diseño"), se rehizo la
+capa de presentación sobre los mismos tokens de marca — resultado dominante a pantalla
+completa en vez de una card pequeña, token en texto plano, header con más profundidad —
+sin tocar la lógica ya probada; los mismos 13 tests Vitest y 9 Playwright/Axe siguen en
+verde.
+
+**2026-08-21 — Dashboard e Informes (issue #32, PR #34 fusionado).** Se creó el
+worktree aislado `feat/32-dashboard-informes` desde `origin/main`. Con TDD se añadieron
+Dashboard, Informes, las rutas explícitas de Registros y navegación responsive. Los
+datos se agregan y filtran en el cliente; el CSV exporta únicamente las filas visibles y
+protege campos interpretables como fórmulas. No se modificaron servidor, tipos
+compartidos, `RegistrosPage` ni `UsuariosPage`.
 
 **2026-08-20/21 — corrección de registros y limpieza de documentación.** Se diseñó
 (brainstorming + spec aprobada) y se implementó en 6 tareas TDD, con revisión de dos

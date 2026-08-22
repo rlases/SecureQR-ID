@@ -422,3 +422,52 @@ deliberada cuando cualquiera de esas dependencias no es confiable. La inserción
 final resuelve carreras sin alterar el orden lógico exigido: el nonce se consulta antes
 de revocación y se confirma inmediatamente después. El módulo se limita a decidir si
 el token es aceptable; no firma, no ancla y no registra el evento de acceso aceptado.
+
+---
+
+## ADR-0012 — Frontera web y privacidad del portal de verificación
+
+**Estado:** Aceptada
+
+**Contexto.** El motor de `verifier/` decide de forma local y fail-closed, pero un punto
+de control necesita capturar el QR y presentar el resultado a una persona operadora. Si
+la interfaz web decodifica campos, conserva tokens o replica reglas criptográficas, se
+crea una segunda implementación menos confiable y una nueva fuente de exposición. A la
+vez, integrar el portal en `mi-app-qr/` borraría la separación entre el prototipo QR
+convencional usado como línea base y el modelo SecureQR-ID que se quiere evaluar.
+
+**Decisión.** El portal sigue estas reglas:
+
+- `verifier-web/` es una aplicación React + TypeScript independiente. No importa código
+  de dominio de `mi-app-qr/` ni modifica su comportamiento.
+- El navegador solo captura el texto completo del QR y lo envía por `POST` a
+  `/api/verify`. No decodifica CBOR, no inspecciona campos y no ejecuta ninguna regla de
+  firma, tiempo, replay o revocación.
+- El adaptador HTTP se construye mediante una factory que recibe una instancia de
+  `Verifier` ya configurada. No crea claves, almacenamiento, reloj o revocación por
+  defecto. Una excepción inesperada también devuelve el rechazo público genérico.
+- El cuerpo admite exclusivamente un token textual de hasta 4096 caracteres. La
+  respuesta pública contiene solo `accepted` y el mensaje genérico correspondiente;
+  `cid`, `kid`, nonce, firma y códigos internos nunca llegan al navegador.
+- Los fotogramas de cámara se procesan localmente mediante una biblioteca QR mantenida.
+  No se transmiten, capturan ni persisten. Después de detectar un token, la cámara se
+  detiene mientras se verifica para impedir solicitudes duplicadas.
+- El historial de la sesión conserva en memoria únicamente hora y decisión
+  aceptar/rechazar, con un máximo acotado. No usa `localStorage`, IndexedDB, cookies ni
+  analítica, y desaparece al recargar.
+- Fuera de `localhost`, portal y API se sirven bajo el mismo origen con HTTPS. HTTP plano
+  en una LAN expondría el token capturado y además no ofrece el contexto seguro que las
+  APIs de cámara requieren.
+- La interfaz nunca diferencia públicamente firma inválida, expiración, replay,
+  revocación o dependencia caída. Sí puede distinguir un fallo de transporte cuando la
+  API no responde, porque todavía no existe una decisión criptográfica que ocultar.
+- La experiencia cumple contraste WCAG AA, navegación por teclado, foco visible,
+  anuncios de estado y `prefers-reduced-motion`. El movimiento comunica transición de
+  estados y no es requisito para entender el resultado.
+
+**Consecuencias.** Aparece un paquete frontend y una dependencia HTTP opcional en
+`verifier/`, además de pruebas separadas para contrato, interacción y accesibilidad. El
+portal puede evolucionar visualmente sin alterar la ruta criptográfica. Un despliegue
+real necesita terminación TLS y una implementación de revocación disponible; el portal
+no convierte la ausencia de esas piezas en un modo demostración permisivo. Registrar el
+evento aceptado sigue perteneciendo a `evidence-log/` y queda fuera de esta interfaz.

@@ -44,6 +44,7 @@ un evento puntual se hace recalculando el camino desde su hash hasta la raíz an
 |---|---|---|
 | [`issuer/`](issuer/) | Emisión y firma ECDSA de tokens QR; gestión del par de claves institucional | Implementado y probado — issue #5 |
 | [`verifier/`](verifier/) | Motor del portal de escaneo; verifica firma, marca temporal, nonce y revocación | Implementado y probado — issue #6 |
+| [`verifier-web/`](verifier-web/) | Portal accesible de escaneo; captura el token y consume el verificador sin persistir datos sensibles | En desarrollo — issue #30 |
 | `evidence-log/` | Bitácora local de eventos encadenada por hash | Pendiente |
 | `anchor/` | Construcción del árbol de Merkle y anclaje periódico en Hyperledger Fabric | Pendiente — ver ADR-0007 |
 | `revocation/` | Lista de revocación firmada y su distribución a los verificadores | Pendiente |
@@ -104,12 +105,24 @@ revocación está documentada en [`verifier/README.md`](verifier/README.md). `is
 instala en el comando anterior solo para las pruebas de interoperabilidad; no es una
 dependencia de producción del verificador.
 
+### Portal de escaneo `verifier-web/`
+
+```bash
+cd SecureQR-ID/verifier-web
+npm ci
+npm run dev
+```
+
+El portal requiere una API en `/api`. La guía para levantar el fixture visual local o
+conectarlo al adaptador real está en [`verifier-web/README.md`](verifier-web/README.md).
+
 ## Estado
 
 **Fase actual:** diseño y desarrollo tecnológico. `issuer/` y `verifier/` forman el
-núcleo criptográfico funcional; `mi-app-qr/` sigue siendo la línea base de registro por
-QR sin esas capas de seguridad. El detalle vive en [`docs/STATE.md`](docs/STATE.md), que
-se actualiza al cierre de cada sesión de trabajo.
+núcleo criptográfico funcional; `verifier-web/` incorpora el flujo visual de escaneo y
+`mi-app-qr/` sigue siendo la línea base de registro por QR sin esas capas de seguridad.
+El detalle vive en [`docs/STATE.md`](docs/STATE.md), que se actualiza al cierre de cada
+sesión de trabajo.
 
 ## Seguridad
 
