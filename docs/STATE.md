@@ -6,7 +6,8 @@
 
 **Última actualización:** 2026-08-21
 **Fase actual:** diseño (Fase 2) con desarrollo tecnológico iniciado (Fase 3 de
-`ROADMAP.md`); ADR-0007 todavía impide cerrar formalmente la Fase 2.
+`ROADMAP.md`); con ADR-0005 y ADR-0007 ya resueltas, falta solo que `SQRID-1.md` deje de
+ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ---
 
@@ -126,13 +127,20 @@
   y todos los tests afectados (27 en servidor, 20 en cliente, todos en verde). Principio
   general para todo el diseño en adelante: lo que varía por institución es
   configuración/texto libre, no código.
+- **ADR-0007 — gobernanza de la red blockchain, cerrada.** Con la UNAD como único
+  operador real (sin otra institución candidata a par independiente en esta fase),
+  "definir pares independientes" en Fabric habría sido teatro. Se decidió un anclaje
+  híbrido: Fabric se mantiene tal como ya estaba diseñado para la operación local, y
+  además `anchor/` sella periódicamente la raíz vigente de la ledger con
+  **OpenTimestamps** (Bitcoin, gratuito, sin infraestructura propia) — la pieza que
+  responde la objeción real, porque la UNAD no puede alterar retroactivamente lo que ya
+  quedó sellado fuera de su control. Desbloquea issue #9 (`anchor/`), aunque sigue
+  esperando a `evidence-log/` (#7) en la práctica.
 
 ## Pendiente
 
 ### Bloqueantes
 
-- **ADR-0007: gobernanza de la red blockchain.** Es la objeción más probable en la
-  sustentación; conviene resolverla antes de implementar `anchor/`.
 - **Unificar el número de objetivos específicos.** La propuesta define tres; la tabla de
   contenido de la Fase 4 y la Etapa 5 reserva espacio para cuatro. Debe cuadrar antes de
   la entrega final.
