@@ -25,5 +25,11 @@
   body {
     @apply bg-background text-foreground font-sans;
     margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    @apply bg-primary/20 text-foreground;
   }
 }
