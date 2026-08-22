@@ -143,9 +143,6 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 - **Unificar el número de objetivos específicos.** La propuesta define tres; la tabla de
   contenido de la Fase 4 y la Etapa 5 reserva espacio para cuatro. Debe cuadrar antes de
   la entrega final.
-- **Limpieza de repositorio:** hay un `App.jsx` suelto en la raíz del repo, anterior a
-  `mi-app-qr/src/App.js` y desactualizado respecto a él. Decidir si se elimina o se
-  documenta por qué se conserva.
 
 ### Implementación
 
@@ -191,6 +188,13 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 ---
 
 ## Notas de sesiones recientes
+
+**2026-08-22 — Limpieza de repositorio: `App.jsx` suelto.** Se eliminó `App.jsx` en la
+raíz del repo. Verificación antes de borrar: sin `package.json`/`index.html` en la raíz
+que lo referenciara, sin historial de commits desde el commit inicial del proyecto
+(`d904f41`), y contenido claramente anterior y superado por `mi-app-qr/src/App.js`
+(331 líneas vs. 527, sin las importaciones de `EditRecordModal`/`ExportCsvModal`/
+`ForgottenOutModal`/`qrParser` que sí tiene la versión vigente). Bloqueante cerrado.
 
 **2026-08-21 — `verifier-web/` (issue #30).** Se creó una rama y un worktree aislados
 desde `main` para no interferir con el trabajo paralelo sobre `mi-app-qr`. ADR-0012 fija
