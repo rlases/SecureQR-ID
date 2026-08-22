@@ -1,13 +1,12 @@
 export interface QrParsedData {
-    Nombre: string;
-    Documento: number;
-    Programa: string;
-    Cargo: string;
-    Entrada: string;
-    Salida: string | null;
-    Ciudad: string;
-    Vigencia: string;
-    Rol: string;
+    nombre: string;
+    documento: string;
+    rol: string;
+    // Campos extra opcionales para preservar información antigua
+    programa?: string;
+    cargo?: string;
+    ciudad?: string;
+    vigencia?: string;
 }
 
 export interface QrParseResult {
@@ -38,9 +37,6 @@ export const parseQrUrlData = (htmlText: string): QrParseResult => {
     if (typeof DOMParser === 'undefined') {
         return { message: '⚠️ No se puede parsear HTML en este entorno.', type: 'error', parsedData: null };
     }
-
-    const now = new Date();
-    const formattedNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
     let nombre = '';
     let documentoStr = '';
@@ -97,15 +93,13 @@ export const parseQrUrlData = (htmlText: string): QrParseResult => {
                 message: '',
                 type: 'success',
                 parsedData: {
-                    Nombre: nombre,
-                    Documento: documentoNum,
-                    Programa: programa,
-                    Cargo: cargo,
-                    Entrada: formattedNow,
-                    Salida: null,
-                    Ciudad: ciudad,
-                    Vigencia: vigencia,
-                    Rol: rol
+                    nombre,
+                    documento: documentoStr,
+                    rol,
+                    programa,
+                    cargo,
+                    ciudad,
+                    vigencia
                 }
             };
         } else {
@@ -126,9 +120,6 @@ export const parseQrUrlData = (htmlText: string): QrParseResult => {
 };
 
 export const parseQrTextData = (datosQr: string): QrParseResult => {
-    const now = new Date();
-    const formattedNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
     const match = datosQr.match(/(.+?)(\d{6,12})([\s\S]+?)((?:V[áa]lido)\s+hasta\s+\d{2}\s+de\s+[A-Za-zÁÉÍÓÚáéíóú]+\s+de\s+\d{4})/i);
 
     if (!match) {
@@ -170,15 +161,13 @@ export const parseQrTextData = (datosQr: string): QrParseResult => {
         message: '',
         type: 'success',
         parsedData: {
-            Nombre: nombre,
-            Documento: documentoNum,
-            Programa: programa,
-            Cargo: 'N/A',
-            Entrada: formattedNow,
-            Salida: null,
-            Ciudad: ciudad,
-            Vigencia: vigencia,
-            Rol: rol
+            nombre,
+            documento: documentoStr,
+            rol,
+            programa,
+            cargo: 'N/A',
+            ciudad,
+            vigencia
         }
     };
 };

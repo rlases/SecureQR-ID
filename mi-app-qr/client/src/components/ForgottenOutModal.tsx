@@ -1,8 +1,9 @@
+import type { Registro } from '@mi-app-qr/shared';
 import { Button } from './ui/button';
 
 interface ForgottenOutModalProps {
   isOpen: boolean;
-  record: any;
+  registro: Registro | null;
   onCorrect: () => void;
   onForce: () => void;
   onCancel: () => void;
@@ -10,27 +11,21 @@ interface ForgottenOutModalProps {
 
 export function ForgottenOutModal({
   isOpen,
-  record,
+  registro,
   onCorrect,
   onForce,
   onCancel,
 }: ForgottenOutModalProps) {
-  if (!isOpen || !record) {
+  if (!isOpen || !registro) {
     return null;
   }
 
-  // Fallback seguro si Entrada no es una fecha válida
+  // Fallback seguro si timestamp no es una fecha válida
   let fechaStr = 'una fecha anterior';
-  if (record.Entrada) {
-    const d = new Date(record.Entrada.replace(' ', 'T'));
+  if (registro.timestamp) {
+    const d = new Date(registro.timestamp.replace(' ', 'T'));
     if (!isNaN(d.getTime())) {
       fechaStr = d.toLocaleDateString();
-    } else {
-      // Intento sin replace por si ya está en un formato parseable
-      const d2 = new Date(record.Entrada);
-      if (!isNaN(d2.getTime())) {
-        fechaStr = d2.toLocaleDateString();
-      }
     }
   }
 
@@ -46,7 +41,7 @@ export function ForgottenOutModal({
           ¡Atención! Sesión Abierta Detectada
         </h2>
         <p className="mb-2 text-foreground">
-          Se detectó un registro de entrada sin salida para <span className="font-semibold">{record.Nombre}</span> del día <span className="font-semibold">{fechaStr}</span>.
+          Se detectó un registro de entrada sin salida para <span className="font-semibold">{registro.nombre}</span> del día <span className="font-semibold">{fechaStr}</span>.
         </p>
         <p className="mb-6 text-muted-foreground">¿Qué deseas hacer?</p>
 

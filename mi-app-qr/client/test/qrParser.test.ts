@@ -9,16 +9,17 @@ describe('qrParser', () => {
       
       expect(result.type).toBe('success');
       expect(result.parsedData).toMatchObject({
-        Nombre: 'Ana Ríos',
-        Documento: 12345678,
-        Programa: 'Monitor de Sistemas',
-        Cargo: 'Monitor de Sistemas',
-        Rol: 'Monitor de Sistemas',
-        Ciudad: 'Bogotá',
-        Vigencia: '2026-12-31'
+        nombre: 'Ana Ríos',
+        documento: '12345678',
+        rol: 'Monitor de Sistemas',
+        programa: 'Monitor de Sistemas',
+        cargo: 'Monitor de Sistemas',
+        ciudad: 'Bogotá',
+        vigencia: '2026-12-31'
       });
-      expect(result.parsedData?.Entrada).toBeDefined();
-      expect(result.parsedData?.Salida).toBeNull();
+      // Ya no emitimos entrada / salida, pues el consumidor usará CreateRegistroRequest
+      expect(result.parsedData).not.toHaveProperty('Entrada');
+      expect(result.parsedData).not.toHaveProperty('Salida');
     });
 
     it('devuelve error si falta el documento o cargo', () => {
@@ -35,13 +36,13 @@ describe('qrParser', () => {
       
       expect(result.type).toBe('success');
       expect(result.parsedData).toMatchObject({
-        Nombre: 'Ana Ríos',
-        Documento: 12345678,
-        Programa: 'Ingeniería de Sistemas',
-        Cargo: 'N/A',
-        Rol: 'Ingeniería de Sistemas',
-        Ciudad: 'Bogotá',
-        Vigencia: 'Válido hasta 31 de Diciembre de 2026'
+        nombre: 'Ana Ríos',
+        documento: '12345678',
+        rol: 'Ingeniería de Sistemas',
+        programa: 'Ingeniería de Sistemas',
+        cargo: 'N/A',
+        ciudad: 'Bogotá',
+        vigencia: 'Válido hasta 31 de Diciembre de 2026'
       });
     });
 
