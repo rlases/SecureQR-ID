@@ -152,10 +152,10 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 - `evidence-log/` — bitácora encadenada
 - `anchor/` — Merkle + Hyperledger Fabric
 - `revocation/` — lista firmada
-- `mi-app-qr/client`: Dashboard e Informes (pantallas adicionales, cada una con su propio
-  ciclo TDD); migración de los componentes de dominio existentes
-  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`);
-  WebSockets si el polling de 7s resulta insuficiente.
+- `mi-app-qr/client`: migración de los componentes de dominio existentes
+  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser.js`) y WebSockets
+  si el polling de 7s resulta insuficiente. Dashboard e Informes están en curso en el
+  issue #32.
 - **Empaquetado con `electron-builder`** de la app integrada (instalador `.exe`
   distribuible con `server/dist`, `server/node_modules` — incluyendo el binario
   nativo de `better-sqlite3` recompilado contra la ABI de Electron, probablemente
@@ -203,6 +203,13 @@ capa de presentación sobre los mismos tokens de marca — resultado dominante a
 completa en vez de una card pequeña, token en texto plano, header con más profundidad —
 sin tocar la lógica ya probada; los mismos 13 tests Vitest y 9 Playwright/Axe siguen en
 verde.
+
+**2026-08-21 — Dashboard e Informes (issue #32, PR #34 fusionado).** Se creó el
+worktree aislado `feat/32-dashboard-informes` desde `origin/main`. Con TDD se añadieron
+Dashboard, Informes, las rutas explícitas de Registros y navegación responsive. Los
+datos se agregan y filtran en el cliente; el CSV exporta únicamente las filas visibles y
+protege campos interpretables como fórmulas. No se modificaron servidor, tipos
+compartidos, `RegistrosPage` ni `UsuariosPage`.
 
 **2026-08-20/21 — corrección de registros y limpieza de documentación.** Se diseñó
 (brainstorming + spec aprobada) y se implementó en 6 tareas TDD, con revisión de dos
