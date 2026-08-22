@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-08-20
+**Última actualización:** 2026-08-21
 **Fase actual:** diseño (Fase 2) con desarrollo tecnológico iniciado (Fase 3 de
 `ROADMAP.md`); ADR-0007 todavía impide cerrar formalmente la Fase 2.
 
@@ -34,8 +34,8 @@
   disponibles. ADR-0011 fija un clock skew obligatorio de 0–60 segundos, máximo de
   reloj persistente, replay durable en SQLite y consumo atómico del nonce. La suite usa
   el issuer real y cubre reinicios, concurrencia, revocación y respuestas públicas sin
-  datos sensibles; CI tiene un job propio. Pendiente de publicación y revisión cruzada
-  del issue #6.
+  datos sensibles; CI tiene un job propio. PR #29 fusionado en `main` e issue #6
+  cerrado.
 - **Prototipo funcional "Registro QR" (`mi-app-qr/`)**: app de escritorio Electron + React
   para registro de asistencia por QR, con formulario de registro, panel de control,
   edición de registros, exportación a CSV, selección de rol y sistema de licencia/prueba.
@@ -87,6 +87,12 @@
 
 ## En curso
 
+- **`verifier-web/` (issue #30):** portal React/TypeScript aislado de `mi-app-qr`, con
+  escaneo por cámara bajo acción explícita, entrada manual protegida, estados accesibles
+  y un historial volátil que no conserva tokens. El navegador delega toda decisión al
+  adaptador HTTP fail-closed de `verifier/`. Vitest y Playwright cubren privacidad,
+  concurrencia, cámara, axe y layouts de escritorio, tableta y móvil. Trabajo local en
+  `modulo/30-verifier-web`, pendiente de publicación y revisión cruzada.
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
 - **ADR-0008 — `mi-app-qr` pasa a servidor multiusuario en red.** Requerimiento nuevo:
@@ -167,6 +173,14 @@
 ---
 
 ## Notas de sesiones recientes
+
+**2026-08-21 — `verifier-web/` (issue #30).** Se creó una rama y un worktree aislados
+desde `main` para no interferir con el trabajo paralelo sobre `mi-app-qr`. ADR-0012 fija
+la frontera navegador/verificador y la política de datos efímeros. Se implementó el
+portal responsive, el adaptador FastAPI y suites unitarias/E2E con auditoría de
+accesibilidad. El fixture HTTP incluido sirve solo para recorrer estados visuales en
+loopback; la operación real exige el `Verifier` configurado y HTTPS bajo el mismo
+origen.
 
 **2026-08-20 — `verifier/` (issue #6).** Se creó la rama aislada
 `modulo/6-verifier-portal` desde `main` después del merge del issuer. Antes del código se

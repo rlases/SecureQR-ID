@@ -60,6 +60,8 @@ node_modules/
 npm-debug.log*
 .next/
 coverage/
+playwright-report/
+test-results/
 dist/
 build/
 *.egg-info/

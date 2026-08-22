@@ -14,7 +14,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8.3,<10"]
+web = ["fastapi>=0.115,<1"]
+test = [
+  "fastapi>=0.115,<1",
+  "httpx2>=2.12,<3",
+  "pytest>=8.3,<10",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
