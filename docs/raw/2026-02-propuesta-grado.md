@@ -174,8 +174,9 @@ blockchain.
    promedio de validación y la integridad verificable de los registros de acceso, en
    comparación con un esquema tradicional de validación de credenciales.
 
-> Nota (ver `docs/STATE.md`): otros entregables del curso reservan espacio para un cuarto
-> objetivo específico. Pendiente de unificar antes de la entrega final.
+> Resuelto (ver `docs/STATE.md`, issue #4): el proyecto queda en **tres** objetivos
+> específicos, los de esta propuesta. Los entregables del curso que reservaban espacio
+> para un cuarto se ajustaron para no contradecir esto.
 
 ## Marco conceptual y teórico (resumen)
 

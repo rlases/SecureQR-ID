@@ -7,11 +7,11 @@
 **Última actualización:** 2026-09-23
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
-y `SQRID-1.md` dejó de ser borrador (estado "aceptado para implementación" desde
-ADR-0010). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al cerrar cada fase —
-pendiente, decisión conjunta, no depende de código. De los cinco módulos de Fase 3
-(`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`) solo falta
-`anchor/` (issue #9) para completarla.
+`SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
+unificado en tres (issue #4). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al
+cerrar cada fase — pendiente, decisión conjunta, no depende de código. De los cinco
+módulos de Fase 3 (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`)
+solo falta `anchor/` (issue #9) para completarla.
 
 ---
 
@@ -119,6 +119,14 @@ pendiente, decisión conjunta, no depende de código. De los cinco módulos de F
   conocida:** el equipo que actúa como servidor necesita Node.js instalado
   mientras no exista un instalador empaquetado (`electron-builder`, fuera de
   alcance — ver "Implementación").
+- **Issue #4 cerrado — número de objetivos específicos unificado en tres.** La
+  propuesta de grado (`docs/raw/2026-02-propuesta-grado.md`) y la entrega de Etapa 2
+  (`docs/raw/2026-03-etapa-2-requerimientos.md`) ya coincidían en tres; el desajuste
+  estaba en entregables posteriores del curso (Fase 4, Etapa 5) que reservaban espacio
+  para un cuarto, fuera de este repositorio. Se decidió mantener los tres objetivos
+  específicos ya redactados y ajustar esos entregables en consecuencia — no al revés.
+  Notas de reconciliación en ambos documentos de `docs/raw/` actualizadas de
+  "pendiente" a "resuelto".
 - **Sistema de licencia/prueba adaptado al modelo cliente-servidor.** Decisión de
   Jhunier: no se elimina, se adapta. Antes era código muerto — un handler IPC
   (`check-license`) que solo el renderer viejo (`src/App.js`, nunca cargado desde que
@@ -171,9 +179,8 @@ pendiente, decisión conjunta, no depende de código. De los cinco módulos de F
 
 ### Bloqueantes
 
-- **Unificar el número de objetivos específicos.** La propuesta define tres; la tabla de
-  contenido de la Fase 4 y la Etapa 5 reserva espacio para cuatro. Debe cuadrar antes de
-  la entrega final.
+Ninguno por ahora — el único bloqueante que había (issue #4, número de objetivos
+específicos) se resolvió el 2026-09-23, ver "Hecho" y nota de sesión.
 
 ### Implementación
 
@@ -217,9 +224,6 @@ decisiones conjuntas de abajo.
 
 **Conjunta** (ninguno de los dos decide solo):
 
-- Issue #4 — unificar el número de objetivos específicos (bloqueante de la propuesta).
-  (Nota: resuelto en la práctica — ver PR #53, todavía no fusionado al momento de este
-  commit — esta lista se actualizará cuando ese PR se fusione.)
 - Decisiones de producto sobre correcciones: que un operador corrija sus propios
   registros; deshacer una corrección. Sin issue todavía — quedan fuera de alcance a
   propósito del plan de corrección de registros ya cerrado (PR #28). (El historial
@@ -256,6 +260,15 @@ decidió mantener el sistema de licencia/prueba de `main.js`, adaptándolo al mo
 cliente-servidor en vez de borrarlo. Detalle en "Hecho" arriba. Implementado
 directamente por Jhunier pese a que el issue había quedado asignado a Duverney en el
 reparto por equidad de carga — excepción puntual, no cambia el reparto general.
+
+**2026-09-23 — Issue #4 cerrado: tres objetivos específicos.** Jhunier confirmó la
+decisión: el proyecto queda en tres objetivos específicos (los de la propuesta de grado
+y la Etapa 2, que ya coincidían entre sí). El desajuste que mantenía el issue abierto no
+estaba en este repositorio, sino en entregables posteriores del curso (Fase 4, Etapa 5)
+que reservaban espacio para un cuarto objetivo — se ajustan esos entregables, no la
+propuesta ya sustentada. Con esto, y con los criterios de `ROADMAP.md` ya cumplidos
+(ADR-0005, ADR-0007, `SQRID-1.md` fuera de borrador — ver PR #52), la Fase 2 no tiene
+ya ningún bloqueante documentado en este repositorio.
 
 **2026-09-23 — Ajuste del reparto: los 4 issues de `mi-app-qr/` también pasan a
 Duverney.** El reparto inicial de esta misma fecha (nota siguiente) le había dejado a

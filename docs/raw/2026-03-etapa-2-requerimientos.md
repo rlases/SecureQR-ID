@@ -151,8 +151,9 @@ previa más fragmentada), y centró las métricas de evaluación en la tasa de d
 credenciales inválidas, el tiempo promedio de validación y la integridad verificable de
 los registros de acceso.
 
-> Ver nota de reconciliación en `docs/STATE.md`: otros entregables (Fase 4, Etapa 5)
-> reservan espacio para un cuarto objetivo específico — pendiente de unificar.
+> Resuelto (ver `docs/STATE.md`, issue #4): el proyecto queda en **tres** objetivos
+> específicos, como reorganizó esta etapa. Los entregables posteriores (Fase 4, Etapa 5)
+> que reservaban espacio para un cuarto se ajustaron para no contradecir esto.
 
 ## Referencias bibliográficas
 
