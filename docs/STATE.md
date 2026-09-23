@@ -149,8 +149,8 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   además `anchor/` sella periódicamente la raíz vigente de la ledger con
   **OpenTimestamps** (Bitcoin, gratuito, sin infraestructura propia) — la pieza que
   responde la objeción real, porque la UNAD no puede alterar retroactivamente lo que ya
-  quedó sellado fuera de su control. Desbloquea issue #9 (`anchor/`), aunque sigue
-  esperando a `evidence-log/` (#7) en la práctica.
+  quedó sellado fuera de su control. Desbloquea issue #9 (`anchor/`) — `evidence-log/`
+  (#7) ya se fusionó (PR #43), así que ya no lo bloquea ni en la práctica.
 
 ## Pendiente
 
@@ -173,7 +173,11 @@ estaban pendientes:
 
 - Issue #9 — `anchor/`: Merkle + Hyperledger Fabric + sellado OpenTimestamps (ADR-0007).
 - Issue #45 — conectar `evidence-log/` real en `verifier/` (que cada validación
-  aceptada/rechazada quede registrada en la bitácora). Seguimiento directo de PR #43.
+  **aceptada** quede registrada en la bitácora — `ARCHITECTURE.md` líneas 27 y 46-59
+  solo contempla eventos aceptados, y `REJECTED_RESULT` en `verifier.py` nunca lleva
+  `credential_id`, así que un rechazo no tiene con qué construir un `Event` sin inventar
+  un identificador o exponer datos que ADR-0011 mantiene fuera de la respuesta pública).
+  Seguimiento directo de PR #43.
 - Issue #46 — conectar `RevocationList` real como `revocation_checker` al construir el
   `Verifier` de producción. Seguimiento directo de PR #44.
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
