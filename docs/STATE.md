@@ -4,10 +4,14 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-08-22
-**Fase actual:** diseño (Fase 2) con desarrollo tecnológico iniciado (Fase 3 de
-`ROADMAP.md`); con ADR-0005 y ADR-0007 ya resueltas, falta solo que `SQRID-1.md` deje de
-ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
+**Última actualización:** 2026-09-23
+**Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
+(diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
+`SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
+unificado en tres (issue #4). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al
+cerrar cada fase — pendiente, decisión conjunta, no depende de código. De los cinco
+módulos de Fase 3 (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`)
+solo falta `anchor/` (issue #9) para completarla.
 
 ---
 
