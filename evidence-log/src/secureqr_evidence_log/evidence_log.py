@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 GENESIS_HASH = "0" * 64
 
@@ -30,16 +30,21 @@ class Event:
     hash: str
 
 
-@dataclass
 class EvidenceLog:
-    """Bitacora en memoria. La persistencia en disco se agrega despues."""
+    """Bitacora append-only: los eventos solo se agregan, nunca se editan ni se borran."""
 
-    events: list[Event] = field(default_factory=list)
+    def __init__(self) -> None:
+        self._events: list[Event] = []
+
+    @property
+    def events(self) -> tuple[Event, ...]:
+        """Vista de solo lectura. No tiene 'setter': no se puede hacer log.events = ..."""
+        return tuple(self._events)
 
     def _last_hash(self) -> str:
-        if not self.events:
+        if not self._events:
             return GENESIS_HASH
-        return self.events[-1].hash
+        return self._events[-1].hash
 
     def append_event(
         self,
@@ -60,13 +65,13 @@ class EvidenceLog:
             previous_hash=previous_hash,
             hash=event_hash,
         )
-        self.events.append(event)
+        self._events.append(event)
         return event
-    
+
     def verify_chain(self) -> bool:
         """Recalcula cada hash y comprueba que la cadena no fue alterada."""
         previous_hash = GENESIS_HASH
-        for event in self.events:
+        for event in self._events:
             if event.previous_hash != previous_hash:
                 return False
             expected_hash = _compute_hash(
