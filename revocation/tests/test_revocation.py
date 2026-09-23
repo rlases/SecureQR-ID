@@ -57,3 +57,21 @@ def test_lista_alterada_falla_cerrado():
 
     with pytest.raises(RevocationError):
         RevocationList.from_signed_bytes(bytes(bytes_alterados), public_key)
+
+def test_lista_se_puede_guardar_y_leer_de_disco(tmp_path):
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    public_key = private_key.public_key()
+
+    signed_bytes = sign_revocation_list(
+        private_key,
+        kid="kid-institucion-1",
+        revoked_credential_ids=["cred-revocada-001"],
+        issued_at=1_000_000,
+    )
+
+    ruta = tmp_path / "revocacion.sqrid"
+    ruta.write_bytes(signed_bytes)
+
+    revocation_list = RevocationList.from_file(str(ruta), public_key)
+
+    assert revocation_list.is_revoked("cred-revocada-001") is True

@@ -105,3 +105,17 @@ class RevocationList:
 
     def is_revoked(self, credential_id: str) -> bool:
         return credential_id in self._revoked_ids
+
+    @classmethod
+    def from_file(
+        cls, path: str, public_key: ec.EllipticCurvePublicKey
+    ) -> "RevocationList":
+        """Lee la lista firmada desde un archivo y la verifica igual que from_signed_bytes."""
+        try:
+            with open(path, "rb") as file:
+                signed_bytes = file.read()
+        except OSError as exc:
+            raise RevocationError(
+                "No se pudo leer el archivo de la lista de revocacion."
+            ) from exc
+        return cls.from_signed_bytes(signed_bytes, public_key)
