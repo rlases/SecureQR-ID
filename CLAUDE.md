@@ -84,6 +84,13 @@ código de uno con el otro. Ver "Relación con el prototipo existente" en
 - Al cerrar cada sesión de trabajo, actualiza `docs/STATE.md`. Es el handoff real.
 - Los nombres del código deben coincidir con los del documento de grado. Si el artículo
   dice "raíz de Merkle", el código dice `merkle_root`, no `hash_tree_top`.
+- **Reparto de trabajo nuevo entre Jhunier y Duverney: siempre carga pareja, ni más ni
+  menos.** Cada vez que aparezca un lote de trabajo nuevo (issues, frentes de una
+  iniciativa), repártelo en partes iguales entre los dos autores en ese momento — no
+  uses el desbalance acumulado histórico (quién ha cerrado más PR en total) para
+  inclinar el reparto de lo nuevo hacia uno de los dos. El desbalance acumulado sí se
+  documenta como contexto en `docs/STATE.md` (para que quede visible), pero no
+  determina cuánto le toca a cada quien de lo que sigue — eso siempre es parejo.
 
 ## Trampas conocidas
 
