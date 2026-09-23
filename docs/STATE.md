@@ -201,6 +201,13 @@ reparto de módulos, aquí ninguno tiene ventaja de experiencia previa sobre el 
   la exige en `verifier-web/`; se extiende a `mi-app-qr/client` con auditoría del
   estado actual) → `docs/ACCESSIBILITY.md`. Asignado a Duverney.
 
+**Ajuste (2026-09-23, mismo día):** el asignado de cada issue redacta y hace el trabajo
+de auditar/levantar el contenido, pero las decisiones de estilo en sí (valores de color,
+tono, patrones de componente, qué es obligatorio en accesibilidad) no son suyas en
+solitario — mismo patrón que un ADR en `docs/DECISIONS.md`: se propone, se discute entre
+los dos autores, y solo entonces se cierra como estándar. Individual la ejecución,
+conjunta la decisión. Los 4 issues ya se actualizaron con esta aclaración explícita.
+
 Los cuatro son de documentación pura — ningún cambio de código todavía. La
 implementación visual que salga de esto (aplicar el sistema de diseño a cada pantalla)
 se reparte después, una vez existan los documentos, para que ambos trabajen sobre el
