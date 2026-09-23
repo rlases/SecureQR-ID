@@ -182,6 +182,30 @@ solo falta `anchor/` (issue #9) para completarla.
 Ninguno por ahora — el único bloqueante que había (issue #4, número de objetivos
 específicos) se resolvió el 2026-09-23, ver "Hecho" y nota de sesión.
 
+### Diseño / frontend (nueva iniciativa 2026-09-23)
+
+Objetivo: `mi-app-qr/client` y `verifier-web/` los usa personal institucional no
+técnico — hace falta que se vean atractivos y consistentes entre sí, no solo
+funcionales. Antes de repartir implementación visual, se documentan los estándares
+compartidos, repartidos en partes iguales entre los dos autores (a diferencia del
+reparto de módulos, aquí ninguno tiene ventaja de experiencia previa sobre el otro):
+
+- Issue #55 — sistema de diseño: tokens visuales unificados (color, tipografía,
+  espaciado, iconografía) → `docs/DESIGN-SYSTEM.md`. Asignado a Jhunier.
+- Issue #56 — guía de contenido y microcopy en español (tono, mensajes de error/vacío,
+  confirmaciones) → `docs/CONTENT-GUIDE.md`. Asignado a Jhunier.
+- Issue #57 — catálogo de componentes UI y patrones de interacción (inventario de
+  componentes, estados loading/vacío/error, patrón de modal de corrección) →
+  `docs/COMPONENTS.md`. Asignado a Duverney.
+- Issue #58 — guía de accesibilidad WCAG AA para todo el frontend (hoy ADR-0012 solo
+  la exige en `verifier-web/`; se extiende a `mi-app-qr/client` con auditoría del
+  estado actual) → `docs/ACCESSIBILITY.md`. Asignado a Duverney.
+
+Los cuatro son de documentación pura — ningún cambio de código todavía. La
+implementación visual que salga de esto (aplicar el sistema de diseño a cada pantalla)
+se reparte después, una vez existan los documentos, para que ambos trabajen sobre el
+mismo estándar en vez de que cada uno resuelva lo mismo distinto.
+
 ### Implementación
 
 Repartición actualizada 2026-09-23, ajustada el mismo día tras confirmar con Jhunier
@@ -254,6 +278,16 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-09-23 — Nueva iniciativa de diseño/frontend, repartida en partes iguales.**
+Jhunier pidió mejorar el atractivo visual de `mi-app-qr/client` y `verifier-web/` para
+el personal institucional que las usa, y que el trabajo quedara parejo entre los dos
+autores — a diferencia de los módulos criptográficos, aquí ninguno tiene ventaja de
+experiencia previa. Se crearon 4 issues de documentación pura (definir antes de
+implementar): #55 y #56 para Jhunier (tokens visuales, contenido/microcopy); #57 y #58
+para Duverney (catálogo de componentes, accesibilidad WCAG AA extendida a
+`mi-app-qr/client`). Detalle en "Pendiente → Diseño / frontend" arriba. La
+implementación visual que salga de estos documentos se repartirá después.
 
 **2026-09-23 — Issue #50 cerrado: licencia/prueba adaptada, no eliminada.** Jhunier
 decidió mantener el sistema de licencia/prueba de `main.js`, adaptándolo al modelo
