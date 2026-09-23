@@ -4,9 +4,24 @@ from __future__ import annotations
 
 import hashlib
 import sqlite3
+import struct
 from dataclasses import dataclass
 
 GENESIS_HASH = "0" * 64
+
+
+def _encode_field(value: str) -> bytes:
+    """Codifica un campo de texto con su longitud como prefijo (4 bytes, big-endian).
+
+    Concatenar campos con un separador de texto es ambiguo: si un campo pudiera
+    contener el separador, dos eventos con contenido distinto producirian el
+    mismo payload y por lo tanto el mismo hash (p. ej. credential_id="X|Y",
+    verifier_id="Z" frente a credential_id="X", verifier_id="Y|Z"). El prefijo
+    de longitud elimina esa ambiguedad sin depender de que ningun campo evite
+    un caracter en particular.
+    """
+    data = value.encode("utf-8")
+    return len(data).to_bytes(4, "big") + data
 
 
 def _compute_hash(
@@ -17,8 +32,14 @@ def _compute_hash(
     previous_hash: str,
 ) -> str:
     """Calcula el hash de un evento a partir de sus campos y el hash anterior."""
-    payload = f"{credential_id}|{verifier_id}|{timestamp}|{decision}|{previous_hash}"
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    payload = (
+        _encode_field(credential_id)
+        + _encode_field(verifier_id)
+        + struct.pack(">d", timestamp)
+        + _encode_field(decision)
+        + _encode_field(previous_hash)
+    )
+    return hashlib.sha256(payload).hexdigest()
 
 
 @dataclass(frozen=True)

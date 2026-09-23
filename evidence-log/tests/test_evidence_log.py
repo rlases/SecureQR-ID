@@ -52,3 +52,16 @@ def test_events_devuelve_una_tupla_no_editable():
         assert False, "se esperaba un error al intentar editar un elemento"
     except TypeError:
         pass
+
+
+def test_hash_no_es_ambiguo_entre_reparticiones_distintas_de_los_mismos_campos():
+    # Con un separador de texto ingenuo ("X|Y" + "Z" == "X" + "Y|Z" == "X|Y|Z"),
+    # estos dos eventos habrian producido el mismo hash pese a tener
+    # credential_id/verifier_id distintos.
+    log1 = EvidenceLog()
+    log2 = EvidenceLog()
+
+    e1 = log1.append_event("X|Y", "Z", 1000.0, "aceptado")
+    e2 = log2.append_event("X", "Y|Z", 1000.0, "aceptado")
+
+    assert e1.hash != e2.hash
