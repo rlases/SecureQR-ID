@@ -18,8 +18,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
           cache-dependency-path: mi-app-qr/package-lock.json
 
       - run: npm ci
@@ -36,8 +36,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
           cache-dependency-path: mi-app-qr/server/package-lock.json
 
       - run: npm install
@@ -55,8 +55,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
           cache-dependency-path: mi-app-qr/client/package-lock.json
 
       - run: npm install
@@ -74,8 +74,8 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-          cache: "pip"
+          python-version: '3.13'
+          cache: 'pip'
           cache-dependency-path: issuer/pyproject.toml
 
       - run: python -m pip install -e ".[test]"
@@ -92,8 +92,8 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-          cache: "pip"
+          python-version: '3.13'
+          cache: 'pip'
           cache-dependency-path: |
             verifier/pyproject.toml
             issuer/pyproject.toml
@@ -112,8 +112,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: '22'
+          cache: 'npm'
           cache-dependency-path: verifier-web/package-lock.json
 
       - run: npm ci
@@ -133,9 +133,10 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-          cache: "pip"
+          python-version: '3.13'
+          cache: 'pip'
           cache-dependency-path: evidence-log/pyproject.toml
 
       - run: python -m pip install -e ".[test]"
       - run: python -m pytest
+
