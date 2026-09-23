@@ -21,16 +21,12 @@ def test_detecta_eslabon_alterado():
     assert log.verify_chain() is True
 
     # Simulamos que alguien edito el almacenamiento por fuera de la API publica
-    # (por ejemplo, editando el archivo en disco a mano mas adelante).
-    original = log._events[0]
-    log._events[0] = original.__class__(
-        credential_id="cred-999",  # dato cambiado
-        verifier_id=original.verifier_id,
-        timestamp=original.timestamp,
-        decision=original.decision,
-        previous_hash=original.previous_hash,
-        hash=original.hash,  # el hash guardado sigue siendo el viejo
+    # (por ejemplo, editando el archivo .db a mano). El hash guardado se deja
+    # intacto, para simular que no pudo recalcular la firma.
+    log._conn.execute(
+        "UPDATE events SET credential_id = ? WHERE seq = 1", ("cred-999",)
     )
+    log._conn.commit()
 
     assert log.verify_chain() is False
 

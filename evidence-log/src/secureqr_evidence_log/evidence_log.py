@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 from dataclasses import dataclass
 
 GENESIS_HASH = "0" * 64
@@ -31,20 +32,44 @@ class Event:
 
 
 class EvidenceLog:
-    """Bitacora append-only: los eventos solo se agregan, nunca se editan ni se borran."""
+    """Bitacora append-only respaldada en SQLite.
 
-    def __init__(self) -> None:
-        self._events: list[Event] = []
+    db_path=":memory:" (por defecto) mantiene todo en memoria, util para pruebas
+    rapidas. Pasando una ruta de archivo, los eventos sobreviven a reiniciar
+    el programa.
+    """
+
+    def __init__(self, db_path: str = ":memory:") -> None:
+        self._conn = sqlite3.connect(db_path)
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS events (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                credential_id TEXT NOT NULL,
+                verifier_id TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                decision TEXT NOT NULL,
+                previous_hash TEXT NOT NULL,
+                hash TEXT NOT NULL
+            )
+            """
+        )
+        self._conn.commit()
 
     @property
     def events(self) -> tuple[Event, ...]:
-        """Vista de solo lectura. No tiene 'setter': no se puede hacer log.events = ..."""
-        return tuple(self._events)
+        """Vista de solo lectura, leida directamente desde SQLite."""
+        rows = self._conn.execute(
+            "SELECT credential_id, verifier_id, timestamp, decision, "
+            "previous_hash, hash FROM events ORDER BY seq"
+        ).fetchall()
+        return tuple(Event(*row) for row in rows)
 
     def _last_hash(self) -> str:
-        if not self._events:
-            return GENESIS_HASH
-        return self._events[-1].hash
+        row = self._conn.execute(
+            "SELECT hash FROM events ORDER BY seq DESC LIMIT 1"
+        ).fetchone()
+        return row[0] if row else GENESIS_HASH
 
     def append_event(
         self,
@@ -57,7 +82,14 @@ class EvidenceLog:
         event_hash = _compute_hash(
             credential_id, verifier_id, timestamp, decision, previous_hash
         )
-        event = Event(
+        self._conn.execute(
+            "INSERT INTO events "
+            "(credential_id, verifier_id, timestamp, decision, previous_hash, hash) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (credential_id, verifier_id, timestamp, decision, previous_hash, event_hash),
+        )
+        self._conn.commit()
+        return Event(
             credential_id=credential_id,
             verifier_id=verifier_id,
             timestamp=timestamp,
@@ -65,13 +97,11 @@ class EvidenceLog:
             previous_hash=previous_hash,
             hash=event_hash,
         )
-        self._events.append(event)
-        return event
 
     def verify_chain(self) -> bool:
         """Recalcula cada hash y comprueba que la cadena no fue alterada."""
         previous_hash = GENESIS_HASH
-        for event in self._events:
+        for event in self.events:
             if event.previous_hash != previous_hash:
                 return False
             expected_hash = _compute_hash(
@@ -85,3 +115,6 @@ class EvidenceLog:
                 return False
             previous_hash = event.hash
         return True
+
+    def close(self) -> None:
+        self._conn.close()
