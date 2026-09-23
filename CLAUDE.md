@@ -89,8 +89,12 @@ código de uno con el otro. Ver "Relación con el prototipo existente" en
   iniciativa), repártelo en partes iguales entre los dos autores en ese momento — no
   uses el desbalance acumulado histórico (quién ha cerrado más PR en total) para
   inclinar el reparto de lo nuevo hacia uno de los dos. El desbalance acumulado sí se
-  documenta como contexto en `docs/STATE.md` (para que quede visible), pero no
-  determina cuánto le toca a cada quien de lo que sigue — eso siempre es parejo.
+  documenta como contexto en `docs/STATE.md` (para que quede visible), y es lo que
+  desempata cuando el lote **no** se puede partir parejo (número impar de issues
+  indivisibles, un solo issue, o piezas de tamaño muy distinto): en ese caso el
+  ítem/parte que sobra le toca a quien tenga *menos* carga acumulada hasta ese momento,
+  no a quien redactó el lote ni por conveniencia. Con dos issues divisibles o un lote
+  parejo, la regla simple (2 y 2, mitad y mitad) sigue siendo la norma.
 
 ## Trampas conocidas
 
