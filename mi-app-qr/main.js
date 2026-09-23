@@ -54,7 +54,14 @@ async function writeLicenseData(data) {
     await fs.writeFile(licenseFilePath, JSON.stringify(dataToStore, null, 2), 'utf-8');
 }
 
-ipcMain.handle('check-license', async () => {
+// Adaptada al modelo cliente-servidor (issue #50): ya no existe un renderer que
+// consulte esto por IPC (el proceso Electron ahora sirve el cliente nuevo en
+// localhost:4000, un solo puesto que actúa como servidor para toda la red
+// institucional — no una instalación por persona). El chequeo pasa a bloquear el
+// arranque del servidor mismo: si la licencia no es válida, nadie en la red llega
+// a usar la app, en vez de comprobarse una vez por sesión de un renderer que nadie
+// carga ya.
+async function checkLicense() {
     const now = Date.now();
     const licenseData = await readLicenseData();
 
@@ -62,34 +69,32 @@ ipcMain.handle('check-license', async () => {
 
     if (signature && signature !== createSignature({ installationDate, lastExecutionDate, isTampered })) {
         await writeLicenseData({ installationDate, lastExecutionDate, isTampered: true });
-        return { status: 'TAMPERED' };
+        throw new Error('Los datos de licencia fueron manipulados. Contacta al administrador del sistema.');
     }
 
     if (isTampered) {
-        return { status: 'TAMPERED' };
+        throw new Error('Los datos de licencia fueron manipulados. Contacta al administrador del sistema.');
     }
 
     if (!installationDate) {
-        const newData = { installationDate: now, lastExecutionDate: now, isTampered: false };
-        await writeLicenseData(newData);
-        return { status: 'VALID' };
+        await writeLicenseData({ installationDate: now, lastExecutionDate: now, isTampered: false });
+        return;
     }
 
     if (now < lastExecutionDate) {
         await writeLicenseData({ ...licenseData, isTampered: true });
-        return { status: 'TAMPERED' };
+        throw new Error('Se detectó una manipulación del reloj del sistema. Contacta al administrador del sistema.');
     }
 
     const elapsedMilliseconds = now - installationDate;
     const elapsedDays = elapsedMilliseconds / (1000 * 60 * 60 * 24);
 
     if (elapsedDays > TRIAL_DAYS) {
-        return { status: 'EXPIRED' };
+        throw new Error(`El periodo de prueba (${TRIAL_DAYS} días) expiró. Contacta al administrador para renovar la licencia.`);
     }
 
     await writeLicenseData({ ...licenseData, lastExecutionDate: now });
-    return { status: 'VALID' };
-});
+}
 // --- FIN: LÓGICA DE LICENCIA ---
 
 // --- INICIO: ARRANQUE DEL SERVIDOR REAL ---
@@ -236,9 +241,12 @@ if (!gotTheLock) {
             win.focus();
         }
     });
-    // Cargar la configuración ANTES de crear la ventana
+    // Cargar la configuración y verificar la licencia ANTES de arrancar el
+    // servidor — si la licencia no es válida, el servidor nunca se levanta y
+    // nadie en la red institucional puede usar la app.
     app.whenReady()
         .then(loadConfiguration)
+        .then(checkLicense)
         .then(startServer)
         .then(({ isFirstRun, adminUsername, adminPassword }) => {
             createWindow();

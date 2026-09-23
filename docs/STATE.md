@@ -115,6 +115,17 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   conocida:** el equipo que actúa como servidor necesita Node.js instalado
   mientras no exista un instalador empaquetado (`electron-builder`, fuera de
   alcance — ver "Implementación").
+- **Sistema de licencia/prueba adaptado al modelo cliente-servidor.** Decisión de
+  Jhunier: no se elimina, se adapta. Antes era código muerto — un handler IPC
+  (`check-license`) que solo el renderer viejo (`src/App.js`, nunca cargado desde que
+  `main.js` sirve `localhost:4000`) invocaba. Pasó a ser una función que bloquea el
+  arranque del servidor mismo (`app.whenReady().then(loadConfiguration).then(checkLicense).then(startServer)...`):
+  si la licencia está vencida o manipulada, el servidor nunca se levanta y nadie en la
+  red institucional puede usar la app, en vez de comprobarse por sesión de un renderer
+  que ya nadie carga. Se quitó `checkLicense` de `preload.js` (sin consumidor legítimo
+  ya). `src/App.js` sigue con su propia referencia a `window.electronAPI.checkLicense`,
+  pero como ese archivo entero ya estaba huérfano (no lo carga ninguna ventana), no
+  introduce ningún problema nuevo — es limpieza aparte, no parte de esta decisión.
 
 ## En curso
 
@@ -180,9 +191,6 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
   instalador, instalarlo, correrlo). Hasta que esto exista, la app solo corre sin
   empaquetar (`npm run electron-dev`), lo que exige Node.js instalado en el
   equipo que actúa como servidor.
-- **Decisión de producto pendiente:** qué hacer con el sistema de licencia/prueba
-  existente en `main.js` frente al modelo multiusuario — el cliente nuevo no lo
-  llama, quedó como código muerto sin que nadie lo haya decidido explícitamente.
 - HTTPS en la red del CCAV — ya señalado como pendiente en ADR-0008.
 - **Decisiones de producto pendientes sobre correcciones:** que un operador corrija sus
   propios registros; deshacer una corrección. Ambas fuera de alcance a propósito del
@@ -208,6 +216,12 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 ---
 
 ## Notas de sesiones recientes
+
+**2026-09-23 — Issue #50 cerrado: licencia/prueba adaptada, no eliminada.** Jhunier
+decidió mantener el sistema de licencia/prueba de `main.js`, adaptándolo al modelo
+cliente-servidor en vez de borrarlo. Detalle en "Hecho" arriba. Implementado
+directamente por Jhunier pese a que el issue había quedado asignado a Duverney en el
+reparto por equidad de carga — excepción puntual, no cambia el reparto general.
 
 **2026-08-22 — PR #37, #39, #40, #41: dependencias, migración de componentes,
 historial de correcciones.** Codex resolvió issue #36 (dependencias, PR #37, fusionado)

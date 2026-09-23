@@ -2,8 +2,9 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
+// checkLicense ya no se expone aquí (issue #50): la licencia se verifica una vez
+// al arrancar el servidor, en main.js, no por renderer/sesión — ver ese archivo.
 contextBridge.exposeInMainWorld('electronAPI', {
-    checkLicense: () => ipcRenderer.invoke('check-license'),
     requestAdminPrivileges: () => ipcRenderer.invoke('request-admin-privileges'),
     saveCsvDialog: (fileName, csvContent) => {
         // Validación: Asegurarse de que los argumentos son strings
