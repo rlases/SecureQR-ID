@@ -62,3 +62,21 @@ class EvidenceLog:
         )
         self.events.append(event)
         return event
+    
+    def verify_chain(self) -> bool:
+        """Recalcula cada hash y comprueba que la cadena no fue alterada."""
+        previous_hash = GENESIS_HASH
+        for event in self.events:
+            if event.previous_hash != previous_hash:
+                return False
+            expected_hash = _compute_hash(
+                event.credential_id,
+                event.verifier_id,
+                event.timestamp,
+                event.decision,
+                event.previous_hash,
+            )
+            if event.hash != expected_hash:
+                return False
+            previous_hash = event.hash
+        return True
