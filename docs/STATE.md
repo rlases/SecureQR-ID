@@ -162,32 +162,50 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ### Implementación
 
-- `evidence-log/` — bitácora encadenada
-- `anchor/` — Merkle + Hyperledger Fabric
-- `revocation/` — lista firmada
-- `mi-app-qr/client`: cablear en `RegistrosPage` los componentes migrados en PR #39
+Repartición actualizada 2026-09-23 (ver nota de sesión más abajo — el criterio fue
+equidad de carga acumulada, no afinidad con el módulo):
+
+**Duverney** — continúa el terceto integridad/anclaje que ya traía (`evidence-log/` y
+`revocation/` fusionados hoy, PR #43 y #44):
+
+- Issue #9 — `anchor/`: Merkle + Hyperledger Fabric + sellado OpenTimestamps (ADR-0007).
+- Issue #45 — conectar `evidence-log/` real en `verifier/` (que cada validación
+  aceptada/rechazada quede registrada en la bitácora). Seguimiento directo de PR #43.
+- Issue #46 — conectar `RevocationList` real como `revocation_checker` al construir el
+  `Verifier` de producción. Seguimiento directo de PR #44.
+- Issue #47 — distribución de la lista de revocación a verificadores con conectividad
+  intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
+
+**Jhunier** — cierre de frentes ya abiertos en `mi-app-qr/`, sin módulo criptográfico
+nuevo esta vuelta:
+
+- Issue #48 — cablear en `RegistrosPage` los componentes migrados en PR #39
   (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser`) — existen pero
-  ninguno está en uso todavía. Ojo: `EditRecordModal` edita en sitio (esquema del
-  prototipo viejo); `RegistrosPage` ya tiene un flujo de corrección con `motivo`
-  obligatorio y traza append-only (`CorregirRegistroModal`, ADR-0008) — decidir si
-  `EditRecordModal` se descarta a favor de ese flujo en vez de introducir una segunda
-  vía de edición que lo contradiga. WebSockets si el polling de 7s resulta insuficiente.
-- **Empaquetado con `electron-builder`** de la app integrada (instalador `.exe`
-  distribuible con `server/dist`, `server/node_modules` — incluyendo el binario
-  nativo de `better-sqlite3` recompilado contra la ABI de Electron, probablemente
-  con `electron-rebuild` — y `client/dist`). Riesgo real de problemas específicos
-  de plataforma; necesita su propio plan con su propia verificación (construir el
-  instalador, instalarlo, correrlo). Hasta que esto exista, la app solo corre sin
-  empaquetar (`npm run electron-dev`), lo que exige Node.js instalado en el
-  equipo que actúa como servidor.
-- **Decisión de producto pendiente:** qué hacer con el sistema de licencia/prueba
-  existente en `main.js` frente al modelo multiusuario — el cliente nuevo no lo
-  llama, quedó como código muerto sin que nadie lo haya decidido explícitamente.
-- HTTPS en la red del CCAV — ya señalado como pendiente en ADR-0008.
-- **Decisiones de producto pendientes sobre correcciones:** que un operador corrija sus
-  propios registros; deshacer una corrección. Ambas fuera de alcance a propósito del
-  plan de corrección de registros ya cerrado. (Ver historial completo de la cadena ya
-  no está pendiente: PR #41, issue #38.)
+  ninguno está en uso todavía. Decisión previa obligatoria: `EditRecordModal` edita en
+  sitio (esquema del prototipo viejo); `RegistrosPage` ya tiene un flujo de corrección
+  append-only (`CorregirRegistroModal`, ADR-0008) — no cablearlo a ciegas.
+- Issue #49 — empaquetado con `electron-builder` (instalador `.exe` con
+  `server/dist`, `server/node_modules` incluyendo `better-sqlite3` recompilado contra
+  la ABI de Electron, y `client/dist`). Hasta que exista, la app solo corre sin
+  empaquetar (`npm run electron-dev`), lo que exige Node.js instalado en el equipo que
+  actúa como servidor.
+- Issue #50 — decisión de producto sobre el sistema de licencia/prueba en `main.js`
+  (código muerto frente al modelo multiusuario).
+- Issue #51 — HTTPS en la red del CCAV (ADR-0008).
+
+**Conjunta** (ninguno de los dos decide solo):
+
+- Issue #4 — unificar el número de objetivos específicos (bloqueante de la propuesta).
+- Decisiones de producto sobre correcciones: que un operador corrija sus propios
+  registros; deshacer una corrección. Sin issue todavía — quedan fuera de alcance a
+  propósito del plan de corrección de registros ya cerrado (PR #28). (El historial
+  completo de la cadena ya no está pendiente: PR #41, issue #38.)
+- Fase 4/5 de `ROADMAP.md` (batería de ataques, instrumentos de evaluación, piloto,
+  manuales, publicación) — trabajo conjunto de investigación, todavía no tiene issues
+  de código.
+
+WebSockets si el polling de 7s de `RegistrosPage` resulta insuficiente — no es
+bloqueante todavía, sin issue.
 
 ### Evaluación
 
@@ -208,6 +226,22 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 ---
 
 ## Notas de sesiones recientes
+
+**2026-09-23 — Repartición de pendientes por equidad de carga.** `evidence-log/`
+(PR #43) y `revocation/` (PR #44) de Duverney se fusionaron hoy tras revisión cruzada
+(se corrigió un hash ambiguo en `evidence-log/` — payload concatenado con `"|"` en vez
+de codificación con prefijo de longitud, ver commit `d1a747a` en `main`) y resolución de
+un conflicto real en `.github/workflows/ci.yml` entre ambos PR (ambos añadían su job al
+mismo punto del archivo; se conservaron los dos). Con eso, el conteo de PR fusionados
+del repositorio queda muy desbalanceado (~29 de Jhunier frente a 2 de Duverney, sin
+contar los PR de infraestructura/documentación previos al reparto original de
+`issuer/verifier` vs. `evidence-log/revocation/anchor`). Se repartieron los pendientes
+de implementación en consecuencia — no por afinidad de módulo, sino para nivelar carga
+acumulada: Duverney conserva y completa su terceto original (`anchor/` + conectar en
+producción lo que ya construyó en `evidence-log/`/`revocation/`, issues #45-#47, más
+#9 ya asignado); a Jhunier le tocó el cierre de frentes ya abiertos en `mi-app-qr/`
+sin módulo criptográfico nuevo esta vuelta (issues #48-#51). Detalle completo en
+"Pendiente → Implementación" arriba.
 
 **2026-08-22 — PR #37, #39, #40, #41: dependencias, migración de componentes,
 historial de correcciones.** Codex resolvió issue #36 (dependencias, PR #37, fusionado)
