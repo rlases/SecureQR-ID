@@ -127,6 +127,17 @@ solo falta `anchor/` (issue #9) para completarla.
   específicos ya redactados y ajustar esos entregables en consecuencia — no al revés.
   Notas de reconciliación en ambos documentos de `docs/raw/` actualizadas de
   "pendiente" a "resuelto".
+- **Sistema de licencia/prueba adaptado al modelo cliente-servidor.** Decisión de
+  Jhunier: no se elimina, se adapta. Antes era código muerto — un handler IPC
+  (`check-license`) que solo el renderer viejo (`src/App.js`, nunca cargado desde que
+  `main.js` sirve `localhost:4000`) invocaba. Pasó a ser una función que bloquea el
+  arranque del servidor mismo (`app.whenReady().then(loadConfiguration).then(checkLicense).then(startServer)...`):
+  si la licencia está vencida o manipulada, el servidor nunca se levanta y nadie en la
+  red institucional puede usar la app, en vez de comprobarse por sesión de un renderer
+  que ya nadie carga. Se quitó `checkLicense` de `preload.js` (sin consumidor legítimo
+  ya). `src/App.js` sigue con su propia referencia a `window.electronAPI.checkLicense`,
+  pero como ese archivo entero ya estaba huérfano (no lo carga ninguna ventana), no
+  introduce ningún problema nuevo — es limpieza aparte, no parte de esta decisión.
 
 ## En curso
 
@@ -193,8 +204,6 @@ estaban pendientes:
   `Verifier` de producción. Seguimiento directo de PR #44.
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
-- Issue #48 — cablear en `RegistrosPage` los componentes migrados en PR #39
-  (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser`) — existen pero
   ninguno está en uso todavía. Decisión previa obligatoria: `EditRecordModal` edita en
   sitio (esquema del prototipo viejo); `RegistrosPage` ya tiene un flujo de corrección
   append-only (`CorregirRegistroModal`, ADR-0008) — no cablearlo a ciegas. Requiere
@@ -204,18 +213,17 @@ estaban pendientes:
   la ABI de Electron, y `client/dist`). Hasta que exista, la app solo corre sin
   empaquetar (`npm run electron-dev`), lo que exige Node.js instalado en el equipo que
   actúa como servidor.
-- Issue #50 — decisión de producto sobre el sistema de licencia/prueba en `main.js`
-  (código muerto frente al modelo multiusuario).
 - Issue #51 — HTTPS en la red del CCAV (ADR-0008).
 
-**Jhunier** — sin issue de implementación nuevo esta vuelta; ya cerró la enorme
-mayoría del trabajo del repositorio (~29 PR fusionados frente a los 2 de Duverney).
-Sigue disponible para revisión cruzada (obligatoria por `CONTRIBUTING.md` en cada PR
-que abra Duverney) y para las decisiones conjuntas de abajo.
+**Jhunier** — issue #50 (decisión de producto sobre el sistema de licencia/prueba en
+`main.js`), resuelto por él mismo en este mismo PR — ver "Hecho" arriba. Excepción
+puntual al reparto por equidad de carga, no lo cambia de fondo: sigue sin tomar más
+issues de implementación esta vuelta, más allá de este. Disponible para revisión
+cruzada (obligatoria por `CONTRIBUTING.md` en cada PR que abra Duverney) y para las
+decisiones conjuntas de abajo.
 
 **Conjunta** (ninguno de los dos decide solo):
 
-- Issue #4 — unificar el número de objetivos específicos (bloqueante de la propuesta).
 - Decisiones de producto sobre correcciones: que un operador corrija sus propios
   registros; deshacer una corrección. Sin issue todavía — quedan fuera de alcance a
   propósito del plan de corrección de registros ya cerrado (PR #28). (El historial
@@ -246,6 +254,12 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-09-23 — Issue #50 cerrado: licencia/prueba adaptada, no eliminada.** Jhunier
+decidió mantener el sistema de licencia/prueba de `main.js`, adaptándolo al modelo
+cliente-servidor en vez de borrarlo. Detalle en "Hecho" arriba. Implementado
+directamente por Jhunier pese a que el issue había quedado asignado a Duverney en el
+reparto por equidad de carga — excepción puntual, no cambia el reparto general.
 
 **2026-09-23 — Issue #4 cerrado: tres objetivos específicos.** Jhunier confirmó la
 decisión: el proyecto queda en tres objetivos específicos (los de la propuesta de grado
