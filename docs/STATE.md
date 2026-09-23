@@ -162,11 +162,14 @@ ser borrador para cerrar formalmente la Fase 2 (ver `ROADMAP.md`).
 
 ### Implementación
 
-Repartición actualizada 2026-09-23 (ver nota de sesión más abajo — el criterio fue
-equidad de carga acumulada, no afinidad con el módulo):
+Repartición actualizada 2026-09-23, ajustada el mismo día tras confirmar con Jhunier
+que su lista de pendientes propia ya está corta (cerró la enorme mayoría de los PR del
+repositorio) — ver nota de sesión más abajo. Los siete issues nuevos/reabiertos quedan
+con Duverney; Jhunier no toma issue nuevo esta vuelta:
 
-**Duverney** — continúa el terceto integridad/anclaje que ya traía (`evidence-log/` y
-`revocation/` fusionados hoy, PR #43 y #44):
+**Duverney** — su terceto original completo (`evidence-log/` y `revocation/` ya
+fusionados hoy, PR #43 y #44) más el cierre de los frentes de `mi-app-qr/` que
+estaban pendientes:
 
 - Issue #9 — `anchor/`: Merkle + Hyperledger Fabric + sellado OpenTimestamps (ADR-0007).
 - Issue #45 — conectar `evidence-log/` real en `verifier/` (que cada validación
@@ -175,15 +178,12 @@ equidad de carga acumulada, no afinidad con el módulo):
   `Verifier` de producción. Seguimiento directo de PR #44.
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
-
-**Jhunier** — cierre de frentes ya abiertos en `mi-app-qr/`, sin módulo criptográfico
-nuevo esta vuelta:
-
 - Issue #48 — cablear en `RegistrosPage` los componentes migrados en PR #39
   (`EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser`) — existen pero
   ninguno está en uso todavía. Decisión previa obligatoria: `EditRecordModal` edita en
   sitio (esquema del prototipo viejo); `RegistrosPage` ya tiene un flujo de corrección
-  append-only (`CorregirRegistroModal`, ADR-0008) — no cablearlo a ciegas.
+  append-only (`CorregirRegistroModal`, ADR-0008) — no cablearlo a ciegas. Requiere
+  familiarizarse primero con `mi-app-qr/client`, que hasta ahora solo tocó Jhunier.
 - Issue #49 — empaquetado con `electron-builder` (instalador `.exe` con
   `server/dist`, `server/node_modules` incluyendo `better-sqlite3` recompilado contra
   la ABI de Electron, y `client/dist`). Hasta que exista, la app solo corre sin
@@ -192,6 +192,11 @@ nuevo esta vuelta:
 - Issue #50 — decisión de producto sobre el sistema de licencia/prueba en `main.js`
   (código muerto frente al modelo multiusuario).
 - Issue #51 — HTTPS en la red del CCAV (ADR-0008).
+
+**Jhunier** — sin issue de implementación nuevo esta vuelta; ya cerró la enorme
+mayoría del trabajo del repositorio (~29 PR fusionados frente a los 2 de Duverney).
+Sigue disponible para revisión cruzada (obligatoria por `CONTRIBUTING.md` en cada PR
+que abra Duverney) y para las decisiones conjuntas de abajo.
 
 **Conjunta** (ninguno de los dos decide solo):
 
@@ -226,6 +231,15 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-09-23 — Ajuste del reparto: los 4 issues de `mi-app-qr/` también pasan a
+Duverney.** El reparto inicial de esta misma fecha (nota siguiente) le había dejado a
+Jhunier 4 issues nuevos (#48-#51) y a Duverney otros 4 (#9, #45-#47), en conteo parejo
+pero no en carga real: Jhunier ya venía de cerrar ~29 PR contra 2 de Duverney, así que
+"parejo en cantidad de issues nuevos" seguía sin ser equitativo. Se reasignaron #48-#51
+a Duverney; Jhunier no toma issue de implementación nuevo esta vuelta. Único costo real:
+Duverney tendrá que familiarizarse con `mi-app-qr/client`, que hasta ahora solo tocó
+Jhunier — aceptado a cambio de la equidad.
 
 **2026-09-23 — Repartición de pendientes por equidad de carga.** `evidence-log/`
 (PR #43) y `revocation/` (PR #44) de Duverney se fusionaron hoy tras revisión cruzada
