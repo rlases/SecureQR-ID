@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { buildMerkleTree, getInclusionProof, verifyInclusionProof } from '../src/merkle.js';
+import type { ProofStep } from '../src/merkle.js';
 
 function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
@@ -57,5 +58,20 @@ describe('pruebas de inclusion', () => {
     const hojaFalsa = sha256('no-estaba-aqui');
 
     expect(verifyInclusionProof(hojaFalsa, prueba, arbol.root)).toBe(false);
+  });
+
+  it('un nodo interno no se puede hacer pasar por una hoja (separacion de dominio, CVE-2012-2459)', () => {
+    // Sin prefijos de hoja/nodo, H(hoja0, hoja1) -- un nodo interno real del
+    // arbol -- se puede presentar como si fuera el hash de un evento que
+    // nunca existio, junto con una prueba mas corta (el otro nodo interno del
+    // mismo nivel) que igual reconstruye la raiz real. Reproduce exactamente
+    // ese ataque contra la raiz publicada.
+    const hojas = [sha256('evento-1'), sha256('evento-2'), sha256('evento-3'), sha256('evento-4')];
+    const arbol = buildMerkleTree(hojas);
+
+    const nodoInternoComoHojaFalsa = arbol.layers[1][0]; // H(hoja0, hoja1)
+    const pruebaForjada: ProofStep[] = [{ hash: arbol.layers[1][1], position: 'right' }]; // H(hoja2, hoja3)
+
+    expect(verifyInclusionProof(nodoInternoComoHojaFalsa, pruebaForjada, arbol.root)).toBe(false);
   });
 });

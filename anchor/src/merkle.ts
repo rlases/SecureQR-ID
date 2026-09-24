@@ -9,8 +9,21 @@ function sha256Hex(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
+// Prefijos de dominio (RFC 6962 / Certificate Transparency) para que el hash de
+// una hoja nunca pueda coincidir con el de un nodo interno. Sin esto, cualquiera
+// puede tomar un nodo interno ya calculado (p. ej. H(hoja0, hoja1)) y presentarlo
+// como si fuera el hash de un evento real que nunca existio, con una prueba de
+// inclusion mas corta que igual verifica contra la raiz — el defecto clasico de
+// arboles de Merkle sin separacion de dominio (CVE-2012-2459 en Bitcoin).
+const LEAF_PREFIX = '\x00';
+const NODE_PREFIX = '\x01';
+
+function hashLeaf(leafHash: string): string {
+  return sha256Hex(LEAF_PREFIX + leafHash);
+}
+
 function hashPair(left: string, right: string): string {
-  return sha256Hex(left + right);
+  return sha256Hex(NODE_PREFIX + left + right);
 }
 
 /**
@@ -27,9 +40,10 @@ export function buildMerkleTree(leafHashes: string[]): MerkleTree {
     throw new Error('No se puede construir un arbol de Merkle sin hojas.');
   }
 
-  const layers: string[][] = [leafHashes];
+  const hashedLeaves = leafHashes.map(hashLeaf);
+  const layers: string[][] = [hashedLeaves];
 
-  let currentLayer = leafHashes;
+  let currentLayer = hashedLeaves;
   while (currentLayer.length > 1) {
     const nextLayer: string[] = [];
     for (let i = 0; i < currentLayer.length; i += 2) {
@@ -76,7 +90,7 @@ export function getInclusionProof(tree: MerkleTree, leafIndex: number): ProofSte
 }
 
 export function verifyInclusionProof(leafHash: string, proof: ProofStep[], root: string): boolean {
-  let computed = leafHash;
+  let computed = hashLeaf(leafHash);
 
   for (const step of proof) {
     computed =
