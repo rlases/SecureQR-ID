@@ -47,3 +47,41 @@ export function buildMerkleTree(leafHashes: string[]): MerkleTree {
 
   return { root: currentLayer[0], layers };
 }
+
+export interface ProofStep {
+  hash: string;
+  position: 'left' | 'right';
+}
+
+export function getInclusionProof(tree: MerkleTree, leafIndex: number): ProofStep[] {
+  const proof: ProofStep[] = [];
+  let index = leafIndex;
+
+  for (let layerIndex = 0; layerIndex < tree.layers.length - 1; layerIndex++) {
+    const layer = tree.layers[layerIndex];
+    const isRightNode = index % 2 === 1;
+
+    if (isRightNode) {
+      proof.push({ hash: layer[index - 1], position: 'left' });
+    } else if (index + 1 < layer.length) {
+      proof.push({ hash: layer[index + 1], position: 'right' });
+    }
+    // Si es el ultimo nodo de una capa impar, se promovio sin pareja:
+    // no hay paso de prueba en este nivel.
+
+    index = Math.floor(index / 2);
+  }
+
+  return proof;
+}
+
+export function verifyInclusionProof(leafHash: string, proof: ProofStep[], root: string): boolean {
+  let computed = leafHash;
+
+  for (const step of proof) {
+    computed =
+      step.position === 'left' ? hashPair(step.hash, computed) : hashPair(computed, step.hash);
+  }
+
+  return computed === root;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { buildMerkleTree } from '../src/merkle.js';
+import { buildMerkleTree, getInclusionProof, verifyInclusionProof } from '../src/merkle.js';
 
 function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
@@ -25,5 +25,37 @@ describe('buildMerkleTree', () => {
     const arbolAlterado = buildMerkleTree(hojasAlteradas);
 
     expect(arbolOriginal.root).not.toBe(arbolAlterado.root);
+  });
+});
+
+describe('pruebas de inclusion', () => {
+  it('cada hoja tiene una prueba de inclusion valida, con numero par de hojas', () => {
+    const hojas = [sha256('a'), sha256('b'), sha256('c'), sha256('d')];
+    const arbol = buildMerkleTree(hojas);
+
+    hojas.forEach((hoja, indice) => {
+      const prueba = getInclusionProof(arbol, indice);
+      expect(verifyInclusionProof(hoja, prueba, arbol.root)).toBe(true);
+    });
+  });
+
+  it('cada hoja tiene una prueba de inclusion valida, con numero impar de hojas', () => {
+    const hojas = [sha256('a'), sha256('b'), sha256('c'), sha256('d'), sha256('e')];
+    const arbol = buildMerkleTree(hojas);
+
+    hojas.forEach((hoja, indice) => {
+      const prueba = getInclusionProof(arbol, indice);
+      expect(verifyInclusionProof(hoja, prueba, arbol.root)).toBe(true);
+    });
+  });
+
+  it('una prueba no sirve para una hoja que no estaba en el lote', () => {
+    const hojas = [sha256('a'), sha256('b'), sha256('c'), sha256('d')];
+    const arbol = buildMerkleTree(hojas);
+
+    const prueba = getInclusionProof(arbol, 0);
+    const hojaFalsa = sha256('no-estaba-aqui');
+
+    expect(verifyInclusionProof(hojaFalsa, prueba, arbol.root)).toBe(false);
   });
 });
