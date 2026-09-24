@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 import struct
 from dataclasses import dataclass
@@ -71,7 +72,9 @@ class EvidenceLog:
                 timestamp REAL NOT NULL,
                 decision TEXT NOT NULL,
                 previous_hash TEXT NOT NULL,
-                hash TEXT NOT NULL
+                hash TEXT NOT NULL,
+                anchored_at REAL,
+                merkle_root TEXT
             )
             """
         )
@@ -136,6 +139,46 @@ class EvidenceLog:
                 return False
             previous_hash = event.hash
         return True
+
+    def export_unanchored_batch(self, path: str) -> int:
+        """Escribe en `path` un JSON con los hashes aun no anclados (solo hashes,
+        nunca datos personales, segun la frontera de anchor/ en ARCHITECTURE.md).
+
+        Si no hay eventos pendientes, no crea ningun archivo y devuelve 0.
+        """
+        rows = self._conn.execute(
+            "SELECT hash FROM events WHERE anchored_at IS NULL ORDER BY seq"
+        ).fetchall()
+        hashes = [row[0] for row in rows]
+
+        if not hashes:
+            return 0
+
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump({"hashes": hashes}, file)
+
+        return len(hashes)
+
+    def mark_batch_anchored(
+        self, hashes: list[str], merkle_root: str, anchored_at: float
+    ) -> None:
+        """Marca los eventos dados como ya anclados, para que no vuelvan a
+        aparecer en un futuro export_unanchored_batch.
+
+        Falla (sin dejar cambios a medias) si algun hash no corresponde a un
+        evento existente.
+        """
+        for event_hash in hashes:
+            cursor = self._conn.execute(
+                "UPDATE events SET anchored_at = ?, merkle_root = ? WHERE hash = ?",
+                (anchored_at, merkle_root, event_hash),
+            )
+            if cursor.rowcount == 0:
+                self._conn.rollback()
+                raise ValueError(
+                    f"No existe un evento con hash {event_hash!r} en la bitacora."
+                )
+        self._conn.commit()
 
     def close(self) -> None:
         self._conn.close()
