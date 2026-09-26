@@ -99,7 +99,10 @@ async function checkLicense() {
 // --- FIN: LÓGICA DE LICENCIA ---
 
 // --- INICIO: ARRANQUE DEL SERVIDOR REAL ---
-const SERVER_DIR = path.join(__dirname, 'server');
+// Empaquetado (issue #49): server/ y client/ viajan como extraResources, junto
+// a app.asar, no dentro — better-sqlite3 (nativo) no podría cargarse desde
+// dentro del asar, y así tampoco hace falta desempaquetarlo aparte.
+const SERVER_DIR = isDev ? path.join(__dirname, 'server') : path.join(process.resourcesPath, 'server');
 const SERVER_PORT = 4000;
 const serverSecretsPath = path.join(userDataPath, 'server-secrets.json');
 const TLS_DIR = path.join(userDataPath, 'tls');
@@ -161,23 +164,28 @@ async function startServer() {
     const { certPath, keyPath, cert, regenerated } = await loadOrCreateCertificate(TLS_DIR);
     trustedServerCertPem = cert;
 
-    // NOTA: se usa el binario "node" del sistema (resuelto por PATH), no
-    // process.execPath (el propio Electron) con ELECTRON_RUN_AS_NODE=1. Se probó
-    // ese camino y falla: better-sqlite3 está compilado contra la ABI de Node del
-    // sistema (NODE_MODULE_VERSION 115), que no coincide con la ABI del Node que
-    // empaqueta Electron 30 (123) — el proceso hijo moría con un error de
-    // NODE_MODULE_VERSION al cargar el módulo nativo. Usar un Node real evita el
-    // mismatch sin recompilar nada.
+    // En desarrollo (`npm run electron-dev`) `server/node_modules/better-sqlite3`
+    // está compilado contra la ABI del Node del sistema (instalado con un `npm
+    // install` normal en server/), así que se spawnea con el binario "node" real
+    // resuelto por PATH — usar process.execPath (Electron) aquí falla con un
+    // error de NODE_MODULE_VERSION, porque la ABI de Electron no coincide con la
+    // del Node del sistema.
     //
-    // Esto significa que, por ahora, el equipo donde corre esta app como servidor
-    // necesita tener Node.js instalable en el PATH — aceptable en esta fase, ya que
-    // solo se corre sin empaquetar (`npm run electron-dev`). El plan de empaquetado
-    // con electron-builder (issue #49) resuelve esto de raíz con electron-rebuild —
-    // sin romper el desarrollo/pruebas standalone de server/, que sigue usando Node
-    // del sistema.
-    serverProcess = spawn('node', [path.join(SERVER_DIR, 'dist', 'index.js')], {
+    // Empaquetado (app.isPackaged), en cambio, recompila ese mismo módulo nativo
+    // contra la ABI de Electron como paso de build (scripts/rebuild-native.js,
+    // issue #49) — ahí sí se puede, y se debe, usar el propio Node embebido en
+    // Electron (process.execPath + ELECTRON_RUN_AS_NODE=1), porque ya no se puede
+    // asumir que el equipo servidor tenga Node.js instalado por separado. Esto es
+    // lo que resuelve de raíz la limitación documentada abajo para el caso
+    // empaquetado; en desarrollo sigue existiendo tal cual.
+    const [command, commandArgs, extraEnv] = !isDev
+        ? [process.execPath, [path.join(SERVER_DIR, 'dist', 'index.js')], { ELECTRON_RUN_AS_NODE: '1' }]
+        : ['node', [path.join(SERVER_DIR, 'dist', 'index.js')], {}];
+
+    serverProcess = spawn(command, commandArgs, {
         env: {
             ...process.env,
+            ...extraEnv,
             PORT: String(SERVER_PORT),
             SESSION_SECRET: secrets.sessionSecret,
             DB_PATH: path.join(userDataPath, 'server-data', 'app.db'),
@@ -240,7 +248,7 @@ function createWindow() {
             contextIsolation: true,
             preload: path.join(__dirname, 'preload.js')
         },
-        icon: path.join(__dirname, 'build', 'favicon.ico'),
+        icon: path.join(__dirname, 'public', 'favicon.ico'),
         show: false,
         autoHideMenuBar: true,
     });
