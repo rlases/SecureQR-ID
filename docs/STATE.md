@@ -6,12 +6,18 @@
 
 **Última actualización:** 2026-09-26
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) — los cinco módulos
-(`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`) ya están fusionados
-en `main` (PR #61 cerró `anchor/`, issue #9, con Merkle + Hyperledger Fabric). Nadie ha
-puesto el tag `v0.1.0` que `ROADMAP.md` pide al cerrar cada fase — pendiente, decisión
-conjunta, no depende de código. Issues #45-#47 (conectar `evidence-log/`/`revocation/`
-reales en producción) y #48-#51 (`mi-app-qr/`) siguen abiertos como cierre de frentes,
-ver "Pendiente → Implementación".
+tienen código fusionado en `main`, pero **`anchor/` solo cierra la mitad de lo que exige
+ADR-0007**: PR #61 fusionó la construcción del árbol de Merkle, las pruebas de inclusión
+y el contrato con `evidence-log/` (issue #9, ya cerrado en GitHub), pero el único
+`LedgerClient` que existe es `InMemoryLedgerClient` (`anchor/src/anchoring.ts:6-9`) — un
+doble de prueba, no una integración real. Ni el cliente Hyperledger Fabric
+(`fabric-network`, ADR-0005) ni el sellado periódico con OpenTimestamps (ADR-0007)
+están implementados; `anchor/package.json` no tiene ninguna de las dos dependencias.
+Cerrar issue #9 fue prematuro respecto al alcance real de ADR-0007 — queda como gap sin
+issue abierto que lo trackee, ver "Pendiente → Implementación". Nadie ha puesto el tag
+`v0.1.0` que `ROADMAP.md` pide al cerrar cada fase — pendiente, decisión conjunta, no
+depende solo de este gap. Issues #45-#47 (conectar `evidence-log/`/`revocation/` reales
+en producción) y #48-#51 (`mi-app-qr/`) también siguen abiertos.
 
 ---
 
@@ -231,7 +237,12 @@ con Duverney; Jhunier no toma issue nuevo esta vuelta:
 fusionados hoy, PR #43 y #44) más el cierre de los frentes de `mi-app-qr/` que
 estaban pendientes:
 
-- Issue #9 — `anchor/`: Merkle + Hyperledger Fabric + sellado OpenTimestamps (ADR-0007).
+- **Sin issue abierto todavía** — `anchor/`: cliente Hyperledger Fabric real
+  (`fabric-network`) y sellado periódico con OpenTimestamps (ADR-0007). El issue #9 se
+  cerró con solo la mitad de este alcance (Merkle + doble de prueba en memoria); hace
+  falta un issue nuevo para la integración real antes de que la Fase 3 pueda darse por
+  completa. No asignado — decisión conjunta pendiente, igual que el resto del reparto
+  nuevo (ver convención en `CLAUDE.md`).
 - Issue #45 — conectar `evidence-log/` real en `verifier/` (que cada validación
   **aceptada** quede registrada en la bitácora — `ARCHITECTURE.md` líneas 27 y 46-59
   solo contempla eventos aceptados, y `REJECTED_RESULT` en `verifier.py` nunca lleva
