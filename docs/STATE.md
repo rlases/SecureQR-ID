@@ -258,22 +258,27 @@ estaban pendientes:
   `Verifier` de producción. Seguimiento directo de PR #44.
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
-- Issue #48 — integración de componentes migrados: implementada en
-  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
-  Se descarta `EditRecordModal` a favor de `CorregirRegistroModal`; ver "En curso".
-- Issue #49 — empaquetado con `electron-builder` (instalador `.exe` con
-  `server/dist`, `server/node_modules` incluyendo `better-sqlite3` recompilado contra
-  la ABI de Electron, y `client/dist`). Hasta que exista, la app solo corre sin
-  empaquetar (`npm run electron-dev`), lo que exige Node.js instalado en el equipo que
-  actúa como servidor.
-- Issue #51 — HTTPS en la red del CCAV (ADR-0008).
+
+**Cerrados desde el reparto original (2026-09-26):**
+
+- **Issue #48 — cablear los componentes migrados en `RegistrosPage`.** Cerrado por
+  Duverney, PR #65 (fusionado): integró `ExportCsvModal`, `ForgottenOutModal` y
+  `qrParser`; `EditRecordModal` se descartó a favor del flujo de corrección append-only
+  ya existente (`CorregirRegistroModal`, ADR-0008), sin introducir una segunda vía de
+  edición en sitio.
+- **Issue #49 — empaquetado con `electron-builder`.** Resuelto por Jhunier, PR #67
+  (abierto, pendiente de revisión cruzada). Excepción puntual al reparto por equidad —
+  ver nota de sesión.
+- **Issue #51 — HTTPS en la red del CCAV.** Resuelto por Jhunier, PR #67 (junto con
+  #49, mismo PR — ver nota de sesión) — mecanismo documentado en ADR-0008.
 
 **Jhunier** — issue #50 (decisión de producto sobre el sistema de licencia/prueba en
-`main.js`), resuelto por él mismo en este mismo PR — ver "Hecho" arriba. Excepción
-puntual al reparto por equidad de carga, no lo cambia de fondo: sigue sin tomar más
-issues de implementación esta vuelta, más allá de este. Disponible para revisión
-cruzada (obligatoria por `CONTRIBUTING.md` en cada PR que abra Duverney) y para las
-decisiones conjuntas de abajo.
+`main.js`), resuelto por él mismo — ver "Hecho" arriba; y ahora también #49/#51 (ver
+nota de sesión 2026-09-26). Todas excepciones puntuales al reparto por equidad de
+carga, no lo cambian de fondo: Jhunier sigue sin tomar issues de implementación nuevos
+por iniciativa propia esta vuelta. Disponible para revisión cruzada (obligatoria por
+`CONTRIBUTING.md` en cada PR que abra Duverney) y para las decisiones conjuntas de
+abajo.
 
 **Conjunta** (ninguno de los dos decide solo):
 
