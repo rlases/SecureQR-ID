@@ -4,14 +4,14 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-09-23
-**Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
-(diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
-`SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
-unificado en tres (issue #4). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al
-cerrar cada fase — pendiente, decisión conjunta, no depende de código. De los cinco
-módulos de Fase 3 (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`)
-solo falta `anchor/` (issue #9) para completarla.
+**Última actualización:** 2026-09-26
+**Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) — los cinco módulos
+(`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`) ya están fusionados
+en `main` (PR #61 cerró `anchor/`, issue #9, con Merkle + Hyperledger Fabric). Nadie ha
+puesto el tag `v0.1.0` que `ROADMAP.md` pide al cerrar cada fase — pendiente, decisión
+conjunta, no depende de código. Issues #45-#47 (conectar `evidence-log/`/`revocation/`
+reales en producción) y #48-#51 (`mi-app-qr/`) siguen abiertos como cierre de frentes,
+ver "Pendiente → Implementación".
 
 ---
 
@@ -191,9 +191,16 @@ compartidos, repartidos en partes iguales entre los dos autores (a diferencia de
 reparto de módulos, aquí ninguno tiene ventaja de experiencia previa sobre el otro):
 
 - Issue #55 — sistema de diseño: tokens visuales unificados (color, tipografía,
-  espaciado, iconografía) → `docs/DESIGN-SYSTEM.md`. Asignado a Jhunier.
+  espaciado, iconografía) → `docs/DESIGN-SYSTEM.md`. Asignado a Jhunier. **Borrador
+  abierto en PR #62**, en revisión de Duverney — no cerrar el issue hasta acuerdo
+  explícito sobre las cuatro divergencias que el documento deja pendientes (paleta
+  única vs. dos lenguajes visuales, tokens de éxito/advertencia, pesos de fuente de
+  `verifier-web/`, modo oscuro).
 - Issue #56 — guía de contenido y microcopy en español (tono, mensajes de error/vacío,
-  confirmaciones) → `docs/CONTENT-GUIDE.md`. Asignado a Jhunier.
+  confirmaciones) → `docs/CONTENT-GUIDE.md`. Asignado a Jhunier. **Borrador abierto en
+  PR #63**, en revisión de Duverney — quedan dos hallazgos por acordar: unificar el
+  texto de carga (hoy inconsistente) y el vocabulario "editar" sobreviviente en
+  componentes muertos (`EditRecordModal`, `ForgottenOutModal`) pese a ADR-0008.
 - Issue #57 — catálogo de componentes UI y patrones de interacción (inventario de
   componentes, estados loading/vacío/error, patrón de modal de corrección) →
   `docs/COMPONENTS.md`. Asignado a Duverney.
@@ -285,6 +292,21 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-09-26 — Issues #55 y #56: borradores abiertos como PR, en revisión.** Jhunier
+redactó `docs/DESIGN-SYSTEM.md` (PR #62) y `docs/CONTENT-GUIDE.md` (PR #63), ambos
+extrayendo valores y textos reales del código en vez de inventar estándares — colores
+HSL de `mi-app-qr/client`, paleta CSS de `verifier-web/`, mensajes de error/vacío
+existentes, la restricción de mensajes genéricos de ADR-0012. Hallazgo no anticipado en
+el issue original: `mi-app-qr/client` y `verifier-web/` no comparten hoy ningún sistema
+de tokens (paletas y escalas tipográficas completamente distintas) — se documenta el
+estado real de cada una en vez de forzar una tabla única. Ambos PR quedan como borrador,
+con revisión pedida explícitamente a Duverney, tal como exige el issue ("decisión
+conjunta, redacción individual") — no se cierran con la aprobación de PR de rutina.
+Puntos concretos que quedan para acordar entre los dos: si unificar paleta entre las dos
+apps, tokenizar éxito/advertencia, normalizar pesos de fuente de `verifier-web/`, modo
+oscuro (issue #55); y unificar el texto de carga inconsistente y confirmar que
+"editar/edición" queda prohibido pese a seguir en componentes muertos (issue #56).
 
 **2026-09-23 — Nueva iniciativa de diseño/frontend, repartida en partes iguales.**
 Jhunier pidió mejorar el atractivo visual de `mi-app-qr/client` y `verifier-web/` para
