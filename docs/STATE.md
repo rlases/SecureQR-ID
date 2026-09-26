@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-09-23
+**Última actualización:** 2026-09-26
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -102,8 +102,9 @@ solo falta `anchor/` (issue #9) para completarla.
   `EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser` portados del
   prototipo Electron viejo. La primera versión conservaba el esquema de datos del
   prototipo (`record.Entrada`/`Rol`/`Nombre` en mayúsculas, tipado `any`) en vez del
-  tipo `Registro` real — corregido tras revisión. **Ninguno está cableado a
-  `RegistrosPage` todavía** — ver "Pendiente → Implementación".
+  tipo `Registro` real — corregido tras revisión. El cableado del issue #48 está
+  implementado en la rama `fix/48-integrar-componentes-registros`, pendiente de revisión
+  cruzada y merge; ver "En curso" y la nota de sesión 2026-09-26.
 - **Electron arranca el servidor real (ADR-0008 cerrado en su forma mínima):**
   `mi-app-qr/server` ahora sirve el build de `mi-app-qr/client` (fallback SPA), y
   `main.js` arranca ese servidor como proceso hijo al abrir la app, genera y
@@ -140,6 +141,28 @@ solo falta `anchor/` (issue #9) para completarla.
   introduce ningún problema nuevo — es limpieza aparte, no parte de esta decisión.
 
 ## En curso
+
+- **Issue #48 — integración en `RegistrosPage`**, rama
+  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
+  Se descarta y elimina `client/src/components/EditRecordModal.tsx` junto con sus
+  pruebas aisladas; la única corrección sigue siendo `CorregirRegistroModal`, con
+  motivo obligatorio y autorización `requireAdmin` en el servidor (ADR-0008).
+  `ExportCsvModal` descarga todos los registros vigentes o un rol exacto, reutilizando
+  el generador CSV de Informes (escape y protección de fórmulas); `null` identifica
+  "todos" para no colisionar con un rol libre llamado `all`.
+  `qrParser.parseQrTextData` rellena el formulario desde texto pegado o un lector que
+  actúe como teclado; el usuario revisa y envía. No se añade cámara, consulta de URLs
+  ni validación criptográfica o de vigencia; el parser HTML no se conecta a una red.
+  `ForgottenOutModal` advierte si el último evento vigente del documento es entrada
+  (orden por timestamp y luego id, incluidas correcciones), también el mismo día.
+  Permite cancelar, confirmar otra entrada, o al admin revisar la entrada anterior
+  mediante la corrección existente. No crea automáticamente una nueva entrada tras
+  corregir, no convierte una entrada en salida y no inventa fechas de salida.
+  El formulario permite registrar explícitamente entrada o salida mediante la API
+  actual. El aviso usa el listado consultado (polling de 7s): es una ayuda de UX,
+  no una garantía transaccional contra entradas concurrentes desde otros equipos.
+  La API actual no admite añadir una salida omitida con fecha histórica; esa
+  capacidad y su política de autorización quedan fuera de esta integración.
 
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
@@ -235,10 +258,9 @@ estaban pendientes:
   `Verifier` de producción. Seguimiento directo de PR #44.
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
-  ninguno está en uso todavía. Decisión previa obligatoria: `EditRecordModal` edita en
-  sitio (esquema del prototipo viejo); `RegistrosPage` ya tiene un flujo de corrección
-  append-only (`CorregirRegistroModal`, ADR-0008) — no cablearlo a ciegas. Requiere
-  familiarizarse primero con `mi-app-qr/client`, que hasta ahora solo tocó Jhunier.
+- Issue #48 — integración de componentes migrados: implementada en
+  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
+  Se descarta `EditRecordModal` a favor de `CorregirRegistroModal`; ver "En curso".
 - Issue #49 — empaquetado con `electron-builder` (instalador `.exe` con
   `server/dist`, `server/node_modules` incluyendo `better-sqlite3` recompilado contra
   la ABI de Electron, y `client/dist`). Hasta que exista, la app solo corre sin
@@ -285,6 +307,19 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-09-26 — Issue #48: componentes migrados conectados.** Se conserva la decisión
+append-only de ADR-0008: se retira el modal de edición directa del cliente web y se
+mantiene la corrección con motivo e historial. El prototipo Electron legado bajo
+`mi-app-qr/src` no se modifica. Se integra la exportación CSV, la precarga desde QR de
+texto y el aviso de posible salida olvidada, adaptando sus textos al modelo de eventos
+separados. Un operador conserva la capacidad de crear entradas/salidas y confirmar
+otra entrada, pero nunca recibe la acción de corregir. Los modales recién conectados
+incluyen foco inicial, contención de Tab, Escape y restauración del foco.
+Verificación local: `npm test` y `npm run build` en `mi-app-qr/client`; pruebas de
+integración de QR, exportación, aviso, corrección, permisos, reintento y envío pendiente.
+No se afirma validación manual en navegador ni E2E contra servidor real. Pendiente:
+revisión cruzada y CI del PR antes de fusionar.
 
 **2026-09-23 — Nueva iniciativa de diseño/frontend, repartida en partes iguales.**
 Jhunier pidió mejorar el atractivo visual de `mi-app-qr/client` y `verifier-web/` para
@@ -434,3 +469,4 @@ documentos fuente originales (propuesta de grado, entrega de Etapa 2, artículo 
 destilaron en `docs/raw/`, con los datos personales de identificación (cédula, teléfono,
 dirección de residencia) redactados antes de commitear — no pertenecen en un repositorio
 público. Pendiente: revisar `docs/raw/` con el otro autor y resolver ADR-0005 y ADR-0007.
+
