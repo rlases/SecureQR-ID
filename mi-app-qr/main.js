@@ -1,13 +1,14 @@
 // main.js
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const fetch = require('node-fetch');
 const sudo = require('sudo-prompt');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
-const http = require('http');
+const https = require('https');
+const { loadOrCreateCertificate } = require('./src/lib/tls');
 
 const isDev = !app.isPackaged;
 
@@ -101,8 +102,10 @@ async function checkLicense() {
 const SERVER_DIR = path.join(__dirname, 'server');
 const SERVER_PORT = 4000;
 const serverSecretsPath = path.join(userDataPath, 'server-secrets.json');
+const TLS_DIR = path.join(userDataPath, 'tls');
 
 let serverProcess = null;
+let trustedServerCertPem = null;
 
 async function loadOrCreateServerSecrets() {
     try {
@@ -119,11 +122,15 @@ async function loadOrCreateServerSecrets() {
     }
 }
 
-function waitForServerHealth(port, timeoutMs) {
+function waitForServerHealth(port, timeoutMs, cert) {
     const deadline = Date.now() + timeoutMs;
     return new Promise((resolve, reject) => {
         function attempt() {
-            const req = http.get(`http://localhost:${port}/api/health`, (res) => {
+            // ca: cert verifica contra el certificado autofirmado que se acaba de
+            // generar/cargar para esta misma instalación (ADR-0008) — no se
+            // desactiva la verificación (rejectUnauthorized), se valida contra la
+            // única CA que tiene sentido aquí: la nuestra.
+            const req = https.get(`https://localhost:${port}/api/health`, { ca: cert }, (res) => {
                 if (res.statusCode === 200) {
                     resolve();
                 } else if (Date.now() > deadline) {
@@ -148,6 +155,12 @@ async function startServer() {
     const secrets = await loadOrCreateServerSecrets();
     const isFirstRun = !serverProcess && secrets.adminPassword;
 
+    // Certificado autofirmado por instalación (ADR-0008, docs/DECISIONS.md): el
+    // mismo equipo que actúa como servidor lo genera y lo persiste en `userData`;
+    // no hay CA externa. Se regenera solo si cambiaron las IP de la red local.
+    const { certPath, keyPath, cert, regenerated } = await loadOrCreateCertificate(TLS_DIR);
+    trustedServerCertPem = cert;
+
     // NOTA: se usa el binario "node" del sistema (resuelto por PATH), no
     // process.execPath (el propio Electron) con ELECTRON_RUN_AS_NODE=1. Se probó
     // ese camino y falla: better-sqlite3 está compilado contra la ABI de Node del
@@ -159,9 +172,9 @@ async function startServer() {
     // Esto significa que, por ahora, el equipo donde corre esta app como servidor
     // necesita tener Node.js instalable en el PATH — aceptable en esta fase, ya que
     // solo se corre sin empaquetar (`npm run electron-dev`). El plan de empaquetado
-    // con electron-builder (fuera de alcance aquí) tendrá que resolver esto de raíz,
-    // probablemente con electron-rebuild como paso del empaquetado — sin romper el
-    // desarrollo/pruebas standalone de server/, que sigue usando Node del sistema.
+    // con electron-builder (issue #49) resuelve esto de raíz con electron-rebuild —
+    // sin romper el desarrollo/pruebas standalone de server/, que sigue usando Node
+    // del sistema.
     serverProcess = spawn('node', [path.join(SERVER_DIR, 'dist', 'index.js')], {
         env: {
             ...process.env,
@@ -170,6 +183,8 @@ async function startServer() {
             DB_PATH: path.join(userDataPath, 'server-data', 'app.db'),
             SEED_ADMIN_USERNAME: secrets.adminUsername,
             SEED_ADMIN_PASSWORD: secrets.adminPassword,
+            TLS_CERT_PATH: certPath,
+            TLS_KEY_PATH: keyPath,
         },
         stdio: 'pipe',
         shell: process.platform === 'win32',
@@ -178,9 +193,14 @@ async function startServer() {
     serverProcess.stdout.on('data', (data) => console.log(`[servidor] ${data}`.trim()));
     serverProcess.stderr.on('data', (data) => console.error(`[servidor] ${data}`.trim()));
 
-    await waitForServerHealth(SERVER_PORT, 15000);
+    await waitForServerHealth(SERVER_PORT, 15000, cert);
 
-    return { isFirstRun, adminUsername: secrets.adminUsername, adminPassword: secrets.adminPassword };
+    return {
+        isFirstRun,
+        adminUsername: secrets.adminUsername,
+        adminPassword: secrets.adminPassword,
+        certRegenerated: regenerated,
+    };
 }
 
 function stopServer() {
@@ -188,6 +208,22 @@ function stopServer() {
         serverProcess.kill();
         serverProcess = null;
     }
+}
+
+// Acepta en la ventana de Electron exactamente el certificado autofirmado que
+// esta misma instalación generó para localhost (ver loadOrCreateCertificate) y
+// rechaza cualquier otro — nunca se baja la verificación de forma general
+// (ignore-certificate-errors), solo se confía en esta huella puntual, igual que
+// un usuario aceptaría manualmente una excepción de certificado en un navegador,
+// pero sin el diálogo de advertencia en cada arranque.
+function trustGeneratedCertificate() {
+    session.defaultSession.setCertificateVerifyProc((request, callback) => {
+        const isOurCert =
+            request.hostname === 'localhost' &&
+            trustedServerCertPem &&
+            request.certificate.data.trim() === trustedServerCertPem.trim();
+        callback(isOurCert ? 0 : -2);
+    });
 }
 // --- FIN: ARRANQUE DEL SERVIDOR REAL ---
 
@@ -220,7 +256,7 @@ function createWindow() {
         return { action: 'deny' };
     });
 
-    win.loadURL(`http://localhost:${SERVER_PORT}`);
+    win.loadURL(`https://localhost:${SERVER_PORT}`);
 
     if (isDev) {
         win.webContents.openDevTools();
@@ -249,6 +285,7 @@ if (!gotTheLock) {
         .then(checkLicense)
         .then(startServer)
         .then(({ isFirstRun, adminUsername, adminPassword }) => {
+            trustGeneratedCertificate();
             createWindow();
             if (isFirstRun) {
                 dialog.showMessageBox(win, {
