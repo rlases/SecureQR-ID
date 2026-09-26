@@ -217,6 +217,43 @@ decisión tomada.
 
 ---
 
+## Sombra y movimiento (propuesta de Jhunier, pendiente de acuerdo)
+
+Ninguna de las dos apps tiene hoy un lenguaje de sombra o animación definido más allá
+de lo que trae shadcn/ui por defecto (sombras planas, sin transición). Jhunier propone
+cerrar ese vacío con una dirección concreta, **"Vidrio elevado"**, en vez de dejarlo
+implícito: paneles traslúcidos (`backdrop-filter: blur`) apoyados por una sombra grande
+y coloreada con el acento de cada app, para que el panel se sienta elevado y no solo
+transparente. Se eligió sobre otras tres direcciones exploradas (sombra plana coloreada
+sin cristal, cristal sobre fondo oscuro, y un tratamiento minimalista casi sin sombra)
+porque combina el efecto "producto cuidado" del cristal con la legibilidad de un fondo
+mayormente claro — relevante para pantallas institucionales usadas con luz de día.
+
+![Boceto "Vidrio elevado" aplicado al Dashboard de mi-app-qr/client y al panel de resultado de verifier-web](assets/design/vidrio-elevado.png)
+
+**Especificación técnica de la propuesta:**
+
+| Propiedad | Valor | Nota |
+|---|---|---|
+| Fondo del panel | `rgba(255,255,255,0.60)` sobre un lienzo con degradado suave del acento de la app | El degradado de fondo usa el color primario de cada app al ~18-20% de opacidad |
+| `backdrop-filter` | `blur(22px) saturate(140%)` | Requiere `-webkit-backdrop-filter` para Safari |
+| Borde | `1px solid rgba(255,255,255,0.75)` | Simula el borde de un vidrio esmerilado |
+| Sombra en reposo | `0 20px 45px -14px <acento al 32%>, 0 6px 16px <acento al 10%>` | Color de sombra = `--primary` en `mi-app-qr/client` (`#5048e5`), `--teal-500` en `verifier-web` (`#16a39c`) |
+| Sombra en hover | Misma fórmula, opacidades subidas a 40%/14% | Junto con `transform: translateY(-6px)` |
+| Transición | `transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, background .35s` | — |
+
+**Nueva dependencia propuesta:** [GSAP](https://gsap.com/) (~30 KB con gzip) para las
+animaciones de entrada (fade + stagger) y el conteo numérico en métricas tipo
+Dashboard. Se eligió sobre Framer Motion porque no depende de React — puede usarse
+igual en `mi-app-qr/client` (React) y en `verifier-web/` (sin React) sin duplicar la
+librería de animación entre las dos apps.
+
+**Esto es una propuesta, no un estándar cerrado.** Sigue el mismo patrón que el resto
+de este documento: se discute con Duverney y solo entonces se implementa. Ver punto 5
+de "Divergencias identificadas" abajo.
+
+---
+
 ## Divergencias identificadas (a decidir en conjunto)
 
 Estos puntos son decisiones de producto, no hechos del código — no se cierran con este
@@ -238,6 +275,10 @@ documento. Quedan explícitamente para acordar con Duverney antes de cerrar el i
 4. **Modo oscuro.** Decidir si se implementa (y en qué app primero) o si se retira el
    `darkMode: ['class']` inerte de `tailwind.config.ts` para no sugerir una capacidad
    que no existe.
+5. **La dirección "Vidrio elevado" y la dependencia de GSAP.** Jhunier ya eligió esta
+   dirección entre cuatro exploradas (ver sección anterior) pero falta el acuerdo de
+   Duverney antes de implementarla en cualquiera de las dos apps — incluye agregar una
+   librería nueva (`gsap`) a ambos `package.json`, no solo un cambio de CSS.
 
 ## Aprobación
 
