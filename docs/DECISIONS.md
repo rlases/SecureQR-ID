@@ -312,6 +312,17 @@ personal con sesión puede usarla — eso ya estaba bien) ni el trabajo en curso
 lo que sigue: `Dashboard` e `Informes` — el foco real del producto — van antes que
 cualquier ampliación de `RegistrosPage`.
 
+**Aplicación en el cliente (2026-09-26, issue #48).** Se descarta el
+`EditRecordModal` migrado del prototipo: se elimina del cliente web y se conserva
+`CorregirRegistroModal` como única vía de corrección, con motivo y permiso admin.
+El aviso de salida olvidada se adapta al modelo actual: presenta el último evento
+vigente de entrada, permite confirmación de otra entrada o revisión administrativa
+mediante la corrección ya existente. Revisar no crea otra entrada automáticamente.
+No se interpreta una entrada como si tuviera un campo de salida editable; tampoco
+se agrega una salida retrospectiva ficticia. La creación sigue disponible para todo
+personal autenticado, como ya establece este ADR; el aviso no introduce permisos
+nuevos ni sustituye controles del servidor.
+
 ---
 
 ## ADR-0009 — Modelo de roles genérico: permiso fijo + cargo en texto libre
@@ -505,3 +516,4 @@ portal puede evolucionar visualmente sin alterar la ruta criptográfica. Un desp
 real necesita terminación TLS y una implementación de revocación disponible; el portal
 no convierte la ausencia de esas piezas en un modo demostración permisivo. Registrar el
 evento aceptado sigue perteneciendo a `evidence-log/` y queda fuera de esta interfaz.
+

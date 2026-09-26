@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModalFocus } from '../hooks/useModalFocus';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -6,7 +7,7 @@ import { Label } from './ui/label';
 interface ExportCsvModalProps {
   isOpen: boolean;
   onCancel: () => void;
-  onExport: (rolFiltro: string | 'all') => void;
+  onExport: (rolFiltro: string | null) => void;
 }
 
 export function ExportCsvModal({
@@ -15,6 +16,7 @@ export function ExportCsvModal({
   onExport,
 }: ExportCsvModalProps) {
   const [rol, setRol] = useState('');
+  const ref = useModalFocus(isOpen, onCancel);
 
   if (!isOpen) {
     return null;
@@ -22,10 +24,11 @@ export function ExportCsvModal({
 
   return (
     <div
+      ref={ref}
       role="dialog"
       aria-modal="true"
       aria-label="Exportar Reporte CSV"
-      className="fixed inset-0 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-xl">
         <h2 className="mb-4 text-lg font-semibold text-foreground">
@@ -38,7 +41,7 @@ export function ExportCsvModal({
         <div className="space-y-4">
           <Button
             className="w-full"
-            onClick={() => onExport('all')}
+            onClick={() => onExport(null)}
           >
             Exportar Todos
           </Button>
@@ -78,3 +81,4 @@ export function ExportCsvModal({
     </div>
   );
 }
+
