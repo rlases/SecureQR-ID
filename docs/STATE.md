@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-09-26
+**Última actualización:** 2026-10-11
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -219,7 +219,10 @@ reparto de módulos, aquí ninguno tiene ventaja de experiencia previa sobre el 
   confirmaciones) → `docs/CONTENT-GUIDE.md`. Asignado a Jhunier.
 - Issue #57 — catálogo de componentes UI y patrones de interacción (inventario de
   componentes, estados loading/vacío/error, patrón de modal de corrección) →
-  `docs/COMPONENTS.md`. Asignado a Duverney.
+  `docs/COMPONENTS.md`. Asignado a Duverney. Borrador en la rama
+  `docs/57-catalogo-componentes`, pendiente de decisión conjunta: inventario de ambos
+  frontends, patrones de estado, de diálogo y de tabla con filtros, y seis divergencias
+  (D1–D6) para decidir.
 - Issue #58 — guía de accesibilidad WCAG AA para todo el frontend (hoy ADR-0012 solo
   la exige en `verifier-web/`; se extiende a `mi-app-qr/client` con auditoría del
   estado actual) → `docs/ACCESSIBILITY.md`. Asignado a Duverney.
@@ -307,6 +310,14 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-11 — Issue #57: borrador del catálogo de componentes.** Duverney.
+`docs/COMPONENTS.md` inventaría lo que existe en `mi-app-qr/client` y `verifier-web/`
+(con props y usos reales) y propone patrones de estado, diálogo y tabla con filtros.
+Dos correcciones al planteamiento del issue: `verifier-web/` no usa shadcn/ui, y
+`RegistrosPage` no tiene filtros (solo Informes). Hallazgos: tres implementaciones de
+diálogo distintas, `Toaster` instalado y sin montar, Usuarios sin estado de error.
+Pendiente: acuerdo con Jhunier sobre las propuestas y las divergencias.
 
 **2026-09-26 — Issue #48: componentes migrados conectados.** Se conserva la decisión
 append-only de ADR-0008: se retira el modal de edición directa del cliente web y se
