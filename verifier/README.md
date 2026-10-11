@@ -5,8 +5,9 @@ orden estricto: firma, vigencia, nonce no visto y revocación. Cualquier depende
 ausente, respuesta inválida o error interno produce el mismo rechazo público.
 
 Este paquete contiene el motor de validación y un adaptador HTTP opcional que consume el
-portal de escaneo. No incluye una interfaz gráfica, no firma tokens, no ancla hashes y
-no registra el evento de acceso aceptado.
+portal de escaneo. No incluye una interfaz gráfica, no firma tokens y no ancla hashes. El
+motor `Verifier` no registra nada: la aplicación lo envuelve con `RecordingVerifier`
+para encadenar cada validación aceptada en `evidence-log/` (ADR-0013).
 
 ## Instalación
 
@@ -25,14 +26,14 @@ Para exponer el adaptador ASGI se instala el extra web:
 python -m pip install ".[web]"
 ```
 
-Para desarrollo, las pruebas instalan `issuer/` únicamente como dependencia de test y
-comprueban interoperabilidad con tokens emitidos por su API real:
+Para desarrollo, las pruebas instalan `issuer/` y `evidence-log/` únicamente como
+dependencias de test y comprueban interoperabilidad con sus API reales:
 
 ```bash
 cd verifier
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-python -m pip install -e ../issuer -e ".[test]"
+python -m pip install -e ../issuer -e ../evidence-log -e ".[test]"
 python -m pytest
 ```
 
@@ -64,6 +65,32 @@ if result.accepted:
     opaque_credential_id = result.credential_id
 ```
 
+## Registro en la bitácora encadenada
+
+Cada validación aceptada debe producir un evento en `evidence-log/` (Algoritmo 1, pasos
+8-9). `Verifier` no conoce la bitácora; la aplicación la inyecta mediante
+`RecordingVerifier`, que acepta cualquier objeto con `append_event(credential_id,
+verifier_id, timestamp, decision)`, como `EvidenceLog`:
+
+```python
+from secureqr_evidence_log.evidence_log import EvidenceLog
+from secureqr_verifier import RecordingVerifier
+
+audited_verifier = RecordingVerifier(
+    verifier,
+    EvidenceLog("/var/lib/secureqr-id/evidence.sqlite3"),
+    verifier_id="ccav-pitalito-porteria-1",
+)
+```
+
+- Hay una bitácora por instalación, persistente y fuera del repositorio, en un archivo
+  distinto del almacén de nonces. `:memory:` solo sirve para pruebas.
+- `verifier_id` es obligatorio, sin valor por defecto: texto imprimible de hasta 128
+  caracteres sin espacios en los extremos.
+- Solo se registran aceptaciones. Los rechazos no llevan `credential_id` (ADR-0011).
+- Si el evento no puede escribirse, el resultado es el rechazo genérico. El nonce ya fue
+  consumido, así que el titular necesita un token nuevo.
+
 ## Adaptador HTTP
 
 La fábrica exige un `Verifier` ya configurado; no crea claves, almacenamiento ni una
@@ -72,7 +99,7 @@ política de revocación permisiva por defecto:
 ```python
 from secureqr_verifier.web import create_app
 
-app = create_app(verifier)
+app = create_app(audited_verifier)
 ```
 
 Expón `app` mediante un servidor ASGI y sirve `/api` bajo el mismo origen HTTPS que

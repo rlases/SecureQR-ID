@@ -1,7 +1,8 @@
 # Arquitectura
 
-> Estado: **implementación parcial**. `issuer/` y `verifier/` ya materializan la capa de
-> validación; consolidación local y anclaje siguen pendientes.
+> Estado: **implementación parcial**. `issuer/` y `verifier/` materializan la capa de
+> validación y `evidence-log/` la de consolidación local, conectadas mediante
+> `RecordingVerifier` (ADR-0013). El anclaje sigue pendiente.
 
 ## Principio rector
 

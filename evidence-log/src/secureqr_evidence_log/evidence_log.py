@@ -6,6 +6,7 @@ import hashlib
 import json
 import sqlite3
 import struct
+import threading
 from dataclasses import dataclass
 
 GENESIS_HASH = "0" * 64
@@ -59,10 +60,22 @@ class EvidenceLog:
     db_path=":memory:" (por defecto) mantiene todo en memoria, util para pruebas
     rapidas. Pasando una ruta de archivo, los eventos sobreviven a reiniciar
     el programa.
+
+    Una misma instancia puede usarse desde varios hilos (p. ej. el pool de un
+    servidor ASGI), y varias instancias o procesos pueden apuntar al mismo
+    archivo: cada escritura lee el ultimo hash e inserta el evento dentro de una
+    transaccion `BEGIN IMMEDIATE`, de modo que dos escrituras concurrentes nunca
+    encadenan sobre el mismo predecesor (eso bifurcaria la cadena).
     """
 
     def __init__(self, db_path: str = ":memory:") -> None:
-        self._conn = sqlite3.connect(db_path)
+        # isolation_level=None: las transacciones se abren y cierran de forma
+        # explicita, para poder pedir el bloqueo de escritura (IMMEDIATE) antes
+        # de leer el ultimo hash, y no despues como haria el modo implicito.
+        self._conn = sqlite3.connect(
+            db_path, check_same_thread=False, isolation_level=None
+        )
+        self._lock = threading.Lock()
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS events (
@@ -83,10 +96,11 @@ class EvidenceLog:
     @property
     def events(self) -> tuple[Event, ...]:
         """Vista de solo lectura, leida directamente desde SQLite."""
-        rows = self._conn.execute(
-            "SELECT credential_id, verifier_id, timestamp, decision, "
-            "previous_hash, hash FROM events ORDER BY seq"
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT credential_id, verifier_id, timestamp, decision, "
+                "previous_hash, hash FROM events ORDER BY seq"
+            ).fetchall()
         return tuple(Event(*row) for row in rows)
 
     def _last_hash(self) -> str:
@@ -102,17 +116,30 @@ class EvidenceLog:
         timestamp: float,
         decision: str,
     ) -> Event:
-        previous_hash = self._last_hash()
-        event_hash = _compute_hash(
-            credential_id, verifier_id, timestamp, decision, previous_hash
-        )
-        self._conn.execute(
-            "INSERT INTO events "
-            "(credential_id, verifier_id, timestamp, decision, previous_hash, hash) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (credential_id, verifier_id, timestamp, decision, previous_hash, event_hash),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                previous_hash = self._last_hash()
+                event_hash = _compute_hash(
+                    credential_id, verifier_id, timestamp, decision, previous_hash
+                )
+                self._conn.execute(
+                    "INSERT INTO events "
+                    "(credential_id, verifier_id, timestamp, decision, "
+                    "previous_hash, hash) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        credential_id,
+                        verifier_id,
+                        timestamp,
+                        decision,
+                        previous_hash,
+                        event_hash,
+                    ),
+                )
+                self._conn.execute("COMMIT")
+            except BaseException:
+                self._conn.execute("ROLLBACK")
+                raise
         return Event(
             credential_id=credential_id,
             verifier_id=verifier_id,
@@ -146,9 +173,10 @@ class EvidenceLog:
 
         Si no hay eventos pendientes, no crea ningun archivo y devuelve 0.
         """
-        rows = self._conn.execute(
-            "SELECT hash FROM events WHERE anchored_at IS NULL ORDER BY seq"
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT hash FROM events WHERE anchored_at IS NULL ORDER BY seq"
+            ).fetchall()
         hashes = [row[0] for row in rows]
 
         if not hashes:
@@ -168,17 +196,25 @@ class EvidenceLog:
         Falla (sin dejar cambios a medias) si algun hash no corresponde a un
         evento existente.
         """
-        for event_hash in hashes:
-            cursor = self._conn.execute(
-                "UPDATE events SET anchored_at = ?, merkle_root = ? WHERE hash = ?",
-                (anchored_at, merkle_root, event_hash),
-            )
-            if cursor.rowcount == 0:
-                self._conn.rollback()
-                raise ValueError(
-                    f"No existe un evento con hash {event_hash!r} en la bitacora."
-                )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                for event_hash in hashes:
+                    cursor = self._conn.execute(
+                        "UPDATE events SET anchored_at = ?, merkle_root = ? "
+                        "WHERE hash = ?",
+                        (anchored_at, merkle_root, event_hash),
+                    )
+                    if cursor.rowcount == 0:
+                        raise ValueError(
+                            f"No existe un evento con hash {event_hash!r} "
+                            "en la bitacora."
+                        )
+                self._conn.execute("COMMIT")
+            except BaseException:
+                self._conn.execute("ROLLBACK")
+                raise
 
     def close(self) -> None:
-        self._conn.close()
+        with self._lock:
+            self._conn.close()

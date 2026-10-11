@@ -483,3 +483,58 @@ real necesita terminación TLS y una implementación de revocación disponible; 
 no convierte la ausencia de esas piezas en un modo demostración permisivo. Registrar el
 evento aceptado sigue perteneciendo a `evidence-log/` y queda fuera de esta interfaz.
 
+---
+
+## ADR-0013 — Registro de la validación aceptada en la bitácora encadenada
+
+**Estado:** Propuesta
+
+**Contexto.** `evidence-log/` (PR #43) y `verifier/` (PR #29) existían por separado: el
+verificador decidía aceptar o rechazar sin que nada quedara encadenado, así que la capa
+de consolidación local (pasos 8-9 del Algoritmo 1) no ocurría en ningún flujo real
+(issue #45). Conectarlos obliga a decidir quién compone las dos piezas, qué se registra,
+dónde vive la bitácora y qué pasa si escribir en ella falla. Además, la implementación
+de `EvidenceLog` leía el último hash y luego insertaba sin transacción explícita: dos
+validaciones concurrentes podían encadenar sobre el mismo predecesor (bifurcando la
+cadena) y la conexión SQLite no podía usarse desde los hilos del servidor ASGI.
+
+**Decisión.**
+
+- `Verifier` no cambia ni conoce la bitácora. `secureqr_verifier.evidence` define el
+  contrato `AcceptedEventRecorder` (la firma de `EvidenceLog.append_event`) y el
+  envoltorio `RecordingVerifier`, que registra después de que `Verifier` ya decidió. El
+  paquete `secureqr_verifier` no importa `evidence-log/`; la aplicación que despliega el
+  punto de control construye `EvidenceLog` y lo inyecta. `evidence-log/` se instala en
+  `verifier/` solo como dependencia de prueba, igual que `issuer/`.
+- Solo se registran validaciones **aceptadas**, con `decision = "aceptado"`, el
+  `credential_id` opaco que devolvió `Verifier`, el `verifier_id` de la instalación y la
+  marca temporal del registro. Los rechazos no se registran: `REJECTED_RESULT` no lleva
+  `credential_id` (ADR-0011) y registrarlos exigiría rediseñar `VerificationResult`, lo
+  cual requeriría un ADR propio.
+- `verifier_id` es configuración obligatoria por instalación (texto imprimible, sin
+  espacios en los extremos, hasta 128 caracteres), sin valor por defecto.
+- Hay **una bitácora por instalación de verificador**, en un archivo SQLite persistente
+  fuera del repositorio y separado del almacén de nonces (p. ej.
+  `/var/lib/secureqr-id/evidence.sqlite3` junto a `replay.sqlite3`): los nonces se
+  purgan al vencer y la bitácora es append-only, así que sus ciclos de vida no se
+  mezclan. `:memory:` solo es válido en pruebas.
+- **Falla cerrado.** Si el registro no puede completarse (excepción, `credential_id`
+  inválido, reloj no finito), la validación se rechaza con el resultado público genérico
+  y solo se registra el código interno `evidence_log_unavailable` (o
+  `credential_id_invalid`), sin token, `cid` ni texto de la excepción. Una aceptación
+  sin evento rompería la capa de consolidación local.
+- `EvidenceLog.append_event` lee el último hash e inserta dentro de una transacción
+  `BEGIN IMMEDIATE`, protegida además por un candado en memoria; la conexión admite uso
+  desde varios hilos. Varias instancias o procesos sobre el mismo archivo producen una
+  cadena lineal.
+
+**Consecuencias.** La capa de consolidación local ya ocurre en cada aceptación servida
+por el adaptador HTTP cuando se le entrega un `RecordingVerifier`. Como `Verifier`
+consume el nonce antes de que se registre el evento, una caída de la bitácora “quema” el
+token presentado: el titular debe generar uno nuevo. Se acepta ese costo antes que
+aceptar sin evidencia o reabrir el nonce. Queda el caso inverso: el evento puede quedar
+registrado y la respuesta HTTP no llegar al portal; la bitácora refleja lo que el
+verificador decidió, no lo que vio la persona operadora. El repositorio todavía no tiene
+un punto de entrada de producción que construya el `Verifier` real; cuando exista (issue
+#46 conecta allí `RevocationList`), debe envolverlo con `RecordingVerifier` y una
+`EvidenceLog` persistente según esta decisión.
