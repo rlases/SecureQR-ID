@@ -5,6 +5,7 @@ from .service import (
     create_app_from_environment,
     create_service_app,
     load_revocation_list,
+    open_revocation_cache,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "create_app_from_environment",
     "create_service_app",
     "load_revocation_list",
+    "open_revocation_cache",
 ]

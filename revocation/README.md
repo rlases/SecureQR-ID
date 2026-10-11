@@ -24,6 +24,14 @@ cerrado).
 confiable, y `from_signed_bytes(..., expected_key_id=kid)` comprueba que el `kid`
 firmado coincida.
 
+## Recarga y antigüedad máxima
+
+`secureqr_revocation.cache.RevocationListCache` también cumple `RevocationChecker`.
+Revisa periódicamente el archivo, aplica solo listas con `iat` posterior a la vigente
+(antirretroceso) y lanza `RevocationError` cuando la lista supera su antigüedad
+máxima, de modo que el verificador rechaza (ADR-0015). Recibe un cargador inyectado
+que verifica la firma; el de producción está en `verifier-service/`.
+
 ## Clave de revocación
 
 La lista se firma con una clave dedicada, distinta de la clave de emisión de tokens

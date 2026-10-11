@@ -590,3 +590,59 @@ pertenece a esa misma decisión. Una bitácora alterada deja el punto de control
 servicio hasta que alguien la investigue: se prefiere eso a seguir encadenando sobre
 una cadena rota. No existe aún una CLI para generar la clave de revocación ni firmar la
 lista; hoy se hace desde Python.
+
+---
+
+## ADR-0015 — Distribución y frescura de la lista de revocación
+
+**Estado:** Propuesta
+
+**Contexto.** ADR-0014 carga la lista firmada una sola vez al arrancar. Un punto de
+control del CCAV Pitalito puede perder la conexión con el lugar donde se publica la
+lista durante horas, y la validación debe seguir siendo local y sincrónica
+(`ARCHITECTURE.md`, capa 1). Hay que decidir cómo llega una lista nueva, cómo se aplica
+sin reiniciar y qué hacer cuando la lista en disco es demasiado vieja (issue #47). Usar
+indefinidamente una lista vieja acepta credenciales revocadas después; rechazar con
+cada corte de red deja el punto de control inútil.
+
+**Decisión.**
+
+- **Pull con caché local, no push.** No existe un servicio central que pueda empujar
+  la lista, y un push exige que el verificador acepte conexiones entrantes. El punto de
+  control tira de la lista: el comando `python -m secureqr_verifier_service.sync`,
+  lanzado por el sistema (cron o un temporizador de systemd), descarga la lista por
+  HTTPS desde `SQRID_REVOCATION_URL`, la **verifica antes de tocar el disco** y la
+  instala con reemplazo atómico (`os.replace`) en `SQRID_REVOCATION_LIST_PATH`. Si la
+  red falla, el archivo anterior queda intacto. El transporte es solo un medio: la
+  confianza viene de la firma, así que copiar el archivo a mano o por USB también sirve.
+- **Recarga en caliente sin bloquear la validación.** `RevocationListCache` mantiene la
+  lista vigente en memoria y, como máximo una vez cada
+  `SQRID_REVOCATION_REFRESH_SECONDS`, revisa si el archivo cambió (tamaño y fecha de
+  modificación) antes de leerlo. Es una lectura de disco local, sin red. Una lista
+  nueva inválida se ignora y se conserva la vigente.
+- **Antirretroceso.** Una lista solo reemplaza a la vigente si su `iat` firmado es
+  posterior. Así nadie puede reinstalar una lista vieja, válidamente firmada, que no
+  incluía revocaciones recientes. El comando de sincronización aplica la misma regla
+  contra el archivo en disco. Una lista con `iat` en el futuro, más allá de la
+  tolerancia de reloj, se rechaza: si no, fijaría el antirretroceso y bloquearía las
+  listas legítimas siguientes.
+- **Falla cerrado por lista vencida.** Si `now - iat` supera
+  `SQRID_REVOCATION_MAX_AGE_SECONDS`, `is_revoked` lanza `RevocationError` y el
+  `Verifier` rechaza con el código interno `revocation_unavailable` (ADR-0011). El
+  umbral es configuración obligatoria, entre 60 segundos y 30 días, y debe superar
+  holgadamente la cadencia de publicación más el corte de red que se quiera tolerar.
+  En cuanto llega una lista fresca, la siguiente verificación vuelve a aceptar, sin
+  reiniciar.
+- **Arranque.** Una lista ausente o inválida sigue impidiendo el arranque (ADR-0014).
+  Una lista válida pero vencida **no** lo impide: el servicio arranca y rechaza todo
+  hasta que llegue una fresca, para recuperarse solo cuando vuelva la red sin depender
+  de que alguien lo reinicie.
+
+**Consecuencias.** La ventana de riesgo por revocación queda acotada y es configurable:
+una credencial revocada puede aceptarse como mucho hasta que el punto de control
+recibe la lista que la incluye, y nunca más allá de la antigüedad máxima. Quien publica
+la lista debe volver a firmarla periódicamente aunque no cambie, para renovar su
+`iat`; sin eso, todos los puntos de control empiezan a rechazar al vencerse el umbral.
+Esto exige además relojes razonablemente sincronizados entre quien firma y quien
+verifica, como ya ocurre con los tokens. No se resuelve aquí quién opera el servidor de
+publicación ni la CLI para firmar listas.
