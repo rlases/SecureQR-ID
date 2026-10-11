@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-09-26
+**Última actualización:** 2026-10-11
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -222,7 +222,10 @@ reparto de módulos, aquí ninguno tiene ventaja de experiencia previa sobre el 
   `docs/COMPONENTS.md`. Asignado a Duverney.
 - Issue #58 — guía de accesibilidad WCAG AA para todo el frontend (hoy ADR-0012 solo
   la exige en `verifier-web/`; se extiende a `mi-app-qr/client` con auditoría del
-  estado actual) → `docs/ACCESSIBILITY.md`. Asignado a Duverney.
+  estado actual) → `docs/ACCESSIBILITY.md`. Asignado a Duverney. Borrador en la rama
+  `docs/58-accesibilidad`, pendiente de decisión conjunta: estándar WCAG 2.2 AA
+  propuesto y auditoría medida con axe + pruebas de teclado. Hallazgo más serio:
+  `CorregirRegistroModal` no gestiona el foco ni cierra con Escape.
 
 **Ajuste (2026-09-23, mismo día):** el asignado de cada issue redacta y hace el trabajo
 de auditar/levantar el contenido, pero las decisiones de estilo en sí (valores de color,
@@ -307,6 +310,15 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-11 — Issue #58: borrador de accesibilidad.** Duverney. `docs/ACCESSIBILITY.md`
+propone un estándar único (WCAG 2.2 AA, con niveles obligatorio/deseable a acordar) y
+audita `mi-app-qr/client` pantalla por pantalla: axe-core 4.13 en Chromium 124 contra
+servidor y cliente reales, recorridos con teclado, diálogos y reflujo a 320 px. axe no
+encontró violaciones en las pantallas internas; los problemas reales son de
+comportamiento (diálogo de corrección sin gestión de foco, mensajes no anunciados,
+errores no ligados a sus campos, títulos de página iguales). No se probó con lectores de
+pantalla. Pendiente: revisión y acuerdo de Jhunier sobre las preguntas de la sección 6.
 
 **2026-09-26 — Issue #48: componentes migrados conectados.** Se conserva la decisión
 append-only de ADR-0008: se retira el modal de edición directa del cliente web y se
