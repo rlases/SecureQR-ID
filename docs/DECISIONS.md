@@ -538,3 +538,55 @@ verificador decidió, no lo que vio la persona operadora. El repositorio todaví
 un punto de entrada de producción que construya el `Verifier` real; cuando exista (issue
 #46 conecta allí `RevocationList`), debe envolverlo con `RecordingVerifier` y una
 `EvidenceLog` persistente según esta decisión.
+
+---
+
+## ADR-0014 — Arranque de producción del verificador y clave de revocación dedicada
+
+**Estado:** Propuesta
+
+**Contexto.** `revocation/` (PR #44) firma y verifica listas, y su `is_revoked` coincide
+con la interfaz `RevocationChecker` de `verifier/`, pero ningún código construía el
+`Verifier` real: solo existían dobles de prueba (issue #46). Conectarlo exige decidir
+dónde se compone el servicio, con qué clave se firma la lista y qué ocurre al arrancar
+si la lista no es confiable. Además, `RevocationList.from_signed_bytes` aceptaba
+firmas *high-S* de cualquier longitud, no ligaba el `kid` declarado a la clave usada y
+convertía `cids = "abc"` en las revocaciones `"a"`, `"b"` y `"c"`.
+
+**Decisión.**
+
+- **Paquete de composición `verifier-service/`.** Es la capa de aplicación: construye
+  `DirectoryKeyResolver`, `SqliteReplayStore`, `RevocationList`, `Verifier`,
+  `EvidenceLog` y `RecordingVerifier` (ADR-0013), y entrega el resultado a
+  `secureqr_verifier.web.create_app`. No contiene reglas de validación. Así ni
+  `verifier/` importa `revocation/` o `evidence-log/`, ni el frontend `verifier-web/`
+  arranca procesos Python. Se expone una fábrica para `uvicorn --factory`.
+- **Configuración explícita por entorno**, todas obligatorias y sin valor por defecto:
+  `SQRID_VERIFIER_ID`, `SQRID_TRUSTED_KEYS_DIR`, `SQRID_REVOCATION_KEYS_DIR`,
+  `SQRID_REVOCATION_LIST_PATH`, `SQRID_REPLAY_DB_PATH`, `SQRID_EVIDENCE_DB_PATH` y
+  `SQRID_CLOCK_SKEW_SECONDS`.
+- **Clave de revocación distinta de la de emisión.** La clave privada del emisor no sale
+  de `issuer/`, así que firmar listas con ella obligaría a `issuer/` a conocer el
+  formato de revocación. Con una clave dedicada, comprometer o rotar una no afecta a la
+  otra. Su `kid` se deriva igual que en `issuer/` (SHA-256 del SPKI DER, 16 bytes,
+  base64url) y su clave pública vive en un directorio de confianza propio. El servicio
+  rechaza arrancar si ambos directorios son el mismo o si la clave que firma la lista
+  también está entre las de emisión: si no, una clave de revocación podría firmar
+  tokens aceptables.
+- **La lista se verifica como un token.** P-256/SHA-256, firma compacta de 64 bytes,
+  *low-S*, sobre con exactamente `v`, `kid`, `iat`, `cids` y `sig`, `cids` como lista
+  de textos no vacíos sin duplicados, y `kid` firmado igual al de la clave elegida.
+- **Falla cerrado también al arrancar.** Si falta una variable, la lista no existe, no
+  verifica o la firma una clave no autorizada, si la bitácora es `:memory:` o comparte
+  archivo con los nonces, o si la bitácora existente no supera `verify_chain()`, el
+  proceso termina con `StartupError` y no atiende ninguna verificación. El mensaje
+  nombra la variable o la etapa, sin contenido de claves, listas ni credenciales.
+
+**Consecuencias.** Existe un punto de arranque real con las tres capas sincrónicas
+conectadas. La lista se carga una vez: aplicar una nueva exige reemplazar el archivo y
+reiniciar, hasta que el issue #47 resuelva la distribución y recarga con conectividad
+intermitente; tampoco hay todavía una política de antigüedad máxima sobre `iat`, que
+pertenece a esa misma decisión. Una bitácora alterada deja el punto de control fuera de
+servicio hasta que alguien la investigue: se prefiere eso a seguir encadenando sobre
+una cadena rota. No existe aún una CLI para generar la clave de revocación ni firmar la
+lista; hoy se hace desde Python.
