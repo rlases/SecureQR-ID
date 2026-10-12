@@ -1,11 +1,11 @@
 # Guía de contenido y microcopy
 
-> **Estado: borrador (issue #56).** Describe el tono y los patrones que ya usan
+> **Estado: acordada con Duverney en el PR #63 (issue #56).** Describe el tono y los patrones que ya usan
 > `mi-app-qr/client` y `verifier-web/`, citando pantallas reales — no reescribe el copy
 > existente. Señala también las inconsistencias encontradas y las reglas que aún no
-> están decididas. Igual que un ADR (`docs/DECISIONS.md`), el contenido de esta guía no
-> queda cerrado hasta que Duverney lo revise y lo acuerde explícitamente — no basta con
-> la aprobación de PR de rutina.
+> están decididas. Igual que un ADR (`docs/DECISIONS.md`), cualquier cambio posterior a esta
+> guía debe acordarse explícitamente entre los dos autores — no basta con la aprobación
+> de PR de rutina.
 
 ## Audiencia
 
@@ -18,6 +18,16 @@ tampoco debe asumir vocabulario específico de un cargo institucional.
 ## Tono
 
 Formal pero claro, sin jerga técnica ni códigos de error crudos.
+
+**Tratamiento: tutear siempre.** Toda la interfaz se dirige a quien la usa de *tú*, de
+forma consistente, y el copy nuevo debe seguir igual para no mezclar tratamientos. No se
+encontró ninguna forma de *usted* en `mi-app-qr/client/src` ni en `verifier-web/src`.
+Ejemplos reales:
+- `mi-app-qr/client`: `"Intenta de nuevo."` (`RegistrosPage.tsx`), `"puedes corregirla"`
+  (`ForgottenOutModal.tsx`), `"cópiala ahora"` (`UsuariosPage.tsx`), `"Selecciona qué
+  registros deseas exportar"` (`ExportCsvModal.tsx`).
+- `verifier-web`: `"Espera un momento…"`, `"Alinea la credencial…"`, `"Confirma el
+  permiso…"`, `"Activa la cámara…"` (`ResultPanel.tsx`).
 
 **Así sí** (ejemplos reales del repo):
 - `"No fue posible cargar los registros."` + botón "Reintentar" (`InformesPage.tsx`)
@@ -97,14 +107,14 @@ Ejemplos reales:
 Regla: decir que no hay nada que mostrar, sin que suene a error — ninguno de estos usa
 `role="alert"` ni tono de falla.
 
-**Inconsistencia encontrada, pendiente de acordar:** el texto de *carga* (no el de
+**Inconsistencia encontrada:** el texto de *carga* (no el de
 vacío) varía entre genérico y específico sin un criterio claro:
 
 - Genérico: `"Cargando..."` (Registros, Usuarios, verificación de sesión)
-- Específico: `"Cargando registros..."` (Informes), `"Cargando actividad..."` (Dashboard)
+- Específico: `"Cargando registros..."` (Informes), `"Cargando actividad..."` (Dashboard),
+  `"Cargando historial..."` (`HistorialCorreccionesModal.tsx`)
 
-Se propone una regla — **pendiente de acuerdo con Duverney, no decidida todavía**:
-usar siempre la forma específica, `"Cargando {objeto}..."`, porque orienta mejor a
+Regla **acordada con Duverney** en la revisión del PR #63 (2026-10-12): usar siempre la forma específica, `"Cargando {objeto}..."`, porque orienta mejor a
 alguien sin experiencia técnica sobre qué está tardando. Si se acepta, ajustar los tres
 casos genéricos restantes en una tarea aparte (esta guía no reescribe copy existente).
 
@@ -182,6 +192,7 @@ de texto y cada afirmación sobre el código se comprobó contra `mi-app-qr/clie
 `verifier-web/src/` tal como están hoy en `main`, no solo como estaban al redactar el
 borrador — la tabla de estados de `verifier-web/` tenía 2 de 7 filas faltantes
 (corregido arriba) y la nota sobre `EditRecordModal.tsx`/`ForgottenOutModal.tsx` estaba
-desactualizada (ambos ya se resolvieron en PR #65, también corregido). Pendiente de
-revisión explícita de Duverney sobre el contenido completo, en particular la regla
-propuesta para unificar el texto de carga — antes de considerar cerrado el issue #56.
+desactualizada (ambos ya se resolvieron en PR #65, también corregido). Duverney revisó
+el contenido completo en el PR #63 (2026-10-12): verificó las citas contra `main`,
+acordó la regla del texto de carga y propuso la regla de tratamiento (tutear), que se
+incorporó en la sección Tono.
