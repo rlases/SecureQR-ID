@@ -1,18 +1,19 @@
 # Accesibilidad del frontend
 
-> **Estado: borrador para decisión conjunta (issue #58).** Redactado y auditado por
-> Duverney. El estándar de la sección 1 (qué es obligatorio y qué es deseable) **no está
-> cerrado** hasta que Jhunier lo revise y ambos lo acuerden, igual que un ADR. Los
-> hallazgos de la sección 3 son hechos medidos; no se corrigen en este issue.
+> **Estado: acordado (issue #58).** Redactado y auditado por Duverney; estándar acordado
+> con Jhunier el 2026-10-12 (sección 6). Los hallazgos de la sección 3 son hechos
+> medidos; no se corrigen en este issue.
 
 ADR-0012 ya exige contraste AA, teclado, foco visible, anuncios de estado y movimiento
 reducido, pero solo para `verifier-web/`. `mi-app-qr/client` lo usa el mismo personal
 institucional, que puede incluir personas con discapacidad. Este documento propone un
 estándar único para los dos frontends y audita el estado actual de `mi-app-qr/client`.
 
-## 1. Estándar propuesto para todo el frontend
+## 1. Estándar para todo el frontend
 
-Referencia: **WCAG 2.2 nivel AA**. La columna "Nivel" es la propuesta a discutir.
+Referencia: **WCAG 2.2 nivel AA**. ADR-0012 no fija versión, y el axe que ya usa
+`verifier-web/` no restringe reglas por versión, así que en la práctica el portal ya se
+evalúa contra 2.2.
 
 | # | Criterio | Qué se exige en la práctica | WCAG | Nivel |
 |---|---|---|---|---|
@@ -22,7 +23,7 @@ Referencia: **WCAG 2.2 nivel AA**. La columna "Nivel" es la propuesta a discutir
 | E4 | Diálogos | Al abrir: el foco entra al diálogo. Mientras está abierto: Tab no sale de él. Escape lo cierra. Al cerrar: el foco vuelve a quien lo abrió. `role="dialog"`, `aria-modal="true"` y nombre accesible | 2.4.3, 4.1.2 | Obligatorio |
 | E5 | Formularios | Cada campo tiene `<label>`. Un campo con error lleva `aria-invalid="true"` y `aria-describedby` apuntando a su mensaje | 1.3.1, 3.3.1, 3.3.2 | Obligatorio |
 | E6 | Mensajes de estado | Errores del servidor con `role="alert"`; confirmaciones con `role="status"`; se anuncian sin mover el foco | 4.1.3 | Obligatorio |
-| E7 | Sin ruido | Las regiones `aria-live` no se disparan con cada sondeo periódico (el refetch de 7 s), solo con cambios que la persona provocó o necesita saber | 4.1.3 (buena práctica) | Deseable |
+| E7 | Sin ruido | Las regiones `aria-live` no se disparan con cada sondeo periódico (el refetch de 7 s), solo con cambios que la persona provocó o necesita saber | 4.1.3 (buena práctica) | Obligatorio |
 | E8 | Movimiento | Animaciones solo para comunicar cambios de estado y desactivadas con `prefers-reduced-motion` | 2.3.3 | Obligatorio si hay animación |
 | E9 | Idioma | `<html lang="es">` | 3.1.1 | Obligatorio |
 | E10 | Título de página | Cada ruta tiene un `<title>` propio ("Informes · Registro QR") | 2.4.2 | Obligatorio |
@@ -36,7 +37,8 @@ este estándar no le cambia nada, solo extiende el mismo nivel a `mi-app-qr/clie
 
 ## 2. Cómo se hizo la auditoría
 
-- **Fecha y versión:** 2026-10-11, `main` en `9e4f6ff`.
+- **Fecha y versión:** 2026-10-11, `main` en `9e4f6ff`. Lo fusionado después (PR #67-#70)
+  no toca `mi-app-qr/client`, así que la auditoría sigue vigente.
 - **Herramienta automática:** axe-core 4.13.0 (la misma de `verifier-web/`), con las
   reglas WCAG 2.0/2.1/2.2 A y AA más las de buenas prácticas.
 - **Navegador:** Chromium 124 (el de Electron 30), conducido con Playwright contra el
@@ -82,7 +84,7 @@ Leyenda: ✅ cumple · ⚠️ cumple con reparos · ❌ no cumple.
 | Criterio | Estado | Evidencia |
 |---|---|---|
 | axe | ✅ | Sin violaciones |
-| E7 Sin ruido | ⚠️ | Las 4 métricas tienen `aria-live="polite"` y se actualizan con el sondeo de 7 s: en un día con tráfico, el lector anunciaría números continuamente |
+| E7 Sin ruido | ❌ | Las 4 métricas tienen `aria-live="polite"` y se actualizan con el sondeo de 7 s: en un día con tráfico, el lector anunciaría números continuamente |
 | Tabla | ✅ | Contenedor desplazable con `tabindex`, nombre accesible y foco visible |
 
 ### Registros (`RegistrosPage`)
@@ -135,8 +137,8 @@ Leyenda: ✅ cumple · ⚠️ cumple con reparos · ❌ no cumple.
 | Media | El error de inicio de sesión no se anuncia | E6 |
 | Media | Errores de formulario no ligados a sus campos (login, registros, corrección, usuarios) | E5 |
 | Media | Título de página igual en todas las rutas | E10 |
+| Media | Métricas del Dashboard anunciadas con cada sondeo | E7 |
 | Baja | Login sin `<main>` | E11 |
-| Baja | Métricas del Dashboard anunciadas con cada sondeo | E7 |
 | Baja | Botón "Corregir" con el mismo nombre en cada fila | E14 |
 | Baja | `<select>` sin el estilo de foco del resto de controles | E3 |
 
@@ -153,22 +155,24 @@ Los arreglos se reparten después, como trabajo de implementación aparte.
 7. ¿Los botones repetidos dicen sobre qué actúan?
 8. ¿Pasa axe sin violaciones nuevas?
 
-## 5. Herramientas: propuesta
+## 5. Herramientas
 
-- **Extender Playwright + axe a `mi-app-qr/client`**, como ya hace `verifier-web/`, con un
-  job de CI que recorra las cuatro pantallas y los diálogos con sesión y datos
-  sintéticos. La auditoría de este documento muestra que es viable: se hizo así, con el
-  servidor real.
+- **Playwright + axe en CI para `mi-app-qr/client`, ya**, como en `verifier-web/`: un
+  job que recorra las cuatro pantallas y los diálogos con sesión y datos sintéticos. La
+  auditoría de este documento muestra que es viable: se hizo así, con el servidor real.
 - **Pruebas de comportamiento en Testing Library** para cada diálogo (foco inicial,
   Escape, foco de vuelta), porque axe no las detecta: el diálogo de corrección pasa axe
   sin violaciones y aun así es el hallazgo más grave.
-- **Revisión manual** con la lista de la sección 4 para lo que no se automatiza, y una
-  pasada con NVDA antes del piloto en el CCAV Pitalito.
+- **Revisión manual** con la lista de la sección 4 para lo que no se automatiza.
+- **NVDA como requisito antes del piloto en el CCAV Pitalito**, limitado a los flujos con
+  hallazgos de prioridad Alta o Media.
 
-## 6. Para decidir entre los dos autores
+## 6. Decisiones acordadas (2026-10-12)
 
-1. ¿WCAG 2.2 AA como referencia, o 2.1 AA (la que cita ADR-0012)?
-2. ¿E7 (sin ruido) y E14 (nombres únicos) quedan como deseables u obligatorios?
-3. ¿Se adopta el job de Playwright + axe en CI para `mi-app-qr/client`, o por ahora
-   solo la lista manual?
-4. ¿La prueba con lector de pantalla antes del piloto es requisito o recomendación?
+| Pregunta | Decisión |
+|---|---|
+| Versión de referencia | WCAG 2.2 AA |
+| E7 (sin ruido) | Obligatorio: el `aria-live` del Dashboard cada 7 s es un defecto real de uso |
+| E14 (nombres únicos) | Deseable |
+| Playwright + axe en CI para `mi-app-qr/client` | Sí, se monta ya |
+| Prueba con lector de pantalla | Requisito antes del piloto, con NVDA, solo sobre los flujos con hallazgo Alta o Media |
