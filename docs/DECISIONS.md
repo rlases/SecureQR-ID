@@ -517,3 +517,166 @@ real necesita terminación TLS y una implementación de revocación disponible; 
 no convierte la ausencia de esas piezas en un modo demostración permisivo. Registrar el
 evento aceptado sigue perteneciendo a `evidence-log/` y queda fuera de esta interfaz.
 
+---
+
+## ADR-0013 — Registro de la validación aceptada en la bitácora encadenada
+
+**Estado:** Propuesta
+
+**Contexto.** `evidence-log/` (PR #43) y `verifier/` (PR #29) existían por separado: el
+verificador decidía aceptar o rechazar sin que nada quedara encadenado, así que la capa
+de consolidación local (pasos 8-9 del Algoritmo 1) no ocurría en ningún flujo real
+(issue #45). Conectarlos obliga a decidir quién compone las dos piezas, qué se registra,
+dónde vive la bitácora y qué pasa si escribir en ella falla. Además, la implementación
+de `EvidenceLog` leía el último hash y luego insertaba sin transacción explícita: dos
+validaciones concurrentes podían encadenar sobre el mismo predecesor (bifurcando la
+cadena) y la conexión SQLite no podía usarse desde los hilos del servidor ASGI.
+
+**Decisión.**
+
+- `Verifier` no cambia ni conoce la bitácora. `secureqr_verifier.evidence` define el
+  contrato `AcceptedEventRecorder` (la firma de `EvidenceLog.append_event`) y el
+  envoltorio `RecordingVerifier`, que registra después de que `Verifier` ya decidió. El
+  paquete `secureqr_verifier` no importa `evidence-log/`; la aplicación que despliega el
+  punto de control construye `EvidenceLog` y lo inyecta. `evidence-log/` se instala en
+  `verifier/` solo como dependencia de prueba, igual que `issuer/`.
+- Solo se registran validaciones **aceptadas**, con `decision = "aceptado"`, el
+  `credential_id` opaco que devolvió `Verifier`, el `verifier_id` de la instalación y la
+  marca temporal del registro. Los rechazos no se registran: `REJECTED_RESULT` no lleva
+  `credential_id` (ADR-0011) y registrarlos exigiría rediseñar `VerificationResult`, lo
+  cual requeriría un ADR propio.
+- `verifier_id` es configuración obligatoria por instalación (texto imprimible, sin
+  espacios en los extremos, hasta 128 caracteres), sin valor por defecto.
+- Hay **una bitácora por instalación de verificador**, en un archivo SQLite persistente
+  fuera del repositorio y separado del almacén de nonces (p. ej.
+  `/var/lib/secureqr-id/evidence.sqlite3` junto a `replay.sqlite3`): los nonces se
+  purgan al vencer y la bitácora es append-only, así que sus ciclos de vida no se
+  mezclan. `:memory:` solo es válido en pruebas.
+- **Falla cerrado.** Si el registro no puede completarse (excepción, `credential_id`
+  inválido, reloj no finito), la validación se rechaza con el resultado público genérico
+  y solo se registra el código interno `evidence_log_unavailable` (o
+  `credential_id_invalid`), sin token, `cid` ni texto de la excepción. Una aceptación
+  sin evento rompería la capa de consolidación local.
+- `EvidenceLog.append_event` lee el último hash e inserta dentro de una transacción
+  `BEGIN IMMEDIATE`, protegida además por un candado en memoria; la conexión admite uso
+  desde varios hilos. Varias instancias o procesos sobre el mismo archivo producen una
+  cadena lineal.
+
+**Consecuencias.** La capa de consolidación local ya ocurre en cada aceptación servida
+por el adaptador HTTP cuando se le entrega un `RecordingVerifier`. Como `Verifier`
+consume el nonce antes de que se registre el evento, una caída de la bitácora “quema” el
+token presentado: el titular debe generar uno nuevo. Se acepta ese costo antes que
+aceptar sin evidencia o reabrir el nonce. Queda el caso inverso: el evento puede quedar
+registrado y la respuesta HTTP no llegar al portal; la bitácora refleja lo que el
+verificador decidió, no lo que vio la persona operadora. El repositorio todavía no tiene
+un punto de entrada de producción que construya el `Verifier` real; cuando exista (issue
+#46 conecta allí `RevocationList`), debe envolverlo con `RecordingVerifier` y una
+`EvidenceLog` persistente según esta decisión.
+
+---
+
+## ADR-0014 — Arranque de producción del verificador y clave de revocación dedicada
+
+**Estado:** Propuesta
+
+**Contexto.** `revocation/` (PR #44) firma y verifica listas, y su `is_revoked` coincide
+con la interfaz `RevocationChecker` de `verifier/`, pero ningún código construía el
+`Verifier` real: solo existían dobles de prueba (issue #46). Conectarlo exige decidir
+dónde se compone el servicio, con qué clave se firma la lista y qué ocurre al arrancar
+si la lista no es confiable. Además, `RevocationList.from_signed_bytes` aceptaba
+firmas *high-S* de cualquier longitud, no ligaba el `kid` declarado a la clave usada y
+convertía `cids = "abc"` en las revocaciones `"a"`, `"b"` y `"c"`.
+
+**Decisión.**
+
+- **Paquete de composición `verifier-service/`.** Es la capa de aplicación: construye
+  `DirectoryKeyResolver`, `SqliteReplayStore`, `RevocationList`, `Verifier`,
+  `EvidenceLog` y `RecordingVerifier` (ADR-0013), y entrega el resultado a
+  `secureqr_verifier.web.create_app`. No contiene reglas de validación. Así ni
+  `verifier/` importa `revocation/` o `evidence-log/`, ni el frontend `verifier-web/`
+  arranca procesos Python. Se expone una fábrica para `uvicorn --factory`.
+- **Configuración explícita por entorno**, todas obligatorias y sin valor por defecto:
+  `SQRID_VERIFIER_ID`, `SQRID_TRUSTED_KEYS_DIR`, `SQRID_REVOCATION_KEYS_DIR`,
+  `SQRID_REVOCATION_LIST_PATH`, `SQRID_REPLAY_DB_PATH`, `SQRID_EVIDENCE_DB_PATH` y
+  `SQRID_CLOCK_SKEW_SECONDS`.
+- **Clave de revocación distinta de la de emisión.** La clave privada del emisor no sale
+  de `issuer/`, así que firmar listas con ella obligaría a `issuer/` a conocer el
+  formato de revocación. Con una clave dedicada, comprometer o rotar una no afecta a la
+  otra. Su `kid` se deriva igual que en `issuer/` (SHA-256 del SPKI DER, 16 bytes,
+  base64url) y su clave pública vive en un directorio de confianza propio. El servicio
+  rechaza arrancar si ambos directorios son el mismo o si la clave que firma la lista
+  también está entre las de emisión: si no, una clave de revocación podría firmar
+  tokens aceptables.
+- **La lista se verifica como un token.** P-256/SHA-256, firma compacta de 64 bytes,
+  *low-S*, sobre con exactamente `v`, `kid`, `iat`, `cids` y `sig`, `cids` como lista
+  de textos no vacíos sin duplicados, y `kid` firmado igual al de la clave elegida.
+- **Falla cerrado también al arrancar.** Si falta una variable, la lista no existe, no
+  verifica o la firma una clave no autorizada, si la bitácora es `:memory:` o comparte
+  archivo con los nonces, o si la bitácora existente no supera `verify_chain()`, el
+  proceso termina con `StartupError` y no atiende ninguna verificación. El mensaje
+  nombra la variable o la etapa, sin contenido de claves, listas ni credenciales.
+
+**Consecuencias.** Existe un punto de arranque real con las tres capas sincrónicas
+conectadas. La lista se carga una vez: aplicar una nueva exige reemplazar el archivo y
+reiniciar, hasta que el issue #47 resuelva la distribución y recarga con conectividad
+intermitente; tampoco hay todavía una política de antigüedad máxima sobre `iat`, que
+pertenece a esa misma decisión. Una bitácora alterada deja el punto de control fuera de
+servicio hasta que alguien la investigue: se prefiere eso a seguir encadenando sobre
+una cadena rota. No existe aún una CLI para generar la clave de revocación ni firmar la
+lista; hoy se hace desde Python.
+
+---
+
+## ADR-0015 — Distribución y frescura de la lista de revocación
+
+**Estado:** Propuesta
+
+**Contexto.** ADR-0014 carga la lista firmada una sola vez al arrancar. Un punto de
+control del CCAV Pitalito puede perder la conexión con el lugar donde se publica la
+lista durante horas, y la validación debe seguir siendo local y sincrónica
+(`ARCHITECTURE.md`, capa 1). Hay que decidir cómo llega una lista nueva, cómo se aplica
+sin reiniciar y qué hacer cuando la lista en disco es demasiado vieja (issue #47). Usar
+indefinidamente una lista vieja acepta credenciales revocadas después; rechazar con
+cada corte de red deja el punto de control inútil.
+
+**Decisión.**
+
+- **Pull con caché local, no push.** No existe un servicio central que pueda empujar
+  la lista, y un push exige que el verificador acepte conexiones entrantes. El punto de
+  control tira de la lista: el comando `python -m secureqr_verifier_service.sync`,
+  lanzado por el sistema (cron o un temporizador de systemd), descarga la lista por
+  HTTPS desde `SQRID_REVOCATION_URL`, la **verifica antes de tocar el disco** y la
+  instala con reemplazo atómico (`os.replace`) en `SQRID_REVOCATION_LIST_PATH`. Si la
+  red falla, el archivo anterior queda intacto. El transporte es solo un medio: la
+  confianza viene de la firma, así que copiar el archivo a mano o por USB también sirve.
+- **Recarga en caliente sin bloquear la validación.** `RevocationListCache` mantiene la
+  lista vigente en memoria y, como máximo una vez cada
+  `SQRID_REVOCATION_REFRESH_SECONDS`, revisa si el archivo cambió (tamaño y fecha de
+  modificación) antes de leerlo. Es una lectura de disco local, sin red. Una lista
+  nueva inválida se ignora y se conserva la vigente.
+- **Antirretroceso.** Una lista solo reemplaza a la vigente si su `iat` firmado es
+  posterior. Así nadie puede reinstalar una lista vieja, válidamente firmada, que no
+  incluía revocaciones recientes. El comando de sincronización aplica la misma regla
+  contra el archivo en disco. Una lista con `iat` en el futuro, más allá de la
+  tolerancia de reloj, se rechaza: si no, fijaría el antirretroceso y bloquearía las
+  listas legítimas siguientes.
+- **Falla cerrado por lista vencida.** Si `now - iat` supera
+  `SQRID_REVOCATION_MAX_AGE_SECONDS`, `is_revoked` lanza `RevocationError` y el
+  `Verifier` rechaza con el código interno `revocation_unavailable` (ADR-0011). El
+  umbral es configuración obligatoria, entre 60 segundos y 30 días, y debe superar
+  holgadamente la cadencia de publicación más el corte de red que se quiera tolerar.
+  En cuanto llega una lista fresca, la siguiente verificación vuelve a aceptar, sin
+  reiniciar.
+- **Arranque.** Una lista ausente o inválida sigue impidiendo el arranque (ADR-0014).
+  Una lista válida pero vencida **no** lo impide: el servicio arranca y rechaza todo
+  hasta que llegue una fresca, para recuperarse solo cuando vuelva la red sin depender
+  de que alguien lo reinicie.
+
+**Consecuencias.** La ventana de riesgo por revocación queda acotada y es configurable:
+una credencial revocada puede aceptarse como mucho hasta que el punto de control
+recibe la lista que la incluye, y nunca más allá de la antigüedad máxima. Quien publica
+la lista debe volver a firmarla periódicamente aunque no cambie, para renovar su
+`iat`; sin eso, todos los puntos de control empiezan a rechazar al vencerse el umbral.
+Esto exige además relojes razonablemente sincronizados entre quien firma y quien
+verifica, como ya ocurre con los tokens. No se resuelve aquí quién opera el servidor de
+publicación ni la CLI para firmar listas.
