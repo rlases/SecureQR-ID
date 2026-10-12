@@ -36,6 +36,8 @@ Todas las variables son obligatorias y no tienen valor por defecto:
 | `SQRID_REPLAY_DB_PATH` | SQLite persistente de nonces y reloj |
 | `SQRID_EVIDENCE_DB_PATH` | SQLite persistente de la bitácora, distinto del anterior |
 | `SQRID_CLOCK_SKEW_SECONDS` | Entero entre 0 y 60 |
+| `SQRID_REVOCATION_MAX_AGE_SECONDS` | Antigüedad máxima de la lista (60 s a 30 días); vencida, se rechaza todo |
+| `SQRID_REVOCATION_REFRESH_SECONDS` | Cada cuánto se revisa si cambió el archivo (1 a 3600 s, menor que la anterior) |
 
 ## Arranque
 
@@ -49,8 +51,8 @@ TLS va delante de este proceso.
 ## El servicio no arranca si…
 
 - falta una variable o el desfase de reloj está fuera de 0–60;
-- la lista de revocación no existe, está alterada, no está firmada con una clave de
-  `SQRID_REVOCATION_KEYS_DIR`, o la firma una clave que también está en
+- la lista de revocación no existe, está alterada, tiene fecha futura, no está firmada
+  con una clave de `SQRID_REVOCATION_KEYS_DIR`, o la firma una clave que también está en
   `SQRID_TRUSTED_KEYS_DIR`;
 - los dos directorios de claves son el mismo;
 - la bitácora es `:memory:`, coincide con el almacén de nonces o ya existe y no supera
@@ -59,8 +61,29 @@ TLS va delante de este proceso.
 El mensaje de error nombra la variable o la etapa; nunca muestra claves, contenidos de
 la lista ni identificadores de credencial.
 
-## Actualizar la lista de revocación
+## Actualizar la lista de revocación (ADR-0015)
 
-La lista se carga una sola vez al arrancar. Para aplicar una lista nueva hay que
-reemplazar el archivo y reiniciar el servicio. La distribución y recarga con
-conectividad intermitente es el issue #47.
+El servidor no necesita reiniciarse. Cada `SQRID_REVOCATION_REFRESH_SECONDS` revisa si
+el archivo de `SQRID_REVOCATION_LIST_PATH` cambió y, si la lista nueva verifica y es
+**más reciente** que la vigente (por su `iat` firmado), la aplica. Una lista inválida,
+más vieja o con fecha futura se ignora y se conserva la vigente.
+
+Si la lista vigente supera `SQRID_REVOCATION_MAX_AGE_SECONDS`, toda verificación se
+rechaza hasta que llegue una fresca. Un servidor que arranca con una lista válida pero
+vencida sí arranca, y se recupera solo en cuanto la lista se renueva.
+
+Para traer la lista publicada, programa en el sistema (cron o un temporizador de
+systemd) el comando de sincronización. Usa las mismas variables más
+`SQRID_REVOCATION_URL` (solo `https://`):
+
+```bash
+python -m secureqr_verifier_service.sync
+```
+
+Descarga la lista, la verifica antes de tocar el disco y la instala con reemplazo
+atómico solo si es más nueva. Si no hay red o la lista no verifica, termina con código
+1 y el archivo vigente queda intacto. Copiar el archivo firmado a mano o por USB
+también funciona: la confianza viene de la firma, no del transporte.
+
+Quien publica la lista debe volver a firmarla periódicamente aunque no cambie, para
+renovar su `iat` antes de que venza en los puntos de control.

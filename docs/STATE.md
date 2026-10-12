@@ -159,6 +159,12 @@ solo falta `anchor/` (issue #9) para completarla.
   clave de revocación dedicada, en un directorio de confianza propio. `revocation/`
   ahora verifica la lista con las reglas de un token (low-S, 64 bytes, `kid` ligado,
   `cids` tipados).
+- **Issue #47 — distribución y frescura de la lista de revocación**, rama
+  `modulo/47-distribucion-revocacion`, apilada sobre las de #45 y #46 y pendiente de
+  revisión. ADR-0015 en *Propuesta*: pull con caché local (`python -m
+  secureqr_verifier_service.sync` por cron/systemd, HTTPS, verifica antes de escribir,
+  reemplazo atómico), recarga en caliente en el servidor, antirretroceso por `iat` y
+  rechazo de todas las verificaciones si la lista supera su antigüedad máxima.
 
 - **Issue #48 — integración en `RegistrosPage`**, rama
   `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
@@ -278,6 +284,8 @@ estaban pendientes:
   `modulo/46-revocation-produccion`, pendiente de revisión; ver "En curso".
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
+  Implementado en `modulo/47-distribucion-revocacion` con ADR-0015 (*Propuesta*),
+  pendiente de revisión; ver "En curso".
 - Issue #48 — integración de componentes migrados: implementada en
   `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
   Se descarta `EditRecordModal` a favor de `CorregirRegistroModal`; ver "En curso".
@@ -327,6 +335,16 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-11 — Issue #47: lista de revocación con conectividad intermitente.** Duverney.
+ADR-0015 (*Propuesta*) registrado antes de implementar. `RevocationListCache` en
+`revocation/` (recarga, antirretroceso, antigüedad máxima con falla cerrada) y comando
+de sincronización en `verifier-service/`. Dos variables nuevas obligatorias:
+`SQRID_REVOCATION_MAX_AGE_SECONDS` y `SQRID_REVOCATION_REFRESH_SECONDS`. Verificación:
+pytest en `revocation/` (53) y `verifier-service/` (48); fallos reales de red y de
+esquema comprobados contra `https_fetch`. No se probó una descarga HTTPS exitosa contra
+un servidor real. Pendiente: revisión de #68, #69 y este PR; definir quién opera el
+servidor de publicación y la cadencia de refirmado; CLI para firmar listas.
 
 **2026-10-11 — Issue #46: verificador real con revocación.** Duverney. Se crea
 `verifier-service/` como capa de aplicación (ADR-0014, *Propuesta*): arranca el

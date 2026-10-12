@@ -79,9 +79,12 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 
 ## Decisiones de arquitectura pendientes
 
-Registradas como ADR abiertos en `DECISIONS.md`:
+Registradas en `DECISIONS.md`:
 
-- Distribución de la lista de revocación a verificadores con conectividad intermitente.
+- Distribución de la lista de revocación a verificadores con conectividad intermitente:
+  propuesta en ADR-0015, pendiente de aceptación conjunta (pull con caché local,
+  recarga en caliente, antirretroceso y rechazo cuando la lista supera su antigüedad
+  máxima).
 
 El stack se cerró en ADR-0005. La gobernanza de la red blockchain se cerró en ADR-0007:
 anclaje híbrido — Hyperledger Fabric para la operación local, más un sellado periódico

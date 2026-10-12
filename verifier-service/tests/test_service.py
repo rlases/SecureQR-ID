@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from secureqr_verifier_service.service import REQUIRED_VARIABLES
 
 NOW = 1_800_000_000
 PASSWORD = "test-only-password"
+DAY = 24 * 3600
 
 
 @dataclass
@@ -38,14 +40,20 @@ class Deployment:
         issuer = Issuer(private or self.issuer_private, PASSWORD, 120, clock=lambda: NOW)
         return issuer.issue_token(credential_id)
 
-    def write_list(self, revoked: list[str], *, private: Path | None = None) -> None:
+    def write_list(
+        self,
+        revoked: list[str],
+        *,
+        private: Path | None = None,
+        issued_at: int = NOW - 60,
+    ) -> None:
         key_path = private or self.revocation_private
         private_key = serialization.load_pem_private_key(
             key_path.read_bytes(), PASSWORD.encode()
         )
         kid = derive_key_id(private_key.public_key())
         self.config.revocation_list_path.write_bytes(
-            sign_revocation_list(private_key, kid, revoked, NOW - 60)
+            sign_revocation_list(private_key, kid, revoked, issued_at)
         )
 
     def environment(self) -> dict[str, str]:
@@ -58,6 +66,8 @@ class Deployment:
             "SQRID_REPLAY_DB_PATH": str(c.replay_db_path),
             "SQRID_EVIDENCE_DB_PATH": str(c.evidence_db_path),
             "SQRID_CLOCK_SKEW_SECONDS": str(c.clock_skew_seconds),
+            "SQRID_REVOCATION_MAX_AGE_SECONDS": str(c.revocation_max_age_seconds),
+            "SQRID_REVOCATION_REFRESH_SECONDS": str(c.revocation_refresh_seconds),
         }
 
 
@@ -86,6 +96,8 @@ def deployment(tmp_path: Path) -> Deployment:
         replay_db_path=tmp_path / "state" / "replay.sqlite3",
         evidence_db_path=tmp_path / "state" / "evidence.sqlite3",
         clock_skew_seconds=30,
+        revocation_max_age_seconds=DAY,
+        revocation_refresh_seconds=30,
     )
     result = Deployment(
         tmp_path, issuer_private, issuer_kid, revocation_private, revocation_kid, config
@@ -148,6 +160,8 @@ def test_token_signed_with_revocation_key_is_rejected(deployment: Deployment) ->
 def test_factory_reads_configuration_from_environment(
     deployment: Deployment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # La fábrica usa el reloj real: la lista debe estar fechada ahora, no en NOW.
+    deployment.write_list([], issued_at=int(time.time()) - 60)
     for name, value in deployment.environment().items():
         monkeypatch.setenv(name, value)
 
