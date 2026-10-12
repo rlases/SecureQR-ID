@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-09-26
+**Última actualización:** 2026-10-11
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -142,6 +142,16 @@ solo falta `anchor/` (issue #9) para completarla.
 
 ## En curso
 
+- **Issue #45 — validación aceptada registrada en `evidence-log/`**, rama
+  `modulo/45-evidence-log-verifier`, pendiente de revisión cruzada y merge. ADR-0013
+  queda en estado *Propuesta* hasta que Jhunier la revise. `RecordingVerifier`
+  (en `verifier/`, sin importar `evidence-log/`) envuelve al `Verifier` y encadena cada
+  aceptación; si la bitácora falla, rechaza (falla cerrado). `EvidenceLog.append_event`
+  pasa a ser atómico con `BEGIN IMMEDIATE` y seguro entre hilos: antes, dos aceptaciones
+  concurrentes bifurcaban la cadena (prueba que lo demostraba incluida). Todavía no hay
+  un punto de entrada de producción que construya el `Verifier` real; issue #46 debe
+  crearlo y envolverlo con `RecordingVerifier`.
+
 - **Issue #48 — integración en `RegistrosPage`**, rama
   `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
   Se descarta y elimina `client/src/components/EditRecordModal.tsx` junto con sus
@@ -253,7 +263,8 @@ estaban pendientes:
   solo contempla eventos aceptados, y `REJECTED_RESULT` en `verifier.py` nunca lleva
   `credential_id`, así que un rechazo no tiene con qué construir un `Event` sin inventar
   un identificador o exponer datos que ADR-0011 mantiene fuera de la respuesta pública).
-  Seguimiento directo de PR #43.
+  Seguimiento directo de PR #43. Implementado en `modulo/45-evidence-log-verifier`,
+  pendiente de revisión; ver "En curso".
 - Issue #46 — conectar `RevocationList` real como `revocation_checker` al construir el
   `Verifier` de producción. Seguimiento directo de PR #44.
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
@@ -307,6 +318,18 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-11 — Issue #45: bitácora conectada al verificador.** Duverney. Se compone
+`Verifier` + `EvidenceLog` en la capa de aplicación mediante `RecordingVerifier`
+(ADR-0013, *Propuesta*). Solo se registran aceptaciones, con `verifier_id` obligatorio
+por instalación y una bitácora persistente por verificador, separada del almacén de
+nonces. Un fallo al registrar produce el rechazo genérico y quema el nonce (documentado
+y probado). Se corrigió una carrera real en `EvidenceLog`: sin transacción explícita,
+escrituras concurrentes encadenaban sobre el mismo predecesor; además la conexión no
+admitía hilos del servidor ASGI. Verificación local: `pytest` en `verifier/` (83) y
+`evidence-log/` (13). CI del job `verifier-test` instala ahora `../evidence-log`.
+Pendiente: revisión cruzada, CI del PR y decidir el punto de entrada de producción
+(issue #46).
 
 **2026-09-26 — Issue #48: componentes migrados conectados.** Se conserva la decisión
 append-only de ADR-0008: se retira el modal de edición directa del cliente web y se
