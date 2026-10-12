@@ -14,6 +14,7 @@ const CLIENT_DIST_PATH = path.resolve(__dirname, '../../client/dist');
 export interface AppDependencies {
   db: Database.Database;
   sessionSecret: string;
+  secureCookies?: boolean;
 }
 
 declare module 'express-session' {
@@ -25,7 +26,7 @@ declare module 'express-session' {
 export function createApp(deps: AppDependencies): Express {
   const app = express();
   app.use(express.json());
-  app.use(createSessionMiddleware(deps.sessionSecret));
+  app.use(createSessionMiddleware(deps.sessionSecret, deps.secureCookies ?? false));
   app.locals.db = deps.db;
 
   app.get('/api/health', (_req, res) => {

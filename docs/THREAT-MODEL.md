@@ -44,8 +44,8 @@ credencial y se materializan aunque el QR sea perfecto.
 | Amenaza | Riesgo | Control |
 |---|---|---|
 | Credenciales débiles o reutilizadas del personal | Acceso no autorizado a datos personales de estudiantes | Hashing con librería establecida, política de contraseñas, bloqueo tras intentos fallidos |
-| Escucha de la red institucional | Captura de contraseñas y datos personales en tránsito por WiFi | Transporte cifrado — decisión pendiente en ADR-0008 |
-| Secuestro de sesión | Suplantación de un usuario ya autenticado | Cookies de sesión con expiración, invalidación al cerrar sesión |
+| Escucha de la red institucional | Captura de contraseñas y datos personales en tránsito por WiFi | HTTPS con certificado autofirmado por instalación (ADR-0008, issue #51) |
+| Secuestro de sesión | Suplantación de un usuario ya autenticado | Cookies de sesión con expiración, invalidación al cerrar sesión, marcadas `secure` bajo HTTPS |
 | Escalada entre roles | Un usuario de registro accede a informes o edita registros ajenos | Autorización por rol verificada en el servidor, nunca solo en la interfaz |
 | Edición silenciosa de registros | Un administrativo corrige un registro sin dejar rastro | Corrección como evento nuevo con autor y motivo, nunca sobrescritura (ver ADR-0008) |
 | Exposición del servidor fuera de la LAN | Acceso desde internet a datos personales | Escucha restringida a la red institucional; nunca exponer el puerto a internet |
