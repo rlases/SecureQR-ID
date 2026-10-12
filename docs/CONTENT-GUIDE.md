@@ -35,16 +35,23 @@ Formal pero claro, sin jerga técnica ni códigos de error crudos.
 
 ## Estructura de mensajes de error
 
-Patrón ya en uso, consistente en `mi-app-qr/client`: **"No fue posible / No se pudo" +
-verbo en infinitivo**, dentro de un contenedor con `role="alert"`, con botón
-"Reintentar" cuando la operación se puede repetir.
+Patrón en uso en Dashboard, Informes e Historial de correcciones: **"No fue posible /
+No se pudo" + verbo en infinitivo**, dentro de un contenedor con `role="alert"`, con
+botón "Reintentar" cuando la operación se puede repetir.
 
-| Pantalla | Mensaje real | Acción |
-|---|---|---|
-| Dashboard | `"No fue posible actualizar el resumen."` | Reintentar |
-| Informes | `"No fue posible cargar los registros."` | Reintentar |
-| Historial de correcciones | `"No se pudo cargar el historial."` | Reintentar |
-| Login | `"No se pudo conectar con el servidor"` (*fallback* de red; si el servidor responde con un error, se muestra su mensaje tal cual) | — |
+| Pantalla | Mensaje real | Acción | `role="alert"` |
+|---|---|---|---|
+| Dashboard | `"No fue posible actualizar el resumen."` | Reintentar | Sí |
+| Informes | `"No fue posible cargar los registros."` | Reintentar | Sí |
+| Historial de correcciones | `"No se pudo cargar el historial."` | Reintentar | Sí |
+| Login | `"No se pudo conectar con el servidor"` (*fallback* de red; si el servidor responde con un error, se muestra su mensaje tal cual) | — | **No** |
+
+**Login es la excepción, no el patrón**: `LoginPage.tsx` muestra `serverError` en un
+`<p>` simple, sin `role="alert"` ni región `aria-live` — un error al iniciar sesión no
+se anuncia a quien usa un lector de pantalla. Es una inconsistencia real, señalada
+también en la auditoría de accesibilidad del issue #58, no una variante aceptada del
+patrón. Documentado aquí para que nadie copie la forma de Login como si fuera la
+estructura correcta.
 
 **Regla:** decir qué pasó y qué puede hacer la persona — nunca solo un término técnico
 o un código. Mantener siempre esta misma estructura para mensajes nuevos.
@@ -103,9 +110,12 @@ casos genéricos restantes en una tarea aparte (esta guía no reescribe copy exi
 
 ## Confirmaciones y acciones irreversibles
 
-La única acción de este tipo implementada hoy es corregir un registro
-(`CorregirRegistroModal.tsx`), que sigue el modelo append-only de ADR-0008: no hay
-"deshacer" ni "editar", solo un evento correctivo nuevo que queda enlazado al anterior.
+Hay dos acciones de este tipo implementadas hoy, no solo una.
+
+### Corregir un registro (`CorregirRegistroModal.tsx`)
+
+Sigue el modelo append-only de ADR-0008: no hay "deshacer" ni "editar", solo un evento
+correctivo nuevo que queda enlazado al anterior.
 
 Información mínima que ya exige el formulario real y que debe mantenerse en cualquier
 confirmación de este tipo:
@@ -119,6 +129,29 @@ confirmación de este tipo:
 - El registro corregido sigue siendo consultable: `HistorialCorreccionesModal.tsx`
   muestra `"Registro original"`, cada `"Corrección {n}"` con su motivo, y marca la
   vigente con la insignia `"Vigente"` — sin ninguna acción de mutación disponible ahí.
+
+### Crear un usuario (`UsuariosPage.tsx`)
+
+También es irreversible, aunque no se parezca a una corrección: `server/src/users/routes.ts`
+solo expone `POST /` (crear) y `GET /` (listar) — no hay ruta para editar ni eliminar un
+usuario, así que una cuenta creada por error no se puede quitar desde la aplicación.
+
+A diferencia de corregir un registro, hoy **no hay ningún paso de confirmación** antes
+de crear: el formulario se envía directo (`handleSubmit(onSubmit)`, sin `motivo` ni
+diálogo de "¿estás seguro?"). Lo único que existe después de crear es el aviso de la
+contraseña generada, que cumple su propio requisito de información mínima porque es
+información que solo se muestra una vez:
+- `"Usuario {username} creado. Contraseña generada (cópiala ahora — no se volverá a
+  mostrar):"` — nombra qué se creó y advierte explícitamente que es la única
+  oportunidad de ver la contraseña.
+- Este aviso tampoco usa `role="status"` (hallazgo ya señalado en la auditoría del
+  issue #58): un lector de pantalla no lo anuncia, así que alguien que no ve la pantalla
+  podría no enterarse de que ahí está la contraseña que no se repetirá.
+
+Si se decide agregar un paso de confirmación antes de crear (no implementado hoy),
+debería seguir el mismo mínimo que la corrección: sobre quién se actúa (el `username`
+elegido) y qué pasa exactamente (se crea la cuenta y no hay forma de deshacerlo desde
+la aplicación).
 
 ## Glosario
 
