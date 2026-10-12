@@ -163,10 +163,7 @@ solo falta `anchor/` (issue #9) para completarla.
   quién opera el servidor de publicación y la cadencia de refirmado — ver "Pendiente" y
   la nota de sesión de hoy.
 
-## En curso
-
-- **Issue #48 — integración en `RegistrosPage`**, rama
-  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
+- **Issue #48 — integración en `RegistrosPage` (PR #65 fusionado).**
   Se descarta y elimina `client/src/components/EditRecordModal.tsx` junto con sus
   pruebas aisladas; la única corrección sigue siendo `CorregirRegistroModal`, con
   motivo obligatorio y autorización `requireAdmin` en el servidor (ADR-0008).
@@ -186,6 +183,11 @@ solo falta `anchor/` (issue #9) para completarla.
   no una garantía transaccional contra entradas concurrentes desde otros equipos.
   La API actual no admite añadir una salida omitida con fecha histórica; esa
   capacidad y su política de autorización quedan fuera de esta integración.
+- **Issues #49 y #51 — empaquetado con `electron-builder` y HTTPS en la red del CCAV
+  (PR #67 fusionado).** Ver "Cerrados desde el reparto original" en "Pendiente" para el
+  detalle técnico.
+
+## En curso
 
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
@@ -271,22 +273,36 @@ fusionados hoy, PR #43 y #44) más el cierre de los frentes de `mi-app-qr/` que
 estaban pendientes:
 
 - Issue #9 — `anchor/`: Merkle + Hyperledger Fabric + sellado OpenTimestamps (ADR-0007).
-- ~~Issue #45~~ — fusionado (PR #68). ~~Issue #46~~ — fusionado (PR #69). ~~Issue #47~~ —
-  fusionado (PR #70). Ver "Hecho" arriba y la nota de sesión 2026-10-12.
-- Issue #48 — integración de componentes migrados: implementada en
-  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
-  Se descarta `EditRecordModal` a favor de `CorregirRegistroModal`; ver "En curso".
-- Issues #49 y #51 — empaquetado con `electron-builder` y HTTPS en la red del CCAV
-  (ADR-0008). Implementados en la rama `fix/51-https-ccav`, PR #67 abierto — pendiente
-  de revisión por Jhunier (acordado que la hace él mismo, no cruzada por Duverney, dado
-  el tema de HTTPS).
+- Issue #45 — conectar `evidence-log/` real en `verifier/`. Seguimiento directo de
+  PR #43. Implementado en `modulo/45-evidence-log-verifier`, ya fusionado (PR #68);
+  ver "Hecho".
+- Issue #46 — conectar `RevocationList` real como `revocation_checker` al construir el
+  `Verifier` de producción. Seguimiento directo de PR #44. Implementado en
+  `modulo/46-revocation-produccion`, ya fusionado (PR #69); ver "Hecho".
+- Issue #47 — distribución de la lista de revocación a verificadores con conectividad
+  intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
+  Implementado en `modulo/47-distribucion-revocacion` con ADR-0015 (*Propuesta*), ya
+  fusionado (PR #70); ver "Hecho".
+
+**Cerrados desde el reparto original (2026-09-26):**
+
+- **Issue #48 — cablear los componentes migrados en `RegistrosPage`.** Cerrado por
+  Duverney, PR #65 (fusionado): integró `ExportCsvModal`, `ForgottenOutModal` y
+  `qrParser`; `EditRecordModal` se descartó a favor del flujo de corrección append-only
+  ya existente (`CorregirRegistroModal`, ADR-0008), sin introducir una segunda vía de
+  edición en sitio.
+- **Issue #49 — empaquetado con `electron-builder`.** Resuelto por Jhunier, PR #67
+  (fusionado). Excepción puntual al reparto por equidad — ver nota de sesión.
+- **Issue #51 — HTTPS en la red del CCAV.** Resuelto por Jhunier, PR #67 (junto con
+  #49, mismo PR — ver nota de sesión) — mecanismo documentado en ADR-0008.
 
 **Jhunier** — issue #50 (decisión de producto sobre el sistema de licencia/prueba en
-`main.js`), resuelto por él mismo en este mismo PR — ver "Hecho" arriba. Excepción
-puntual al reparto por equidad de carga, no lo cambia de fondo: sigue sin tomar más
-issues de implementación esta vuelta, más allá de este. Disponible para revisión
-cruzada (obligatoria por `CONTRIBUTING.md` en cada PR que abra Duverney) y para las
-decisiones conjuntas de abajo.
+`main.js`), resuelto por él mismo — ver "Hecho" arriba; y ahora también #49/#51 (ver
+nota de sesión 2026-09-26). Todas excepciones puntuales al reparto por equidad de
+carga, no lo cambian de fondo: Jhunier sigue sin tomar issues de implementación nuevos
+por iniciativa propia esta vuelta. Disponible para revisión cruzada (obligatoria por
+`CONTRIBUTING.md` en cada PR que abra Duverney) y para las decisiones conjuntas de
+abajo.
 
 **Conjunta** (ninguno de los dos decide solo):
 
@@ -331,6 +347,21 @@ bloqueante todavía, sin issue.
 
 ## Notas de sesiones recientes
 
+**2026-10-12 — Revisión y fusión de #49/#51 (PR #67).** Jhunier, con el acuerdo
+explícito de revisarlo él mismo por el tema de HTTPS (no cruzado por Duverney). Verifica
+el certificado autofirmado persistente, `setCertificateVerifyProc` pineado a ese PEM
+exacto, la cookie `secure` solo bajo HTTPS real, y el empaquetado con `electron-builder`
+(`extraResources` para `server/node_modules`, recompilación de `better-sqlite3` contra
+la ABI de Electron vía `ELECTRON_RUN_AS_NODE=1`). Verificación de punta a punta ya hecha
+antes en la sesión: app empaquetada real arrancada, certificado generado, login con
+cookie `Secure`. **No verificado:** instalar el `.exe` de Windows en una máquina limpia
+(sin Windows disponible en este entorno) — queda pendiente de quien lo instale en el
+CCAV. Al fusionar se aprovechó para poner al día el resto de `STATE.md`: issues #45-48
+seguían marcados "pendiente de revisión" en varias secciones pese a estar ya fusionados
+(PR #68, #69, #70, #65) — corregido en todas partes, no solo en la sección que tocaba
+este PR. GitHub no deja autoaprobar el propio PR; quedó como revisión tipo comentario y
+se fusionó directo como dueño del repositorio.
+
 **2026-10-12 — Revisión cruzada y fusión de #45/#46/#47 (PR #68, #69, #70).** Jhunier.
 Revisados en orden de dependencia, con los test suites reales corridos tras instalar
 cada módulo (no solo confiando en la descripción del PR): en #68 se reprodujo el bug de
@@ -345,8 +376,9 @@ correr los tests. Pendiente de Duverney: confirmar los ADR, las respuestas que d
 Jhunier a las preguntas de #71/#58 y #72/#57 (siguen en borrador hasta entonces), y
 quién opera el servidor de publicación de la lista de revocación y la cadencia de
 refirmado (propuesta de Jhunier: diario, `MAX_AGE` 48-72h, `REFRESH` 300s). Pendiente de
-Duverney también: revisión cruzada de #66, #64 y #63 (de Jhunier), ninguno con
-aprobación todavía.
+Duverney también: revisión cruzada de #66 y #64 (de Jhunier, ninguno con aprobación
+todavía) y confirmación del contenido de #63 (guía de contenido, ya verificado y listo
+para revisión).
 
 **2026-10-11 — Issue #47: lista de revocación con conectividad intermitente.** Duverney.
 ADR-0015 (*Propuesta*) registrado antes de implementar. `RevocationListCache` en
