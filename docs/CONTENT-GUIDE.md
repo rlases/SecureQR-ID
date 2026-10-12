@@ -66,6 +66,8 @@ Mensajes reales (`ResultPanel.tsx`, función `getStatusCopy()`):
 | Rechazado (cualquier causa) | `"Acceso denegado"` | `"La credencial fue rechazada."` |
 | Servicio no disponible | `"Servicio no disponible"` | `"No se pudo completar la verificación."` |
 | Verificando | `"Verificando credencial"` | `"Espera un momento antes de presentar otro código."` |
+| Buscando código QR | `"Buscando código QR"` | `"Alinea la credencial dentro del marco de lectura."` |
+| Solicitando cámara | `"Solicitando cámara"` | `"Confirma el permiso en el navegador para continuar."` |
 | Listo | `"Listo para verificar"` | `"Activa la cámara o utiliza la entrada manual."` |
 
 Esto está reforzado a nivel de código, no solo de convención: `verifierApi.ts` descarta
@@ -130,18 +132,23 @@ confirmación de este tipo:
 ### Nota sobre "editar" — vocabulario prohibido, no solo desaconsejado
 
 El componente `EditRecordModal.tsx` (título "Editar Registro", botón "Guardar
-Cambios") sigue existiendo en el repositorio pero es **código muerto**: no lo importa
-ninguna pantalla activa, es un resto migrado del prototipo Electron viejo antes de que
-existiera el flujo de corrección actual. El propio ADR-0008 lo nombra como el problema
-que la corrección append-only vino a resolver — permitir una edición en sitio rompería
-el invariante append-only del modelo. **Ninguna interfaz nueva debe usar "editar" para
-esta operación, aunque `EditRecordModal.tsx` siga en el árbol de archivos.** Si algún
-día se reactiva ese componente (o `ForgottenOutModal.tsx`, que hoy mezcla "corregir" y
-"editar" en la misma pantalla), su copy debe corregirse primero para usar
-"corrección"/"corregir" de forma consistente.
+Cambios") era código muerto heredado del prototipo Electron viejo, de antes del flujo
+de corrección actual — el propio ADR-0008 lo nombra como el problema que la corrección
+append-only vino a resolver. Al integrar los componentes migrados en `RegistrosPage`
+(issue #48, PR #65) se descartó y **se eliminó del repositorio**, y `ForgottenOutModal`
+ya no mezcla "editar" con "corregir". Hoy no queda ningún rastro de ese vocabulario en
+`mi-app-qr/client` (verificado, cero ocurrencias). La regla del glosario de arriba se
+mantiene igual — **ninguna interfaz nueva debe usar "editar" para esta operación** —
+pero ya no es una advertencia sobre código existente, sino la convención a seguir hacia
+adelante.
 
 ## Aprobación
 
-Borrador abierto por Jhunier. Pendiente de revisión explícita de Duverney sobre el
-contenido completo, en particular la regla propuesta para unificar el texto de carga —
-antes de considerar cerrado el issue #56.
+Borrador abierto por Jhunier. Revisado y verificado de nuevo el 2026-10-12: cada cita
+de texto y cada afirmación sobre el código se comprobó contra `mi-app-qr/client/src/` y
+`verifier-web/src/` tal como están hoy en `main`, no solo como estaban al redactar el
+borrador — la tabla de estados de `verifier-web/` tenía 2 de 7 filas faltantes
+(corregido arriba) y la nota sobre `EditRecordModal.tsx`/`ForgottenOutModal.tsx` estaba
+desactualizada (ambos ya se resolvieron en PR #65, también corregido). Pendiente de
+revisión explícita de Duverney sobre el contenido completo, en particular la regla
+propuesta para unificar el texto de carga — antes de considerar cerrado el issue #56.
