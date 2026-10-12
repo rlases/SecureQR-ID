@@ -242,11 +242,45 @@ solo presenta su credencial QR.
 - **Condiciona ADR-0005.** Si el servidor nace dentro del proceso Electron, el stack de
   esta parte queda de hecho en Node.js. Debe resolverse junto con ADR-0005, no aparte.
 
+**Transporte, cerrado (issue #51).** HTTP plano en la LAN institucional exponía las
+credenciales del personal a cualquiera que escuchara la red WiFi. Mecanismo elegido:
+**certificado autofirmado por instalación**, generado por el propio proceso Electron
+(`mi-app-qr/src/lib/tls.js`, vía la librería `selfsigned`) en el primer arranque y
+persistido en `userData/tls/`, sin autoridad certificadora externa — el equipo que actúa
+como servidor es también quien lo emite. Se descartaron las otras dos opciones
+planteadas: una CA interna es infraestructura desproporcionada para un único servidor
+por CCAV, y un certificado de una CA pública exige un dominio público que este
+despliegue LAN no tiene.
+
+Detalle de la implementación:
+
+- El certificado cubre `localhost`, `127.0.0.1` y las IP LAN de la máquina en el
+  momento de generarlo (`subjectAltName`), y se regenera automáticamente si esas IP
+  cambian (red con DHCP) — nunca cambia solo por caducar, la validez es de 10 años para
+  no forzar una redistribución frecuente a los equipos del CCAV.
+- `mi-app-qr/server` sirve por HTTPS cuando recibe `TLS_CERT_PATH`/`TLS_KEY_PATH` por
+  variable de entorno (así los pasa `main.js`) y sigue sirviendo por HTTP plano sin
+  ellas — el caso de `npm run dev` fuera de Electron. La cookie de sesión se marca
+  `secure` exactamente cuando el transporte es HTTPS (`express-session` la omite sobre
+  HTTP si `secure: true`, así que forzarla siempre habría roto el login en dev).
+- La ventana de Electron confía explícitamente en ese certificado exacto vía
+  `session.setCertificateVerifyProc` (comparando el PEM completo, no el hostname) —
+  nunca se desactiva la verificación TLS de forma general
+  (`ignore-certificate-errors`), solo se acepta esa huella puntual.
+- **Distribución a los demás equipos del CCAV:** cada navegador que acceda por IP verá
+  la advertencia de certificado no confiable propia de un autofirmado — aceptado a
+  propósito ("incómodo mientras lo mínimo defendible", texto original de esta decisión).
+  El certificado vive en `userData/tls/cert.pem` del equipo servidor; instalarlo como
+  raíz de confianza en cada equipo cliente del CCAV, si se decide hacerlo, es tarea
+  operativa de TI, no un problema de código.
+- **No reutiliza el mismo certificado que `verifier-web/` (ADR-0012).** Son necesidades
+  independientes: `verifier-web/` exige HTTPS bajo el mismo origen en un despliegue
+  potencialmente distinto (no necesariamente la misma LAN ni el mismo ADR-0008), así
+  que comparte el patrón (autofirmado, sin CA externa) pero no el archivo de
+  certificado ni el mecanismo de generación.
+
 **Pendiente de decidir.**
 
-- **Transporte:** HTTP plano en la LAN expone las credenciales del personal a cualquiera
-  que escuche la red WiFi institucional. HTTPS con certificado autofirmado es incómodo en
-  navegadores pero es lo mínimo defendible. Decidir explícitamente y justificar.
 - Qué se audita y por cuánto tiempo se conserva.
 - Descubrimiento del servidor por los demás puestos: IP fija, nombre en la red o
   configuración manual.

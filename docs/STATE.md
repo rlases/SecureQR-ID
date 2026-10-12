@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-11
+**Última actualización:** 2026-10-12
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -140,34 +140,29 @@ solo falta `anchor/` (issue #9) para completarla.
   pero como ese archivo entero ya estaba huérfano (no lo carga ninguna ventana), no
   introduce ningún problema nuevo — es limpieza aparte, no parte de esta decisión.
 
-## En curso
-
-- **Issue #45 — validación aceptada registrada en `evidence-log/`**, rama
-  `modulo/45-evidence-log-verifier`, pendiente de revisión cruzada y merge. ADR-0013
-  queda en estado *Propuesta* hasta que Jhunier la revise. `RecordingVerifier`
-  (en `verifier/`, sin importar `evidence-log/`) envuelve al `Verifier` y encadena cada
-  aceptación; si la bitácora falla, rechaza (falla cerrado). `EvidenceLog.append_event`
-  pasa a ser atómico con `BEGIN IMMEDIATE` y seguro entre hilos: antes, dos aceptaciones
-  concurrentes bifurcaban la cadena (prueba que lo demostraba incluida). Todavía no hay
-  un punto de entrada de producción que construya el `Verifier` real; issue #46 debe
-  crearlo y envolverlo con `RecordingVerifier`.
-- **Issue #46 — arranque de producción con `RevocationList` real**, rama
-  `modulo/46-revocation-produccion`, apilada sobre la de #45 y pendiente de revisión.
-  ADR-0014 en *Propuesta*. Nuevo paquete `verifier-service/` que compone verifier,
-  revocation y evidence-log desde variables `SQRID_*` obligatorias y falla al
-  arrancar si la lista o la bitácora no son confiables. La lista se firma con una
-  clave de revocación dedicada, en un directorio de confianza propio. `revocation/`
-  ahora verifica la lista con las reglas de un token (low-S, 64 bytes, `kid` ligado,
-  `cids` tipados).
-- **Issue #47 — distribución y frescura de la lista de revocación**, rama
-  `modulo/47-distribucion-revocacion`, apilada sobre las de #45 y #46 y pendiente de
-  revisión. ADR-0015 en *Propuesta*: pull con caché local (`python -m
-  secureqr_verifier_service.sync` por cron/systemd, HTTPS, verifica antes de escribir,
-  reemplazo atómico), recarga en caliente en el servidor, antirretroceso por `iat` y
-  rechazo de todas las verificaciones si la lista supera su antigüedad máxima.
-
-- **Issue #48 — integración en `RegistrosPage`**, rama
-  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
+- **Issue #45 — validación aceptada registrada en `evidence-log/` (PR #68 fusionado).**
+  `RecordingVerifier` (en `verifier/`, sin importar `evidence-log/`) envuelve al
+  `Verifier` y encadena cada aceptación; si la bitácora falla, rechaza (falla cerrado).
+  `EvidenceLog.append_event` pasa a ser atómico con `BEGIN IMMEDIATE` y seguro entre
+  hilos: antes, dos aceptaciones concurrentes bifurcaban la cadena (bug reproducido
+  contra el código anterior durante la revisión cruzada, confirmando que el fix era
+  real). ADR-0013 revisado y verificado por Jhunier con los test suites reales.
+- **Issue #46 — arranque de producción con `RevocationList` real (PR #69 fusionado).**
+  Nuevo paquete `verifier-service/` que compone verifier, revocation y evidence-log
+  desde variables `SQRID_*` obligatorias y falla al arrancar si la lista o la bitácora
+  no son confiables. La lista se firma con una clave de revocación dedicada, en un
+  directorio de confianza propio. `revocation/` ahora verifica la lista con las reglas
+  de un token (low-S, 64 bytes, `kid` ligado, `cids` tipados) — los tres defectos
+  reportados (firma *high-S*, `cids` como texto iterado carácter por carácter, `kid`
+  sin atar a la clave) verificados y confirmados corregidos. ADR-0014 revisado y
+  verificado por Jhunier.
+- **Issue #47 — distribución y frescura de la lista de revocación (PR #70 fusionado).**
+  `RevocationListCache` con recarga en caliente, antirretroceso por `iat` y rechazo
+  (falla cerrado) si la lista supera su antigüedad máxima; CLI `python -m
+  secureqr_verifier_service.sync` para traerla por HTTPS con reemplazo atómico. ADR-0015
+  revisado y verificado por Jhunier. **Queda pendiente:** decidir quién opera el
+  servidor de publicación y la cadencia de refirmado — ver "Pendiente".
+- **Issue #48 — integración en `RegistrosPage` (PR #65 fusionado).**
   Se descarta y elimina `client/src/components/EditRecordModal.tsx` junto con sus
   pruebas aisladas; la única corrección sigue siendo `CorregirRegistroModal`, con
   motivo obligatorio y autorización `requireAdmin` en el servidor (ADR-0008).
@@ -187,6 +182,11 @@ solo falta `anchor/` (issue #9) para completarla.
   no una garantía transaccional contra entradas concurrentes desde otros equipos.
   La API actual no admite añadir una salida omitida con fecha histórica; esa
   capacidad y su política de autorización quedan fuera de esta integración.
+- **Issues #49 y #51 — empaquetado con `electron-builder` y HTTPS en la red del CCAV
+  (PR #67 fusionado).** Ver "Cerrados desde el reparto original" en "Pendiente" para el
+  detalle técnico.
+
+## En curso
 
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
@@ -272,36 +272,36 @@ fusionados hoy, PR #43 y #44) más el cierre de los frentes de `mi-app-qr/` que
 estaban pendientes:
 
 - Issue #9 — `anchor/`: Merkle + Hyperledger Fabric + sellado OpenTimestamps (ADR-0007).
-- Issue #45 — conectar `evidence-log/` real en `verifier/` (que cada validación
-  **aceptada** quede registrada en la bitácora — `ARCHITECTURE.md` líneas 27 y 46-59
-  solo contempla eventos aceptados, y `REJECTED_RESULT` en `verifier.py` nunca lleva
-  `credential_id`, así que un rechazo no tiene con qué construir un `Event` sin inventar
-  un identificador o exponer datos que ADR-0011 mantiene fuera de la respuesta pública).
-  Seguimiento directo de PR #43. Implementado en `modulo/45-evidence-log-verifier`,
-  pendiente de revisión; ver "En curso".
+- Issue #45 — conectar `evidence-log/` real en `verifier/`. Seguimiento directo de
+  PR #43. Implementado en `modulo/45-evidence-log-verifier`, ya fusionado (PR #68);
+  ver "Hecho".
 - Issue #46 — conectar `RevocationList` real como `revocation_checker` al construir el
   `Verifier` de producción. Seguimiento directo de PR #44. Implementado en
-  `modulo/46-revocation-produccion`, pendiente de revisión; ver "En curso".
+  `modulo/46-revocation-produccion`, ya fusionado (PR #69); ver "Hecho".
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
-  Implementado en `modulo/47-distribucion-revocacion` con ADR-0015 (*Propuesta*),
-  pendiente de revisión; ver "En curso".
-- Issue #48 — integración de componentes migrados: implementada en
-  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
-  Se descarta `EditRecordModal` a favor de `CorregirRegistroModal`; ver "En curso".
-- Issue #49 — empaquetado con `electron-builder` (instalador `.exe` con
-  `server/dist`, `server/node_modules` incluyendo `better-sqlite3` recompilado contra
-  la ABI de Electron, y `client/dist`). Hasta que exista, la app solo corre sin
-  empaquetar (`npm run electron-dev`), lo que exige Node.js instalado en el equipo que
-  actúa como servidor.
-- Issue #51 — HTTPS en la red del CCAV (ADR-0008).
+  Implementado en `modulo/47-distribucion-revocacion` con ADR-0015 (*Propuesta*), ya
+  fusionado (PR #70); ver "Hecho".
+
+**Cerrados desde el reparto original (2026-09-26):**
+
+- **Issue #48 — cablear los componentes migrados en `RegistrosPage`.** Cerrado por
+  Duverney, PR #65 (fusionado): integró `ExportCsvModal`, `ForgottenOutModal` y
+  `qrParser`; `EditRecordModal` se descartó a favor del flujo de corrección append-only
+  ya existente (`CorregirRegistroModal`, ADR-0008), sin introducir una segunda vía de
+  edición en sitio.
+- **Issue #49 — empaquetado con `electron-builder`.** Resuelto por Jhunier, PR #67
+  (fusionado). Excepción puntual al reparto por equidad — ver nota de sesión.
+- **Issue #51 — HTTPS en la red del CCAV.** Resuelto por Jhunier, PR #67 (junto con
+  #49, mismo PR — ver nota de sesión) — mecanismo documentado en ADR-0008.
 
 **Jhunier** — issue #50 (decisión de producto sobre el sistema de licencia/prueba en
-`main.js`), resuelto por él mismo en este mismo PR — ver "Hecho" arriba. Excepción
-puntual al reparto por equidad de carga, no lo cambia de fondo: sigue sin tomar más
-issues de implementación esta vuelta, más allá de este. Disponible para revisión
-cruzada (obligatoria por `CONTRIBUTING.md` en cada PR que abra Duverney) y para las
-decisiones conjuntas de abajo.
+`main.js`), resuelto por él mismo — ver "Hecho" arriba; y ahora también #49/#51 (ver
+nota de sesión 2026-09-26). Todas excepciones puntuales al reparto por equidad de
+carga, no lo cambian de fondo: Jhunier sigue sin tomar issues de implementación nuevos
+por iniciativa propia esta vuelta. Disponible para revisión cruzada (obligatoria por
+`CONTRIBUTING.md` en cada PR que abra Duverney) y para las decisiones conjuntas de
+abajo.
 
 **Conjunta** (ninguno de los dos decide solo):
 
@@ -335,6 +335,20 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-12 — Revisión y fusión de #49/#51 (PR #67).** Jhunier, con el acuerdo
+explícito de revisarlo él mismo por el tema de HTTPS (no cruzado por Duverney). Verifica
+el certificado autofirmado persistente, `setCertificateVerifyProc` pineado a ese PEM
+exacto, la cookie `secure` solo bajo HTTPS real, y el empaquetado con `electron-builder`
+(`extraResources` para `server/node_modules`, recompilación de `better-sqlite3` contra
+la ABI de Electron vía `ELECTRON_RUN_AS_NODE=1`). Verificación de punta a punta ya hecha
+antes en la sesión: app empaquetada real arrancada, certificado generado, login con
+cookie `Secure`. **No verificado:** instalar el `.exe` de Windows en una máquina limpia
+(sin Windows disponible en este entorno) — queda pendiente de quien lo instale en el
+CCAV. Al fusionar se aprovechó para poner al día el resto de `STATE.md`: issues #45-48
+seguían marcados "pendiente de revisión" en varias secciones pese a estar ya fusionados
+(PR #68, #69, #70, #65) — corregido en todas partes, no solo en la sección que tocaba
+este PR.
 
 **2026-10-11 — Issue #47: lista de revocación con conectividad intermitente.** Duverney.
 ADR-0015 (*Propuesta*) registrado antes de implementar. `RevocationListCache` en
