@@ -62,13 +62,18 @@ GitHub para que la mecánica coincida con lo que dice este archivo — ver
 - **`issuer/`** usa pytest. Desde esa carpeta: crear y activar un entorno virtual,
   ejecutar `python -m pip install -e ".[test]"` y luego `python -m pytest`. El job
   `issuer-test` de CI reproduce esos dos últimos comandos.
-- **`verifier/`** usa pytest y comprueba interoperabilidad contra el paquete real del
-  emisor. Desde `verifier/`: ejecutar `python -m pip install -e ../issuer -e ".[test]"`
-  y luego `python -m pytest`. El job `verifier-test` reproduce esos comandos.
+- **`verifier/`** usa pytest y comprueba interoperabilidad contra los paquetes reales del
+  emisor y de la bitácora. Desde `verifier/`: ejecutar
+  `python -m pip install -e ../issuer -e ../evidence-log -e ".[test]"` y luego
+  `python -m pytest`. El job `verifier-test` reproduce esos comandos.
 - **`verifier-web/`** usa Vitest + Testing Library y Playwright. Desde esa carpeta:
   ejecutar `npm ci`, `npm test`, `npm run build`, `npx playwright install chromium` y
   `npm run test:e2e`. El job `verifier-web-test` reproduce el flujo en escritorio,
   tableta y móvil e incluye auditoría axe.
+- **`verifier-service/`** usa pytest con los paquetes reales de `issuer/`, `verifier/`,
+  `revocation/` y `evidence-log/`. Desde esa carpeta: ejecutar
+  `python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ".[test]"`
+  y luego `python -m pytest`. El job `verifier-service-test` reproduce esos comandos.
 - **El futuro módulo Python** `evidence-log/` debe usar pytest y un entorno virtual
   propio siguiendo el mismo patrón. `anchor/` definirá su runner de Node.js al
   implementarse.

@@ -1,9 +1,10 @@
 # Catálogo de componentes y patrones de interacción
 
-> **Estado: borrador para decisión conjunta (issue #57).** Redactado por Duverney a
-> partir del código en `main` (`9e4f6ff`). El inventario de las secciones 1 y 2 describe
-> lo que existe hoy. Los patrones de las secciones 3 a 5 marcados como **propuesta** no
-> son estándar hasta que Jhunier los revise y ambos los acuerden, igual que un ADR.
+> **Estado: acordado (issue #57).** Redactado por Duverney a partir del código en `main`
+> (`9e4f6ff`; lo fusionado después no toca `mi-app-qr/client` ni los componentes de
+> `verifier-web/`). Las secciones 1 y 2 describen lo que existe hoy. Los patrones de las
+> secciones 3 a 5 y las decisiones de la sección 6 se acordaron con Jhunier el 2026-10-12;
+> aplicarlos al código es trabajo aparte, por repartir.
 
 Este documento trata de **estructura y comportamiento**: qué componentes hay, qué
 reciben y cuándo usarlos. El aspecto visual (color, tipografía, espaciado) está en
@@ -83,7 +84,7 @@ Los estados están tipados en `src/types.ts` (`CameraStatus`, `VerificationPhase
 | Historial (diálogo) | "Cargando historial..." (`aria-live`) | — | Bloque `role="alert"` con "Reintentar" | Línea de tiempo |
 | Portal de verificación | "Verificando credencial" con icono giratorio | "Listo para verificar" | "Servicio no disponible" (`phase="offline"`) | Pantalla completa "Acceso validado" o "Acceso denegado" |
 
-### Propuesta para `mi-app-qr/client`
+### Estándar para `mi-app-qr/client`
 
 - **Cargando:** texto que nombra qué se carga ("Cargando registros..."), con
   `text-muted-foreground`. Nunca solo "Cargando...".
@@ -123,7 +124,7 @@ Los estados están tipados en `src/types.ts` (`CameraStatus`, `VerificationPhase
 `EditRecordModal` (edición directa del prototipo viejo) se eliminó del cliente en el
 issue #48 precisamente por no cumplir esto.
 
-### Propuesta de estructura estándar
+### Estructura estándar
 
 ```tsx
 // Contenedor: capa + panel. Comportamiento: siempre useModalFocus.
@@ -142,7 +143,7 @@ const ref = useModalFocus(open, () => { if (!isSubmitting) onCancel(); });
 </div>
 ```
 
-Reglas propuestas:
+Reglas:
 
 1. Todo diálogo usa `useModalFocus`; nadie reimplementa el manejo de foco.
 2. Nombre accesible con `aria-labelledby` apuntando al `<h2>`, no con un `aria-label`
@@ -181,7 +182,7 @@ Reglas propuestas:
 (`hidden sm:table-cell`) en vez de desplazar la tabla, y tiene una columna de acciones
 con encabezado `sr-only`.
 
-### Propuesta
+### Estándar
 
 | Control | Fijo u opcional |
 |---|---|
@@ -194,21 +195,16 @@ con encabezado `sr-only`.
 | Exportar lo filtrado, deshabilitado si no hay resultados | Opcional |
 | Columna de acciones con encabezado `sr-only` y botones con el nombre del registro | Fijo si hay acciones por fila |
 
-## 6. Divergencias para decidir
+## 6. Divergencias: decisiones acordadas (2026-10-12)
 
-| # | Divergencia | Opciones |
+| # | Divergencia | Decisión |
 |---|---|---|
-| D1 | `Toast`/`Toaster` instalados y sin montar | Montarlos y usarlos para confirmaciones (sección 3) o eliminarlos |
-| D2 | Tres implementaciones de diálogo | Unificar en `useModalFocus` y la estructura de la sección 4 |
-| D3 | Dos convenciones de tabla angosta (desplazar en Informes y Dashboard; ocultar columnas en Registros) | Elegir una, o desplazar en tablas de consulta y ocultar en tablas de trabajo |
-| D4 | No hay primitiva `Select`; los `<select>` repiten clases y algunos no tienen estilo de foco | Crear `ui/select.tsx` con las clases de `Input` |
-| D5 | Estados de error distintos entre pantallas, y Usuarios sin ninguno | Adoptar el banner de la sección 3 en todas |
-| D6 | `verifier-web/` y `mi-app-qr/client` no comparten componentes | Mantenerlos separados (son productos distintos, ADR-0012) o extraer un paquete común. Se recomienda mantenerlos separados y alinear solo patrones |
+| D1 | `Toast`/`Toaster` instalados y sin montar | Montar `Toaster` y usarlo para las confirmaciones de la sección 3 |
+| D2 | Tres implementaciones de diálogo | Unificar todas en `useModalFocus` y la estructura de la sección 4 |
+| D3 | Dos convenciones de tabla angosta | Desplazar en tablas de consulta (Dashboard, Informes); ocultar columnas en tablas de trabajo (Registros) |
+| D4 | No hay primitiva `Select` | Crear `ui/select.tsx` con las clases y el foco de `Input` |
+| D5 | Estados de error distintos entre pantallas, y Usuarios sin ninguno | Unificar con el banner de la sección 3 en todas |
+| D6 | `verifier-web/` y `mi-app-qr/client` no comparten componentes | Mantenerlos separados (productos distintos, ADR-0012); alinear solo patrones |
 
-## 7. Para decidir entre los dos autores
-
-1. ¿Se aceptan como estándar las estructuras propuestas de diálogo (sección 4) y de
-   tabla con filtros (sección 5)?
-2. ¿Qué se hace con cada divergencia D1–D6?
-3. ¿El catálogo se mantiene a mano en este archivo, o se adopta algo como Storybook más
-   adelante?
+**Herramienta del catálogo:** se mantiene en este archivo Markdown; Storybook no vale la
+pena todavía.

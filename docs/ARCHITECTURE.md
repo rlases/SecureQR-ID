@@ -1,7 +1,9 @@
 # Arquitectura
 
-> Estado: **implementación parcial**. `issuer/` y `verifier/` ya materializan la capa de
-> validación; consolidación local y anclaje siguen pendientes.
+> Estado: **implementación parcial**. `issuer/` y `verifier/` materializan la capa de
+> validación y `evidence-log/` la de consolidación local, conectadas mediante
+> `RecordingVerifier` (ADR-0013) y arrancadas juntas desde `verifier-service/`
+> (ADR-0014). El anclaje sigue pendiente.
 
 ## Principio rector
 
@@ -72,13 +74,17 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 | `verifier-web/` | Captura el QR y presenta la decisión | No interpreta el token, no decide, no persiste identificadores |
 | `evidence-log/` | Encadena eventos por hash; append-only | No decide, solo registra lo aceptado |
 | `anchor/` | Merkle + Hyperledger Fabric | Solo ve hashes, nunca datos personales |
-| `revocation/` | Lista firmada de credenciales invalidadas | Su firma se verifica igual que la de un token |
+| `revocation/` | Lista firmada de credenciales invalidadas | Su firma se verifica igual que la de un token; clave propia, distinta de la de emisión (ADR-0014) |
+| `verifier-service/` | Arranque de producción: compone `verifier/`, `revocation/` y `evidence-log/` | No contiene reglas de validación; si una dependencia no es confiable, no arranca |
 
 ## Decisiones de arquitectura pendientes
 
-Registradas como ADR abiertos en `DECISIONS.md`:
+Registradas en `DECISIONS.md`:
 
-- Distribución de la lista de revocación a verificadores con conectividad intermitente.
+- Distribución de la lista de revocación a verificadores con conectividad intermitente:
+  propuesta en ADR-0015, pendiente de aceptación conjunta (pull con caché local,
+  recarga en caliente, antirretroceso y rechazo cuando la lista supera su antigüedad
+  máxima).
 
 El stack se cerró en ADR-0005. La gobernanza de la red blockchain se cerró en ADR-0007:
 anclaje híbrido — Hyperledger Fabric para la operación local, más un sellado periódico
