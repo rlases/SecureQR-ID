@@ -151,6 +151,14 @@ solo falta `anchor/` (issue #9) para completarla.
   concurrentes bifurcaban la cadena (prueba que lo demostraba incluida). Todavía no hay
   un punto de entrada de producción que construya el `Verifier` real; issue #46 debe
   crearlo y envolverlo con `RecordingVerifier`.
+- **Issue #46 — arranque de producción con `RevocationList` real**, rama
+  `modulo/46-revocation-produccion`, apilada sobre la de #45 y pendiente de revisión.
+  ADR-0014 en *Propuesta*. Nuevo paquete `verifier-service/` que compone verifier,
+  revocation y evidence-log desde variables `SQRID_*` obligatorias y falla al
+  arrancar si la lista o la bitácora no son confiables. La lista se firma con una
+  clave de revocación dedicada, en un directorio de confianza propio. `revocation/`
+  ahora verifica la lista con las reglas de un token (low-S, 64 bytes, `kid` ligado,
+  `cids` tipados).
 
 - **Issue #48 — integración en `RegistrosPage`**, rama
   `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
@@ -266,7 +274,8 @@ estaban pendientes:
   Seguimiento directo de PR #43. Implementado en `modulo/45-evidence-log-verifier`,
   pendiente de revisión; ver "En curso".
 - Issue #46 — conectar `RevocationList` real como `revocation_checker` al construir el
-  `Verifier` de producción. Seguimiento directo de PR #44.
+  `Verifier` de producción. Seguimiento directo de PR #44. Implementado en
+  `modulo/46-revocation-produccion`, pendiente de revisión; ver "En curso".
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
 - Issue #48 — integración de componentes migrados: implementada en
@@ -318,6 +327,17 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-11 — Issue #46: verificador real con revocación.** Duverney. Se crea
+`verifier-service/` como capa de aplicación (ADR-0014, *Propuesta*): arranca el
+`Verifier` con claves, nonces, `RevocationList.from_signed_bytes` y `RecordingVerifier`.
+Decisiones: clave de revocación propia (no la del emisor) en directorio separado;
+falla cerrado también al arrancar. Endurecimiento de `revocation/`: antes aceptaba
+firmas *high-S* de cualquier longitud y convertía `cids = "abc"` en tres revocaciones.
+Verificación: pytest en `verifier-service/` (24), `revocation/` (33), `verifier/` (83),
+`evidence-log/` (13), `issuer/` (26), y arranque real con `uvicorn` (health, rechazo y
+fallo de arranque sin lista). Pendiente: revisión de #68 y de este PR; CLI para firmar
+listas; recarga y frescura de la lista (issue #47).
 
 **2026-10-11 — Issue #45: bitácora conectada al verificador.** Duverney. Se compone
 `Verifier` + `EvidenceLog` en la capa de aplicación mediante `RecordingVerifier`

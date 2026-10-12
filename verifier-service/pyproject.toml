@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secureqr-id-verifier-service"
+version = "0.1.0"
+description = "Punto de arranque del verificador SecureQR-ID: compone verifier, revocation y evidence-log"
+readme = "README.md"
+requires-python = ">=3.11"
+# Paquetes locales del repositorio: se instalan en modo editable desde sus carpetas
+# (ver README). No estan publicados en PyPI.
+dependencies = [
+  "secureqr-id-verifier[web]",
+  "secureqr-id-revocation",
+  "secureqr-id-evidence-log",
+]
+
+[project.optional-dependencies]
+serve = ["uvicorn>=0.30,<1"]
+test = [
+  "httpx2>=2.12,<3",
+  "pytest>=8.3,<10",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]

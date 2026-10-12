@@ -31,7 +31,13 @@ python -m venv .venv && source .venv/bin/activate   # o .venv\Scripts\activate e
 python -m pip install -e ../issuer -e ../evidence-log -e ".[test]"
 python -m pytest
 
-# evidence-log/ seguirá el mismo patrón cuando exista
+# evidence-log/ y revocation/ (mismo patrón que issuer/)
+python -m pip install -e ".[test]"
+python -m pytest
+
+# verifier-service/ (arranque de producción; compone los paquetes anteriores)
+python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ".[test]"
+python -m pytest
 
 # anchor/ (Node.js/TypeScript — mismo patrón que mi-app-qr/server)
 npm install
@@ -54,6 +60,7 @@ npm run test:e2e
 | `verifier-web/` | captura QR y presenta la decisión pública | no interpreta ni persiste tokens |
 | `evidence-log/` | encadena eventos por hash | no decide aceptar/rechazar |
 | `anchor/` | construye Merkle y ancla la raíz | no ve datos personales, solo hashes |
+| `verifier-service/` | arranca el verificador real componiendo los módulos | no añade reglas de validación |
 
 La separación es deliberada: es lo que permite que la validación sea local y rápida
 mientras el anclaje corre asíncrono. No la colapses "por simplicidad".
