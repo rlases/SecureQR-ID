@@ -19,38 +19,39 @@ const mockRegistro: Registro = {
 describe('ForgottenOutModal', () => {
   it('no renderiza nada si isOpen es false o registro es null', () => {
     const { container } = render(
-      <ForgottenOutModal isOpen={false} registro={null} onCancel={vi.fn()} onCorrect={vi.fn()} onForce={vi.fn()} />
+      <ForgottenOutModal canCorrect={true} isOpen={false} registro={null} onCancel={vi.fn()} onCorrect={vi.fn()} onForce={vi.fn()} />
     );
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('llama a onCorrect al hacer clic en Corregir Salida', async () => {
+  it('llama a onCorrect al revisar el registro anterior', async () => {
     const onCorrect = vi.fn();
     render(
-      <ForgottenOutModal isOpen={true} registro={mockRegistro} onCancel={vi.fn()} onCorrect={onCorrect} onForce={vi.fn()} />
+      <ForgottenOutModal canCorrect={true} isOpen={true} registro={mockRegistro} onCancel={vi.fn()} onCorrect={onCorrect} onForce={vi.fn()} />
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /corregir salida/i }));
+    await userEvent.click(screen.getByRole('button', { name: /revisar registro anterior/i }));
     expect(onCorrect).toHaveBeenCalled();
   });
 
-  it('llama a onForce al hacer clic en Forzar Nueva Entrada', async () => {
+  it('llama a onForce al confirmar una nueva entrada', async () => {
     const onForce = vi.fn();
     render(
-      <ForgottenOutModal isOpen={true} registro={mockRegistro} onCancel={vi.fn()} onCorrect={vi.fn()} onForce={onForce} />
+      <ForgottenOutModal canCorrect={true} isOpen={true} registro={mockRegistro} onCancel={vi.fn()} onCorrect={vi.fn()} onForce={onForce} />
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /forzar nueva entrada/i }));
+    await userEvent.click(screen.getByRole('button', { name: /registrar nueva entrada de todos modos/i }));
     expect(onForce).toHaveBeenCalled();
   });
 
   it('llama a onCancel al hacer clic en Cancelar', async () => {
     const onCancel = vi.fn();
     render(
-      <ForgottenOutModal isOpen={true} registro={mockRegistro} onCancel={onCancel} onCorrect={vi.fn()} onForce={vi.fn()} />
+      <ForgottenOutModal canCorrect={true} isOpen={true} registro={mockRegistro} onCancel={onCancel} onCorrect={vi.fn()} onForce={vi.fn()} />
     );
 
     await userEvent.click(screen.getByRole('button', { name: /cancelar/i }));
     expect(onCancel).toHaveBeenCalled();
   });
 });
+

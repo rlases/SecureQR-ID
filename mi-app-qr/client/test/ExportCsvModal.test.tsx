@@ -11,14 +11,14 @@ describe('ExportCsvModal', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('llama a onExport con \'all\' al hacer clic en Exportar Todos', async () => {
+  it('llama a onExport con null al hacer clic en Exportar Todos', async () => {
     const onExport = vi.fn();
     render(
       <ExportCsvModal isOpen={true} onCancel={vi.fn()} onExport={onExport} />
     );
 
     await userEvent.click(screen.getByRole('button', { name: /exportar todos/i }));
-    expect(onExport).toHaveBeenCalledWith('all');
+    expect(onExport).toHaveBeenCalledWith(null);
   });
 
   it('llama a onExport con el rol filtrado al escribir y hacer clic en Exportar Filtrados', async () => {
@@ -42,3 +42,4 @@ describe('ExportCsvModal', () => {
     expect(onCancel).toHaveBeenCalled();
   });
 });
+

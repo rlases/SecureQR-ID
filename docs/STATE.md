@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-09-23
+**Última actualización:** 2026-10-11
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -102,8 +102,9 @@ solo falta `anchor/` (issue #9) para completarla.
   `EditRecordModal`, `ExportCsvModal`, `ForgottenOutModal`, `qrParser` portados del
   prototipo Electron viejo. La primera versión conservaba el esquema de datos del
   prototipo (`record.Entrada`/`Rol`/`Nombre` en mayúsculas, tipado `any`) en vez del
-  tipo `Registro` real — corregido tras revisión. **Ninguno está cableado a
-  `RegistrosPage` todavía** — ver "Pendiente → Implementación".
+  tipo `Registro` real — corregido tras revisión. El cableado del issue #48 está
+  implementado en la rama `fix/48-integrar-componentes-registros`, pendiente de revisión
+  cruzada y merge; ver "En curso" y la nota de sesión 2026-09-26.
 - **Electron arranca el servidor real (ADR-0008 cerrado en su forma mínima):**
   `mi-app-qr/server` ahora sirve el build de `mi-app-qr/client` (fallback SPA), y
   `main.js` arranca ese servidor como proceso hijo al abrir la app, genera y
@@ -140,6 +141,52 @@ solo falta `anchor/` (issue #9) para completarla.
   introduce ningún problema nuevo — es limpieza aparte, no parte de esta decisión.
 
 ## En curso
+
+- **Issue #45 — validación aceptada registrada en `evidence-log/`**, rama
+  `modulo/45-evidence-log-verifier`, pendiente de revisión cruzada y merge. ADR-0013
+  queda en estado *Propuesta* hasta que Jhunier la revise. `RecordingVerifier`
+  (en `verifier/`, sin importar `evidence-log/`) envuelve al `Verifier` y encadena cada
+  aceptación; si la bitácora falla, rechaza (falla cerrado). `EvidenceLog.append_event`
+  pasa a ser atómico con `BEGIN IMMEDIATE` y seguro entre hilos: antes, dos aceptaciones
+  concurrentes bifurcaban la cadena (prueba que lo demostraba incluida). Todavía no hay
+  un punto de entrada de producción que construya el `Verifier` real; issue #46 debe
+  crearlo y envolverlo con `RecordingVerifier`.
+- **Issue #46 — arranque de producción con `RevocationList` real**, rama
+  `modulo/46-revocation-produccion`, apilada sobre la de #45 y pendiente de revisión.
+  ADR-0014 en *Propuesta*. Nuevo paquete `verifier-service/` que compone verifier,
+  revocation y evidence-log desde variables `SQRID_*` obligatorias y falla al
+  arrancar si la lista o la bitácora no son confiables. La lista se firma con una
+  clave de revocación dedicada, en un directorio de confianza propio. `revocation/`
+  ahora verifica la lista con las reglas de un token (low-S, 64 bytes, `kid` ligado,
+  `cids` tipados).
+- **Issue #47 — distribución y frescura de la lista de revocación**, rama
+  `modulo/47-distribucion-revocacion`, apilada sobre las de #45 y #46 y pendiente de
+  revisión. ADR-0015 en *Propuesta*: pull con caché local (`python -m
+  secureqr_verifier_service.sync` por cron/systemd, HTTPS, verifica antes de escribir,
+  reemplazo atómico), recarga en caliente en el servidor, antirretroceso por `iat` y
+  rechazo de todas las verificaciones si la lista supera su antigüedad máxima.
+
+- **Issue #48 — integración en `RegistrosPage`**, rama
+  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
+  Se descarta y elimina `client/src/components/EditRecordModal.tsx` junto con sus
+  pruebas aisladas; la única corrección sigue siendo `CorregirRegistroModal`, con
+  motivo obligatorio y autorización `requireAdmin` en el servidor (ADR-0008).
+  `ExportCsvModal` descarga todos los registros vigentes o un rol exacto, reutilizando
+  el generador CSV de Informes (escape y protección de fórmulas); `null` identifica
+  "todos" para no colisionar con un rol libre llamado `all`.
+  `qrParser.parseQrTextData` rellena el formulario desde texto pegado o un lector que
+  actúe como teclado; el usuario revisa y envía. No se añade cámara, consulta de URLs
+  ni validación criptográfica o de vigencia; el parser HTML no se conecta a una red.
+  `ForgottenOutModal` advierte si el último evento vigente del documento es entrada
+  (orden por timestamp y luego id, incluidas correcciones), también el mismo día.
+  Permite cancelar, confirmar otra entrada, o al admin revisar la entrada anterior
+  mediante la corrección existente. No crea automáticamente una nueva entrada tras
+  corregir, no convierte una entrada en salida y no inventa fechas de salida.
+  El formulario permite registrar explícitamente entrada o salida mediante la API
+  actual. El aviso usa el listado consultado (polling de 7s): es una ayuda de UX,
+  no una garantía transaccional contra entradas concurrentes desde otros equipos.
+  La API actual no admite añadir una salida omitida con fecha histórica; esa
+  capacidad y su política de autorización quedan fuera de esta integración.
 
 - Reconciliación de la documentación de investigación (traída del material de trabajo
   individual) con el estado real del código en este repositorio.
@@ -230,15 +277,18 @@ estaban pendientes:
   solo contempla eventos aceptados, y `REJECTED_RESULT` en `verifier.py` nunca lleva
   `credential_id`, así que un rechazo no tiene con qué construir un `Event` sin inventar
   un identificador o exponer datos que ADR-0011 mantiene fuera de la respuesta pública).
-  Seguimiento directo de PR #43.
+  Seguimiento directo de PR #43. Implementado en `modulo/45-evidence-log-verifier`,
+  pendiente de revisión; ver "En curso".
 - Issue #46 — conectar `RevocationList` real como `revocation_checker` al construir el
-  `Verifier` de producción. Seguimiento directo de PR #44.
+  `Verifier` de producción. Seguimiento directo de PR #44. Implementado en
+  `modulo/46-revocation-produccion`, pendiente de revisión; ver "En curso".
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
-  ninguno está en uso todavía. Decisión previa obligatoria: `EditRecordModal` edita en
-  sitio (esquema del prototipo viejo); `RegistrosPage` ya tiene un flujo de corrección
-  append-only (`CorregirRegistroModal`, ADR-0008) — no cablearlo a ciegas. Requiere
-  familiarizarse primero con `mi-app-qr/client`, que hasta ahora solo tocó Jhunier.
+  Implementado en `modulo/47-distribucion-revocacion` con ADR-0015 (*Propuesta*),
+  pendiente de revisión; ver "En curso".
+- Issue #48 — integración de componentes migrados: implementada en
+  `fix/48-integrar-componentes-registros`, pendiente de revisión cruzada y merge.
+  Se descarta `EditRecordModal` a favor de `CorregirRegistroModal`; ver "En curso".
 - Issue #49 — empaquetado con `electron-builder` (instalador `.exe` con
   `server/dist`, `server/node_modules` incluyendo `better-sqlite3` recompilado contra
   la ABI de Electron, y `client/dist`). Hasta que exista, la app solo corre sin
@@ -285,6 +335,52 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-11 — Issue #47: lista de revocación con conectividad intermitente.** Duverney.
+ADR-0015 (*Propuesta*) registrado antes de implementar. `RevocationListCache` en
+`revocation/` (recarga, antirretroceso, antigüedad máxima con falla cerrada) y comando
+de sincronización en `verifier-service/`. Dos variables nuevas obligatorias:
+`SQRID_REVOCATION_MAX_AGE_SECONDS` y `SQRID_REVOCATION_REFRESH_SECONDS`. Verificación:
+pytest en `revocation/` (53) y `verifier-service/` (48); fallos reales de red y de
+esquema comprobados contra `https_fetch`. No se probó una descarga HTTPS exitosa contra
+un servidor real. Pendiente: revisión de #68, #69 y este PR; definir quién opera el
+servidor de publicación y la cadencia de refirmado; CLI para firmar listas.
+
+**2026-10-11 — Issue #46: verificador real con revocación.** Duverney. Se crea
+`verifier-service/` como capa de aplicación (ADR-0014, *Propuesta*): arranca el
+`Verifier` con claves, nonces, `RevocationList.from_signed_bytes` y `RecordingVerifier`.
+Decisiones: clave de revocación propia (no la del emisor) en directorio separado;
+falla cerrado también al arrancar. Endurecimiento de `revocation/`: antes aceptaba
+firmas *high-S* de cualquier longitud y convertía `cids = "abc"` en tres revocaciones.
+Verificación: pytest en `verifier-service/` (24), `revocation/` (33), `verifier/` (83),
+`evidence-log/` (13), `issuer/` (26), y arranque real con `uvicorn` (health, rechazo y
+fallo de arranque sin lista). Pendiente: revisión de #68 y de este PR; CLI para firmar
+listas; recarga y frescura de la lista (issue #47).
+
+**2026-10-11 — Issue #45: bitácora conectada al verificador.** Duverney. Se compone
+`Verifier` + `EvidenceLog` en la capa de aplicación mediante `RecordingVerifier`
+(ADR-0013, *Propuesta*). Solo se registran aceptaciones, con `verifier_id` obligatorio
+por instalación y una bitácora persistente por verificador, separada del almacén de
+nonces. Un fallo al registrar produce el rechazo genérico y quema el nonce (documentado
+y probado). Se corrigió una carrera real en `EvidenceLog`: sin transacción explícita,
+escrituras concurrentes encadenaban sobre el mismo predecesor; además la conexión no
+admitía hilos del servidor ASGI. Verificación local: `pytest` en `verifier/` (83) y
+`evidence-log/` (13). CI del job `verifier-test` instala ahora `../evidence-log`.
+Pendiente: revisión cruzada, CI del PR y decidir el punto de entrada de producción
+(issue #46).
+
+**2026-09-26 — Issue #48: componentes migrados conectados.** Se conserva la decisión
+append-only de ADR-0008: se retira el modal de edición directa del cliente web y se
+mantiene la corrección con motivo e historial. El prototipo Electron legado bajo
+`mi-app-qr/src` no se modifica. Se integra la exportación CSV, la precarga desde QR de
+texto y el aviso de posible salida olvidada, adaptando sus textos al modelo de eventos
+separados. Un operador conserva la capacidad de crear entradas/salidas y confirmar
+otra entrada, pero nunca recibe la acción de corregir. Los modales recién conectados
+incluyen foco inicial, contención de Tab, Escape y restauración del foco.
+Verificación local: `npm test` y `npm run build` en `mi-app-qr/client`; pruebas de
+integración de QR, exportación, aviso, corrección, permisos, reintento y envío pendiente.
+No se afirma validación manual en navegador ni E2E contra servidor real. Pendiente:
+revisión cruzada y CI del PR antes de fusionar.
 
 **2026-09-23 — Nueva iniciativa de diseño/frontend, repartida en partes iguales.**
 Jhunier pidió mejorar el atractivo visual de `mi-app-qr/client` y `verifier-web/` para
@@ -434,3 +530,4 @@ documentos fuente originales (propuesta de grado, entrega de Etapa 2, artículo 
 destilaron en `docs/raw/`, con los datos personales de identificación (cédula, teléfono,
 dirección de residencia) redactados antes de commitear — no pertenecen en un repositorio
 público. Pendiente: revisar `docs/raw/` con el otro autor y resolver ADR-0005 y ADR-0007.
+
