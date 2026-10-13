@@ -781,12 +781,15 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
      una fecha con excepción, la excepción manda sobre las ventanas semanales. El sistema
      no trae un calendario de festivos precargado: lo que no se configure no existe.
    - **Estamento declarado, con confirmación para los privilegiados.** En el alta, el
-     titular elige su estamento de la lista. Un `admin` marca qué estamentos tienen
-     ventanas más amplias y requieren confirmación (por ejemplo, docente o
-     administrativo). Mientras el `admin` no lo confirme, el titular recibe las ventanas
-     del estamento base **«Externo»**, que existe desde la instalación, no requiere
-     confirmación y no se puede borrar (sí renombrar o cambiar sus ventanas). Así declararse docente no amplía el
-     horario por sí solo, y el trabajo manual se limita a esos casos.
+     titular elige su estamento de la lista. Un `admin` marca qué estamentos tienen más
+     acceso que el estamento base y requieren confirmación: por ejemplo docente,
+     administrativo y **Externo** (visitantes), que no tiene restricción de horario.
+     Mientras el `admin` no lo confirme, el titular recibe las ventanas del **estamento
+     base**, que el `admin` elige y que por defecto es **«Estudiante»**. El estamento base
+     no requiere confirmación y no se puede borrar mientras sea la base. Así, declararse
+     docente o externo no amplía el horario por sí solo (si Externo no requiriera
+     confirmación, cualquiera podría elegirlo para saltarse los horarios), y el trabajo
+     manual se limita a esos casos.
    - **Reglas por dominio del correo.** Un `admin` puede asociar dominios de correo a
      estamentos desde el panel (por ejemplo, el dominio de los estudiantes a «estudiante»
      y el de los docentes a «docente»). En el alta, el estamento se preselecciona según el
