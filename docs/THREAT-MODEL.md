@@ -73,6 +73,49 @@ rotación (`kid` en el formato del token), no criptográfica.
 cuyos registros se quieren proteger, el anclaje ofrece una garantía debilitada. Es una
 limitación real del diseño, no un detalle de implementación. Ver ADR-0007.
 
+## Vinculabilidad del `cid`
+
+**Vinculabilidad:** posibilidad de relacionar varias apariciones de un mismo sujeto
+aunque no se sepa quién es.
+
+El `cid` es opaco (`docs/SQRID-1.md`): quien decodifica el QR no obtiene un dato
+personal. Pero el mismo `cid` se repite en cada token que se emite para un titular. Quien
+capture QR de forma repetida (una cámara frente al punto de control, un operador que
+fotografía los códigos) puede saber que «la misma persona» pasó el lunes, el martes y el
+jueves, y armar su patrón de asistencia, aunque no sepa su nombre. Si en algún momento
+asocia una sola aparición con la persona, todo el historial ligado a ese `cid` queda
+identificado.
+
+Hay que distinguir dos casos:
+
+- **Dentro del sistema la vinculación es deliberada.** `evidence-log/` registra el `cid`
+  de cada validación aceptada (ADR-0013) precisamente para poder auditar. Ese acceso lo
+  controla el sistema (sesión, rol, trazabilidad de consultas).
+- **Fuera del sistema es un riesgo residual de privacidad**, que la firma y el nonce no
+  cubren: no impiden leer el `cid`, solo impiden reutilizar el token.
+
+**Mitigación propuesta: reseteo trimestral del `cid`** (pendiente de ADR, junto con la
+decisión sobre el registro `cid` → persona en el servidor de `mi-app-qr`):
+
+- Cada trimestre, el registro de credenciales le asigna a cada titular un `cid` nuevo,
+  generado con CSPRNG, y deja de emitir tokens con el anterior. Así, quien observe desde
+  fuera solo puede encadenar apariciones dentro de un mismo trimestre.
+- No cambia el formato: `SQRID-1.md` ya define el `cid` como el identificador que se
+  genera al crear la credencial, así que un `cid` nuevo es una credencial nueva, no un
+  `SQRID/2`.
+- No hace falta revocar el `cid` anterior: los tokens ya emitidos con él vencen solos en
+  su ventana de vigencia, y el emisor no vuelve a firmar con él. La revocación sigue
+  reservada para credenciales comprometidas, de modo que la lista firmada no crece con
+  cada reseteo.
+- El registro debe conservar la relación histórica (qué `cid` tuvo cada titular y en qué
+  periodo) para que las auditorías sobre eventos antiguos de la bitácora sigan siendo
+  posibles. Esa historia es tan sensible como la tabla vigente y se protege igual.
+
+**Límite que se acepta.** Dentro de un trimestre la vinculabilidad persiste. Eliminarla
+del todo exigiría un identificador distinto en cada token, lo que obliga a rediseñar la
+revocación y el registro en la bitácora. Esa alternativa se evalúa en la ADR, no se adopta
+aquí.
+
 ## Ventana de riesgo residual
 
 Entre que un evento se registra localmente y que su raíz de Merkle queda anclada existe
