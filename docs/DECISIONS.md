@@ -763,8 +763,8 @@ sección «Vinculabilidad del `cid`»).
 5. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
    persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
    Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
-   conocer nombres. El vigilante, en el punto de control, solo ve «aceptada» o
-   «rechazada». Es el `admin`, al revisar la bitácora y los informes, quien ve el nombre
+   conocer nombres: el punto de control solo muestra «aceptada» o «rechazada»
+   (ADR-0012). Es el `admin`, al revisar la bitácora y los informes, quien ve el nombre
    asociado a cada `cid`, y cada una de esas consultas queda registrada. No se recoge foto
    del titular: la revisión ocurre después del paso, sin la persona presente, así que una
    foto no aportaría control y sí más datos personales.
