@@ -707,50 +707,75 @@ sección «Vinculabilidad del `cid`»).
   gestionar su pérdida; es más complejo de construir y de explicar.
 - **(c) QR generado en un punto de la sede.** Sin teléfono, pero poco práctico y no
   escala a varias entradas por día.
+- **(d) Inicio de sesión con la cuenta institucional (OpenID Connect).** El titular entra
+  con la misma cuenta de su correo universitario, sin código por correo, y hereda la
+  autenticación de la universidad. Exige que TI registre la aplicación en el proveedor de
+  identidad de la institución y que el servidor tenga salida a internet. Se deja como
+  evolución si TI lo habilita, no como requisito del piloto.
+
+**Opciones consideradas para dar de alta al titular.**
+
+- **Alta presencial por un administrador**, con código de activación entregado en
+  persona. Descartada: el alta debe ser autoservicio, sin trabajo manual por cada titular.
+- **Autorregistro solo con el dominio del correo.** Descartada: cualquier cuenta del
+  dominio (de otra sede, de un funcionario, una cuenta de servicio) podría registrarse, y
+  el nombre lo escribiría el propio titular sin verificación.
+- **Autorregistro contra un padrón importado.** Elegida: ver la decisión.
 
 **Decisión.** Opción (a), con estas piezas:
 
 1. **El registro vive en el servidor de `mi-app-qr`**, junto a sus usuarios, en el mismo
    SQLite (ADR-0008). Dos tablas nuevas: `titulares` (nombre, documento, correo
-   institucional) y `credenciales` (`cid`, titular, estado `vigente` / `reemplazada` /
+   institucional, y si el titular ya se activó) y `credenciales` (`cid`, titular, estado `vigente` / `reemplazada` /
    `revocada`, periodo de vigencia, quién la creó y cuándo). Se conserva el historial:
    un `cid` reemplazado nunca se borra, para poder auditar eventos antiguos de la
    bitácora. El vocabulario sigue ADR-0009: en el modelo de datos es «titular», no
    «estudiante», y el dominio del correo institucional es configuración.
-2. **Portal del titular** en el mismo servidor y con el mismo HTTPS (ADR-0008):
-   - Inicio de sesión sin contraseña: el titular escribe su correo institucional y
-     recibe un código de un solo uso generado con CSPRNG. El servidor guarda solo su
+2. **Alta por autorregistro, sin trabajo manual.** Un `admin` importa periódicamente el
+   padrón de titulares habilitados (correo, nombre, documento) exportado del sistema
+   académico; no se registra a nadie a mano. El titular entra al portal con su correo
+   universitario y, si el correo está en el padrón y el código que recibe es correcto, el
+   servidor activa su registro y le crea su `cid` automáticamente. El nombre y el
+   documento salen del padrón, nunca de lo que escriba el titular. La identidad queda
+   respaldada por la universidad, que verificó a la persona al darle su cuenta.
+3. **Portal del titular** en el mismo servidor y con el mismo HTTPS (ADR-0008):
+   - Inicio de sesión sin contraseña, igual para el alta y para cada sesión nueva: el
+     titular escribe su correo institucional y recibe un código de un solo uso generado
+     con CSPRNG. El servidor guarda solo su
      hash, el código vence a los 10 minutos, sirve una sola vez y admite como máximo
      5 intentos. Hay límite de solicitudes por correo y por IP.
-   - La respuesta es la misma exista o no el correo, para no revelar quién está
-     registrado.
+   - La respuesta es la misma exista o no el correo en el padrón, para no revelar quién
+     está registrado.
    - La sesión del titular es un tipo aparte, sin acceso a ninguna ruta del personal
-     (`admin` / `operador`), y dura poco.
+     (`admin` / `operador`). Dura hasta el siguiente reseteo del `cid` o hasta que un
+     `admin` la cierre (por ejemplo, ante un teléfono reportado como perdido), para no
+     pedir un código por correo en cada ingreso.
    - La página no guarda el token en `localStorage`, en el historial ni en caché, igual
      que el portal de verificación (ADR-0012), y pide uno nuevo antes de que venza.
-3. **Emisión.** Con la sesión del titular, el servidor busca su `cid` vigente y le pide
+4. **Emisión.** Con la sesión del titular, el servidor busca su `cid` vigente y le pide
    el token a `issuer/` a través de un límite de proceso:
    `secureqr-issuer issue --cid=<cid>`, con signo igual porque un `cid` puede empezar con
    `-` (PR #66). `mi-app-qr` nunca lee la clave privada ni importa código de `issuer/`;
    recibe el token ya firmado. Hay límite de tokens por sesión.
-4. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
+5. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
    persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
    Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
    conocer nombres.
-5. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
+6. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
    de firmar con él. La revocación queda para credenciales comprometidas.
-6. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
+7. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
    lista alimenta la lista firmada de `revocation/` que se distribuye según ADR-0015.
-7. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
+8. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
    versión actual de `mi-app-qr` (por ejemplo `baseline-o3`). El pretest se hace contra
    esa etiqueta, que sigue siendo la aplicación sin controles.
 
 **Consecuencias.**
 
 - **Cambia ADR-0008.** Su frase «el estudiante nunca inicia sesión» pasa a decir: el
-  titular no tiene cuenta ni contraseña; solo abre una sesión corta en el portal del
-  titular para obtener su QR, sin acceso a nada más.
+  titular no tiene contraseña; se autorregistra y abre sesión en el portal del titular
+  con un código a su correo institucional, solo para obtener su QR y sin acceso a nada
+  más.
 - **`mi-app-qr` entra al flujo de SecureQR-ID** como registro de credenciales y portal
   del titular. Hay que actualizar `CLAUDE.md` y la sección «Relación con el prototipo
   existente» de `ARCHITECTURE.md`. La separación de código se mantiene: Node y Python se
@@ -763,10 +788,16 @@ sección «Vinculabilidad del `cid`»).
   - un correo institucional comprometido equivale a una credencial comprometida;
   - fuerza bruta sobre el código y enumeración de correos;
   - suplantación del portal (*phishing*) para robar códigos;
-  - robo de la sesión en el teléfono.
-- **Dependencia nueva: envío de correo.** El servidor necesita salida a un servidor de
-  correo de la institución. Hoy escucha solo en la red local (ADR-0008); hay que confirmar
-  con TI del CCAV qué servidor de correo se puede usar desde ahí.
+  - robo de la sesión en el teléfono, que dura hasta el siguiente reseteo del `cid`
+    (mitigado porque un `admin` puede cerrarla).
+- **El padrón pasa a ser una fuente de confianza.** Quien controla el archivo que se
+  importa decide quién puede obtener una credencial. La importación queda restringida a
+  `admin` y registrada (quién, cuándo, cuántos titulares entraron o salieron). Un titular
+  que sale del padrón no puede volver a activarse y su credencial vigente se revoca.
+- **Dependencia crítica: envío de correo.** Sin correo no hay alta ni inicio de sesión.
+  El servidor necesita salida a un servidor de correo de la institución, y hoy escucha
+  solo en la red local (ADR-0008). Hay que confirmar con TI del CCAV qué servidor de
+  correo se puede usar desde ahí antes de aceptar esta ADR.
 - **El titular necesita estar en la red del CCAV** para abrir el portal, porque el
   servidor no se expone a internet (ADR-0008). Es coherente con generar el QR en la
   entrada, pero hay que comprobarlo en el piloto.
@@ -778,5 +809,9 @@ sección «Vinculabilidad del `cid`»).
 - En qué equipo corre `issuer/` y quién custodia la contraseña de la clave.
 - Cómo pasa la lista de revocados de `mi-app-qr` a quien firma la lista de `revocation/`:
   exportación diaria o conexión directa.
-- Duración de la sesión del titular y vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
+- Vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
 - Cuánto tiempo se conserva el registro de consultas `cid` → persona.
+- De dónde sale el padrón (qué sistema académico lo exporta, en qué formato) y cada
+  cuánto se actualiza.
+- Si se adopta la foto del vigilante, de dónde sale: del sistema académico junto con el
+  padrón o de una captura en la primera activación.
