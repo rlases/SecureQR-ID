@@ -767,9 +767,10 @@ proxy de módulos de Go).**
    local:
    - si coinciden, registra el recibo y sigue (la operación es idempotente);
    - si no coinciden, no registra nada, se detiene y alerta, porque significa que el lote
-     local cambió después de anclarse. La validación en el punto de control no se entera
-   (ADR-0003). Si pasan más de 2 horas sin anclar, el panel de `mi-app-qr` muestra una
-   alerta.
+     local cambió después de anclarse.
+
+   En ninguno de estos casos la validación en el punto de control se entera (ADR-0003).
+   Si pasan más de 2 horas sin anclar, el panel de `mi-app-qr` muestra una alerta.
 7. **Sellado diario en OpenTimestamps** (ADR-0007) con el cliente oficial en Python
    (`ots stamp`, luego `ots upgrade` y `ots verify`), no con la librería de JavaScript,
    que está abandonada. Se sella la última raíz anclada del día. Solo envía un hash, sin
