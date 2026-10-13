@@ -750,15 +750,21 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
    `Secure` y `SameSite=Strict`. Guarda solo su hash. Con esa llave el teléfono pide su
    QR sin contraseña ni código.
    - Un dispositivo vinculado por titular: vincular otro desactiva el anterior.
-   - El vínculo dura hasta el siguiente reseteo del `cid` o hasta que un `admin` lo
-     revoque (por ejemplo, ante un teléfono reportado como perdido).
+   - El vínculo no depende del `cid`: sobrevive al reseteo trimestral (punto 8), y el
+     servidor siempre pide el token con el `cid` vigente del titular. Dura hasta que el
+     titular vincula otro teléfono o un `admin` lo revoca (por ejemplo, ante un teléfono
+     reportado como perdido). El reseteo protege contra quien observa los QR desde fuera;
+     la llave del dispositivo es interna y no viaja en el QR.
    - La sesión del titular es un tipo aparte, sin acceso a ninguna ruta del personal
      (`admin` / `operador`).
    - La página no guarda el token en `localStorage`, en el historial ni en caché, igual
      que el portal de verificación (ADR-0012), y pide uno nuevo antes de que venza.
 4. **Código de recuperación.** En el alta, la página muestra una sola vez un código de
-   recuperación generado con CSPRNG, que el titular debe guardar; el servidor guarda solo
-   su hash. Con ese código y su documento, el titular vincula un teléfono nuevo (cambio de
+   recuperación generado con CSPRNG, que el titular debe guardar. Tiene al menos
+   **80 bits** de entropía (por ejemplo, 16 caracteres Base32 en grupos de cuatro), para
+   que una filtración de la base de datos no permita recuperarlo por fuerza bruta. El
+   servidor guarda solo su hash, con la misma función lenta que ya usa para las
+   contraseñas del personal (bcrypt). Con ese código y su documento, el titular vincula un teléfono nuevo (cambio de
    equipo o datos del navegador borrados); al usarlo se genera uno nuevo. Hay límite de
    intentos por documento y por IP. Si el titular pierde el teléfono y el código, lo
    resuelve un `admin` de `mi-app-qr`: es el único caso manual.
@@ -822,6 +828,15 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
      contraseña y vuelve a escribirla si el servidor se reinicia. Jhunier guarda una copia
      de respaldo en un gestor de contraseñas. La clave de emisión y la clave de
      revocación (ADR-0014) son distintas y tienen contraseñas distintas.
+   - **Respaldo de la clave de revocación.** Duverney también custodia la clave de
+     revocación y vuelve a firmar la lista a diario (ADR-0015). Si no pudiera hacerlo
+     dentro de `SQRID_REVOCATION_MAX_AGE_SECONDS` (48 a 72 horas), todos los puntos de
+     control empezarían a rechazar. Por eso hay respaldo: una copia del PEM cifrado en un
+     medio externo que no es un equipo de trabajo, y su contraseña en el gestor de
+     contraseñas de Jhunier. Si pasan 24 horas sin refirmado y el custodio no está
+     disponible, Jhunier firma la lista con el respaldo, y ese uso queda anotado en
+     `docs/STATE.md`. Esto amplía la regla de ADR-0015 de un solo custodio: el respaldo
+     no vive en un segundo equipo en uso.
    - **Vigencia del token:** `SQRID_TOKEN_TTL_SECONDS` = 60, con una tolerancia de reloj
      de 30 segundos en el verificador (ADR-0011 admite hasta 60). Un QR sirve como
      máximo 90 segundos, y como el nonce es de un solo uso, una captura de pantalla solo
@@ -837,7 +852,8 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
    personales.
 8. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
-   de firmar con él. La revocación queda para credenciales comprometidas.
+   de firmar con él. La revocación queda para credenciales comprometidas. El titular no
+   tiene que hacer nada: su teléfono sigue vinculado y recibe tokens con el `cid` nuevo.
 9. **Revocación.** Hay dos niveles:
    - **Inmediato, en `mi-app-qr`.** Si un `admin` revoca una credencial o corta el
      vínculo de un teléfono, el servidor deja de emitir tokens para ella en ese momento.
@@ -893,14 +909,33 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   - robo de la cookie del dispositivo o del teléfono desbloqueado, que equivale a robar
     la credencial hasta que un `admin` revoque el vínculo;
   - fuerza bruta sobre el código de recuperación;
-  - suplantación del portal (*phishing*) dentro de la red local;
+  - suplantación del portal (*phishing*) dentro de la red local, que el certificado
+    autofirmado facilita (ver la consecuencia siguiente);
   - declararse en un estamento privilegiado para ampliar el horario, mitigado por la
     confirmación del `admin`;
   - un `admin` que cambia ventanas o estamentos para permitir ingresos indebidos,
     mitigado por el registro de cada cambio.
+- **Certificado autofirmado en los teléfonos de los titulares.** El servidor usa el
+  certificado autofirmado por instalación de ADR-0008. En el personal del CCAV eso es
+  manejable, pero en cientos de teléfonos personales, donde no se puede instalar una
+  raíz de confianza, todos verán la advertencia del navegador y aprenderán a aceptarla,
+  lo que facilita suplantar el portal en la red local. Mitigación mínima para el piloto:
+  la huella SHA-256 del certificado se publica en un cartel en la sede y en el panel de
+  `mi-app-qr`, y la página de alta explica cómo compararla con la que muestra el
+  navegador. Una solución de fondo queda pendiente (ver «Pendiente de decidir»).
 - **Los datos los aporta el titular**, así que la autorización de tratamiento se recoge
   en el propio formulario de alta, y el titular debe poder corregirlos (con registro del
   cambio, como en ADR-0008).
 - **El titular necesita estar en la red del CCAV** para registrarse y para pedir su QR,
   porque el servidor no se expone a internet (ADR-0008). Es coherente con generar el QR
   en la entrada, pero hay que comprobarlo en el piloto.
+
+**Pendiente de decidir.**
+
+- Cómo dar al portal del titular un certificado en el que los teléfonos confíen sin
+  advertencia. La opción candidata, sin depender de la universidad: un dominio propio
+  del proyecto con un certificado de Let's Encrypt obtenido por el reto DNS-01, cuyo
+  registro apunte a la IP local del servidor del CCAV. Tiene costo (el dominio) y hay que
+  comprobar que la red del CCAV resuelva ese nombre hacia una IP privada. Si se adopta,
+  también habilitaría las llaves de acceso del teléfono (opción e). Mientras no se
+  decida, rige la mitigación de la huella publicada.
