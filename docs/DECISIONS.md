@@ -760,7 +760,22 @@ sección «Vinculabilidad del `cid`»).
    `secureqr-issuer issue --cid=<cid>`, con signo igual porque un `cid` puede empezar con
    `-` (PR #66). `mi-app-qr` nunca lee la clave privada ni importa código de `issuer/`;
    recibe el token ya firmado. Hay límite de tokens por sesión.
-5. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
+5. **Envío del código por correo.** El servidor de `mi-app-qr` envía el código por SMTP
+   con `nodemailer`, configurado solo por variables de entorno (`SMTP_HOST`,
+   `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_REQUIRE_TLS`). El código no
+   cambia entre entornos; cambia el servidor al que apunta:
+   - **Desarrollo, pruebas y demostraciones:** Mailpit corriendo en local (SMTP en
+     `127.0.0.1:1025`, bandeja web en `127.0.0.1:8025`). No entrega correo a nadie: lo
+     atrapa y lo muestra, así que se puede probar el alta completa sin buzones reales.
+   - **Piloto:** envío autenticado (puerto 587 con STARTTLS obligatorio) desde un buzón de
+     servicio, por ejemplo `no-responder@` en el dominio institucional, que TI crea en el
+     proveedor de correo de la universidad, o por el relé SMTP que TI indique. Así los
+     mensajes salen firmados por el dominio institucional y llegan a la bandeja de entrada.
+   - **Descartado:** un servidor de correo saliente propio en el CCAV, porque sin un
+     dominio verificado los proveedores rechazan o mandan a spam sus mensajes; y un
+     proveedor externo de correo transaccional, porque implicaría entregar los correos de
+     los titulares a un tercero (Ley 1581 de 2012).
+6. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
    persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
    Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
    conocer nombres: el punto de control solo muestra «aceptada» o «rechazada»
@@ -768,12 +783,12 @@ sección «Vinculabilidad del `cid`»).
    asociado a cada `cid`, y cada una de esas consultas queda registrada. No se recoge foto
    del titular: la revisión ocurre después del paso, sin la persona presente, así que una
    foto no aportaría control y sí más datos personales.
-6. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
+7. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
    de firmar con él. La revocación queda para credenciales comprometidas.
-7. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
+8. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
    lista alimenta la lista firmada de `revocation/` que se distribuye según ADR-0015.
-8. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
+9. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
    versión actual de `mi-app-qr` (por ejemplo `baseline-o3`). El pretest se hace contra
    esa etiqueta, que sigue siendo la aplicación sin controles.
 
@@ -811,9 +826,11 @@ sección «Vinculabilidad del `cid`»).
   en el propio formulario de alta, y el titular debe poder corregirlos (con registro del
   cambio, como en ADR-0008).
 - **Dependencia crítica: envío de correo.** Sin correo no hay alta ni inicio de sesión.
-  El servidor necesita salida a un servidor de correo de la institución, y hoy escucha
-  solo en la red local (ADR-0008). Hay que confirmar con TI del CCAV qué servidor de
-  correo se puede usar desde ahí antes de aceptar esta ADR.
+  El desarrollo no depende de TI gracias a Mailpit, pero el piloto sí: TI debe crear el
+  buzón de servicio (o indicar el relé) y permitir que el servidor del CCAV salga por el
+  puerto 587, aunque siga escuchando solo en la red local (ADR-0008). Las credenciales del
+  buzón se tratan como secreto: variables de entorno, nunca en el repositorio.
+- **Dependencia nueva en `mi-app-qr/server`:** `nodemailer` (licencia MIT-0).
 - **El titular necesita estar en la red del CCAV** para abrir el portal, porque el
   servidor no se expone a internet (ADR-0008). Es coherente con generar el QR en la
   entrada, pero hay que comprobarlo en el piloto.
