@@ -804,11 +804,29 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
    - Las reglas son por estamento y por hora, iguales en todos los puntos de control.
      Reglas por punto de control (una puerta sí y otra no) exigirían que el verificador
      conozca el estamento y quedan fuera de esta decisión.
-6. **Emisión.** Con el dispositivo vinculado, el servidor busca el `cid` vigente del
-   titular y le pide el token a `issuer/` a través de un límite de proceso:
-   `secureqr-issuer issue --cid=<cid>`, con signo igual porque un `cid` puede empezar con
-   `-` (PR #66). `mi-app-qr` nunca lee la clave privada ni importa código de `issuer/`;
-   recibe el token ya firmado. Hay límite de tokens por dispositivo.
+6. **Emisión mediante un servicio local de `issuer/`.** La CLI actual pide la contraseña
+   de la clave en cada llamada (`SQRID_PRIVATE_KEY_PASSWORD`); si `mi-app-qr` la invocara
+   por cada token, tendría que guardar la contraseña. Por eso `issuer/` se ejecuta como un
+   servicio local de larga duración:
+   - Corre en el mismo equipo servidor del CCAV que `mi-app-qr`, con una cuenta propia
+     del sistema operativo, la única que puede leer el archivo PEM cifrado.
+   - Lo arranca el custodio, que escribe la contraseña una sola vez; la clave queda en la
+     memoria de ese proceso y nunca sale de `issuer/`.
+   - Escucha solo dentro del equipo (`127.0.0.1` o un canal local equivalente), nunca en
+     la red, y solo atiende solicitudes de `mi-app-qr` autenticadas con un secreto
+     compartido de la instalación. Ese secreto permite pedir tokens, no leer la clave.
+   - `mi-app-qr` le envía el `cid` vigente del titular y recibe el token ya firmado; nunca
+     conoce la contraseña ni importa código de `issuer/`. Hay límite de tokens por
+     dispositivo.
+   - **Custodia:** Duverney, que estará en el CCAV durante el piloto, custodia la
+     contraseña y vuelve a escribirla si el servidor se reinicia. Jhunier guarda una copia
+     de respaldo en un gestor de contraseñas. La clave de emisión y la clave de
+     revocación (ADR-0014) son distintas y tienen contraseñas distintas.
+   - **Vigencia del token:** `SQRID_TOKEN_TTL_SECONDS` = 60, con una tolerancia de reloj
+     de 30 segundos en el verificador (ADR-0011 admite hasta 60). Un QR sirve como
+     máximo 90 segundos, y como el nonce es de un solo uso, una captura de pantalla solo
+     sirve si se presenta antes que el titular. La página del titular pide un token nuevo
+     unos 15 segundos antes del vencimiento.
 7. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
    persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
    Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
@@ -820,9 +838,24 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
 8. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
    de firmar con él. La revocación queda para credenciales comprometidas.
-9. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
-   lista alimenta la lista firmada de `revocation/` que se distribuye según ADR-0015.
-10. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
+9. **Revocación.** Hay dos niveles:
+   - **Inmediato, en `mi-app-qr`.** Si un `admin` revoca una credencial o corta el
+     vínculo de un teléfono, el servidor deja de emitir tokens para ella en ese momento.
+     Solo queda en circulación el último token, que vence en segundos.
+   - **Lista firmada, para el verificador.** `mi-app-qr` exporta cada día un archivo, sin
+     firmar, con los `cid` revocados; el custodio de la clave de revocación lo firma en su
+     rutina diaria de refirmado (ADR-0015) y el archivo firmado llega al punto de control
+     por el mecanismo de ADR-0015. Para casos urgentes, el panel ofrece «exportar ahora»
+     y el custodio firma en el momento. Falta construir el comando para firmar listas: hoy
+     `revocation/` solo tiene la función `sign_revocation_list`.
+10. **Conservación de los datos.** El registro de consultas `cid` → persona se conserva
+    lo mismo que los registros de asistencia a los que se refiere. En el piloto, al
+    cierre del proyecto se eliminan o anonimizan los datos personales de titulares,
+    registros y consultas. En un uso institucional posterior, el plazo lo configura el
+    `admin` y se informa en la autorización de tratamiento. La bitácora encadenada
+    (`evidence-log/`) no se borra nunca, pero solo contiene `cid`: al eliminar la relación
+    `cid` → persona, sus eventos dejan de poder atribuirse a alguien.
+11. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
    versión actual de `mi-app-qr` (por ejemplo `baseline-o3`). El pretest se hace contra
    esa etiqueta, que sigue siendo la aplicación sin controles.
 
@@ -849,10 +882,12 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   registro en el momento del paso, la cesión voluntaria no se detecta (ver
   `THREAT-MODEL.md`, «Fuera del alcance»). La revisión del `admin` en la bitácora es
   posterior: sirve para auditar quién figura como ingresado, no para impedir el préstamo.
-- **La clave privada vive en el equipo que corre `issuer/`.** Si es el mismo servidor de
-  `mi-app-qr`, ese equipo pasa a custodiar el material más sensible del sistema. Su
-  protección (PEM cifrado, contraseña por entorno, acceso al equipo) entra al modelo de
-  amenazas.
+- **El servidor del CCAV custodia la clave de emisión.** Es el material más sensible del
+  sistema: su protección (PEM cifrado, cuenta propia del sistema operativo, clave solo en
+  memoria del servicio, acceso físico al equipo) entra al modelo de amenazas. Un atacante
+  con control del equipo podría pedir tokens al servicio local, pero no llevarse la clave.
+- **`issuer/` gana una interfaz local nueva.** Hoy no expone ninguna API; el servicio
+  local y su autenticación con `mi-app-qr` son trabajo nuevo, con sus pruebas.
 - **Superficie de ataque nueva**, que debe sumarse a `THREAT-MODEL.md`:
   - registro masivo con datos falsos desde la red del CCAV;
   - robo de la cookie del dispositivo o del teléfono desbloqueado, que equivale a robar
@@ -869,11 +904,3 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
 - **El titular necesita estar en la red del CCAV** para registrarse y para pedir su QR,
   porque el servidor no se expone a internet (ADR-0008). Es coherente con generar el QR
   en la entrada, pero hay que comprobarlo en el piloto.
-
-**Pendiente de decidir.**
-
-- En qué equipo corre `issuer/` y quién custodia la contraseña de la clave.
-- Cómo pasa la lista de revocados de `mi-app-qr` a quien firma la lista de `revocation/`:
-  exportación diaria o conexión directa.
-- Vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
-- Cuánto tiempo se conserva el registro de consultas `cid` → persona.
