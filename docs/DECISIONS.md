@@ -118,6 +118,13 @@ para `anchor`.
 
 **Actualizado en consecuencia:** `CLAUDE.md` (sección "Comandos" y "Trampas conocidas").
 
+**Enmienda (ADR-0017).** `fabric-network` dejó de publicar versiones estables y la
+documentación de Fabric remite a la Fabric Gateway client API; `anchor/` se conecta con
+`@hyperledger/fabric-gateway`, que sigue siendo Node. La decisión de lenguaje para
+`anchor/` no cambia. Se suma **Go** solo para el contrato que corre dentro de la red
+Fabric, porque el soporte de contratos en Node lleva casi dos años sin versiones. Detalle
+en ADR-0017.
+
 ---
 
 ## ADR-0006 — Forma canónica: CCAV Pitalito
@@ -680,3 +687,93 @@ la lista debe volver a firmarla periódicamente aunque no cambie, para renovar s
 Esto exige además relojes razonablemente sincronizados entre quien firma y quien
 verifica, como ya ocurre con los tokens. No se resuelve aquí quién opera el servidor de
 publicación ni la CLI para firmar listas.
+
+---
+
+## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps
+
+**Estado:** Propuesta
+
+**Contexto.** `anchor/` construye el árbol de Merkle, genera y verifica pruebas de
+inclusión y publica la raíz a través de la interfaz `LedgerClient`, pero la única
+implementación es `InMemoryLedgerClient`: no hay red Fabric, ni contrato en la red, ni
+quien ejecute el ciclo exportar → anclar → registrar. Por eso el anclaje en blockchain
+(objetivo específico 2) no está cumplido. Además, `EvidenceLog.mark_batch_anchored`
+hace `UPDATE` sobre la tabla de eventos: no rompe la cadena de hashes, pero es una
+edición sobre una bitácora que debe ser de solo agregar. Por último, el proyecto no debe
+depender de servicios de la universidad (ADR-0016).
+
+**Vigencia de las tecnologías (consultado el 2026-10-13 en Docker Hub, npm, PyPI y el
+proxy de módulos de Go).**
+
+| Pieza | Última versión | Fecha |
+|---|---|---|
+| Nodos de Fabric, línea 3.1 | 3.1.5 | junio de 2026 |
+| Nodos de Fabric, línea 2.5 (LTS) | 2.5.16 | junio de 2026 |
+| `@hyperledger/fabric-gateway` (cliente Node) | 1.13.0 | octubre de 2026 |
+| `fabric-contract-api-go` v2 (contratos en Go) | 2.2.4 | octubre de 2026 |
+| `fabric-contract-api` (contratos en Node) | 2.5.8 | diciembre de 2024 |
+| `fabric-network` (SDK antiguo) | 2.2.20, sin versión estable posterior | — |
+| `opentimestamps-client` (Python, referencia) | 0.7.2 | diciembre de 2024 |
+| `opentimestamps` para JavaScript | 0.4.9 | enero de 2021 |
+
+**Decisión.**
+
+1. **Red propia, Fabric 2.5 LTS, en Docker en el servidor del CCAV.** Se usa la
+   `test-network` oficial de `fabric-samples` (un *orderer* y dos organizaciones con un
+   *peer* cada una), con versiones fijadas en los scripts de `infra/fabric/`, nunca «la
+   última». La operan los autores del proyecto: como reconoce ADR-0007, eso no protege
+   contra quien opera la red, y para eso existe el sellado en Bitcoin (punto 7). Requiere
+   Docker y unos 4 GB de RAM libres; en Windows, Docker Desktop con WSL2.
+2. **Contrato en Go** (`fabric-contract-api-go` v2), con dos operaciones:
+   `registrarRaiz(loteId, raiz, cantidad, primerEvento, ultimoEvento)`, que rechaza un
+   `loteId` ya registrado para que nadie pueda sobrescribir un lote, y
+   `consultarRaiz(loteId)`. Solo guarda hashes y números de evento, nunca datos
+   personales. Vive en `anchor/chaincode/` con sus propias pruebas (`go test`).
+3. **Cliente en `anchor/` con la Fabric Gateway API.** `FabricLedgerClient` implementa
+   `LedgerClient` con `@hyperledger/fabric-gateway`. `publishRoot` pasa a devolver un
+   **recibo** (identificador de transacción y número de bloque). `InMemoryLedgerClient`
+   se conserva para las pruebas unitarias. Un comando `anclar` lee el lote exportado,
+   construye el árbol, publica la raíz y escribe el recibo en un archivo.
+4. **Ciclo programado cada 15 minutos, con lotes de máximo 500 eventos.** Una tarea del
+   sistema (cron o Programador de tareas) ejecuta: `evidence-log` exporta el lote →
+   `anchor` lo ancla y escribe el recibo → `evidence-log` registra el recibo. Python y
+   Node se comunican por archivos, sin importarse (ADR-0005). Un disparador por cantidad
+   de eventos exigiría un proceso vigilando todo el tiempo; el tope de 500 por lote
+   cumple el mismo fin.
+5. **Recibos en una tabla `anclajes` de solo agregar.** Guarda lote, raíz, primer y
+   último evento, transacción, bloque y fecha. Reemplaza el `UPDATE` de
+   `mark_batch_anchored`: un evento está anclado si cae dentro del rango de algún
+   anclaje registrado. Así la bitácora no tiene ninguna operación de edición.
+6. **Falla de la red.** Si Fabric no responde, el lote no se registra como anclado y se
+   reintenta en la siguiente corrida. La validación en el punto de control no se entera
+   (ADR-0003). Si pasan más de 2 horas sin anclar, el panel de `mi-app-qr` muestra una
+   alerta.
+7. **Sellado diario en OpenTimestamps** (ADR-0007) con el cliente oficial en Python
+   (`ots stamp`, luego `ots upgrade` y `ots verify`), no con la librería de JavaScript,
+   que está abandonada. Se sella la última raíz anclada del día. Solo envía un hash, sin
+   cuenta ni pago, a varios servidores públicos a la vez; necesita salida a internet. Si
+   no la hay o los servidores fallan, el sello queda pendiente y Fabric sigue siendo el
+   anclaje principal. La confirmación en Bitcoin tarda horas.
+8. **Estrategia de pruebas.**
+   - Objetivo 2, demostrar que funciona: pruebas unitarias con el doble en memoria;
+     pruebas del contrato con `go test` en cada PR; y una prueba de integración que
+     levanta la red en Docker, ancla un lote real, lee la raíz desde la red y verifica una
+     prueba de inclusión contra ella. Esta última corre en un flujo de CI aparte, manual y
+     nocturno, porque tarda varios minutos. Su ejecución exitosa se anexa al documento de
+     grado como evidencia.
+   - Objetivo 3, medir: detección de eventos alterados después del anclaje (se espera el
+     100 %), tiempo desde el registro hasta el anclaje y comportamiento con la red caída.
+
+**Consecuencias.**
+
+- El repositorio suma Go, solo para el contrato. `CLAUDE.md` debe listar sus comandos y
+  `.github/workflows/ci.yml` un trabajo nuevo.
+- `evidence-log/` cambia su contrato de anclaje (`anclajes` en lugar de `UPDATE`); sus
+  pruebas actuales sobre `mark_batch_anchored` se reescriben.
+- El servidor del CCAV necesita Docker y recursos para la red; hay que confirmarlo con
+  el equipo real antes del piloto.
+- `ARCHITECTURE.md` y `THREAT-MODEL.md` se actualizan: la red la opera el propio
+  proyecto, y los servidores de OpenTimestamps los mantienen voluntarios.
+- El documento de grado podrá decir que el anclaje está cumplido solo cuando la prueba de
+  integración pase contra la red real.
