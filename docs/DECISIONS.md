@@ -726,7 +726,7 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
 **Decisión.**
 
 1. **El registro vive en el servidor de `mi-app-qr`**, junto a sus usuarios, en el mismo
-   SQLite (ADR-0008). Tablas nuevas: `titulares` (nombre, documento, correo), `credenciales`
+   SQLite (ADR-0008). Tablas nuevas: `titulares` (nombre, documento, correo, estamento), `estamentos`, `reglas_horario`, `credenciales`
    (`cid`, titular, estado `vigente` / `reemplazada` / `revocada`, periodo de vigencia,
    fechas) y `dispositivos` (hash de la llave del dispositivo vinculado, fechas). Se
    conserva el historial: un `cid` reemplazado nunca se borra, para poder auditar eventos
@@ -762,12 +762,36 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
    equipo o datos del navegador borrados); al usarlo se genera uno nuevo. Hay límite de
    intentos por documento y por IP. Si el titular pierde el teléfono y el código, lo
    resuelve un `admin` de `mi-app-qr`: es el único caso manual.
-5. **Emisión.** Con el dispositivo vinculado, el servidor busca el `cid` vigente del
+5. **Estamento y reglas de horario.** Cada titular pertenece a un estamento (por ejemplo
+   estudiante, docente, administrativo, visitante). La lista de estamentos no está fija
+   en el código: la crea y la edita un `admin` desde el panel de `mi-app-qr` (ADR-0009).
+   Cada estamento tiene una o más ventanas de ingreso (días de la semana, hora de inicio y
+   hora de fin, en la hora local de la sede), también editables desde el panel.
+   - **La regla se aplica al emitir, no al verificar.** El servidor de `mi-app-qr` solo
+     pide un token a `issuer/` si el titular está dentro de una ventana de su estamento;
+     fuera de ella, el portal le dice que está fuera de su horario y no hay QR. El
+     estamento no viaja en el token, así que `SQRID/1` no cambia, el QR no expone la
+     categoría de la persona y `verifier/` sigue sin conocer nombres ni roles. Como el token
+     dura poco, uno emitido justo antes del cierre de la ventana solo sirve unos segundos
+     después.
+   - **Falla cerrado.** Un estamento sin ventanas no recibe tokens.
+   - **Estamento declarado, con confirmación para los privilegiados.** En el alta, el
+     titular elige su estamento de la lista. Un `admin` marca qué estamentos tienen
+     ventanas más amplias y requieren confirmación (por ejemplo, docente o
+     administrativo). Mientras el `admin` no lo confirme, el titular recibe las ventanas
+     del estamento base que la instalación defina. Así declararse docente no amplía el
+     horario por sí solo, y el trabajo manual se limita a esos casos.
+   - **Todo cambio queda registrado:** quién cambió el estamento de un titular o las
+     ventanas de un estamento, cuándo y qué valor tenía antes.
+   - Las reglas son por estamento y por hora, iguales en todos los puntos de control.
+     Reglas por punto de control (una puerta sí y otra no) exigirían que el verificador
+     conozca el estamento y quedan fuera de esta decisión.
+6. **Emisión.** Con el dispositivo vinculado, el servidor busca el `cid` vigente del
    titular y le pide el token a `issuer/` a través de un límite de proceso:
    `secureqr-issuer issue --cid=<cid>`, con signo igual porque un `cid` puede empezar con
    `-` (PR #66). `mi-app-qr` nunca lee la clave privada ni importa código de `issuer/`;
    recibe el token ya firmado. Hay límite de tokens por dispositivo.
-6. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
+7. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
    persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
    Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
    conocer nombres: el punto de control solo muestra «aceptada» o «rechazada»
@@ -775,12 +799,12 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
    asociado a cada `cid`. No se recoge foto del titular: la revisión ocurre después del
    paso, sin la persona presente, así que una foto no aportaría control y sí más datos
    personales.
-7. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
+8. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
    de firmar con él. La revocación queda para credenciales comprometidas.
-8. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
+9. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
    lista alimenta la lista firmada de `revocation/` que se distribuye según ADR-0015.
-9. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
+10. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
    versión actual de `mi-app-qr` (por ejemplo `baseline-o3`). El pretest se hace contra
    esa etiqueta, que sigue siendo la aplicación sin controles.
 
@@ -816,7 +840,11 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   - robo de la cookie del dispositivo o del teléfono desbloqueado, que equivale a robar
     la credencial hasta que un `admin` revoque el vínculo;
   - fuerza bruta sobre el código de recuperación;
-  - suplantación del portal (*phishing*) dentro de la red local.
+  - suplantación del portal (*phishing*) dentro de la red local;
+  - declararse en un estamento privilegiado para ampliar el horario, mitigado por la
+    confirmación del `admin`;
+  - un `admin` que cambia ventanas o estamentos para permitir ingresos indebidos,
+    mitigado por el registro de cada cambio.
 - **Los datos los aporta el titular**, así que la autorización de tratamiento se recoge
   en el propio formulario de alta, y el titular debe poder corregirlos (con registro del
   cambio, como en ADR-0008).
@@ -831,3 +859,6 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   exportación diaria o conexión directa.
 - Vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
 - Cuánto tiempo se conserva el registro de consultas `cid` → persona.
+- Cuál es el estamento base para quien aún no tiene confirmado un estamento privilegiado.
+- Festivos y excepciones (eventos, jornadas especiales): si se manejan como ventanas
+  adicionales con fecha o quedan para después.
