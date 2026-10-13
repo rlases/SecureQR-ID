@@ -44,6 +44,13 @@ npm install
 npm test
 npm run build
 
+# anchor/chaincode/ (Go, solo el contrato que corre en la red Fabric — ADR-0017, llega con #82)
+go test ./...
+
+# infra/fabric/ (red Fabric 2.5 en Docker — ADR-0017, llega con #82)
+# Se crea una sola vez y después solo se detiene y arranca; nunca `network.sh down`,
+# que borra el ledger. Ver infra/fabric/README.md.
+
 # verifier-web/ (Node.js 22.12+)
 npm ci
 npm test
@@ -59,7 +66,7 @@ npm run test:e2e
 | `verifier/` | verifica firma, frescura, nonce, revocación | no firma, no ancla |
 | `verifier-web/` | captura QR y presenta la decisión pública | no interpreta ni persiste tokens |
 | `evidence-log/` | encadena eventos por hash | no decide aceptar/rechazar |
-| `anchor/` | construye Merkle y ancla la raíz | no ve datos personales, solo hashes |
+| `anchor/` | construye Merkle, ancla la raíz en Fabric y la sella en OpenTimestamps | no ve datos personales, solo hashes |
 | `verifier-service/` | arranca el verificador real componiendo los módulos | no añade reglas de validación |
 
 La separación es deliberada: es lo que permite que la validación sea local y rápida
@@ -67,11 +74,17 @@ mientras el anclaje corre asíncrono. No la colapses "por simplicidad".
 
 ## `mi-app-qr/`
 
-Es un prototipo aparte: app de escritorio Electron + React de registro de asistencia por
-QR, ya funcional, **sin ninguno de los controles de seguridad de este diseño** (QR de
-texto plano, sin firma, sin nonce). No es `issuer/` ni `verifier/` y no se debe mezclar
-código de uno con el otro. Ver "Relación con el prototipo existente" en
-`docs/ARCHITECTURE.md`.
+Empezó como un prototipo aparte: app Electron + React de registro de asistencia por QR
+**sin ninguno de los controles de este diseño** (QR de texto plano, sin firma, sin nonce).
+Esa versión se conserva con la etiqueta `baseline-o3`: es la línea base del pretest del
+objetivo 3 y no se toca.
+
+Desde ADR-0016, el servidor de `mi-app-qr/` también es el **registro de credenciales**
+(`cid` → titular) y el **portal del titular**, que entrega el QR al teléfono pidiéndole
+cada token al servicio local de `issuer/`. Aun así, no se mezcla código: `mi-app-qr/` es
+Node y se comunica con los módulos Python solo por límites de proceso (el servicio local
+de `issuer/` y archivos), nunca importando su código, y nunca conoce la contraseña de la
+clave de emisión. Ver "Relación con el prototipo existente" en `docs/ARCHITECTURE.md`.
 
 ## Invariantes que no se rompen
 
@@ -105,11 +118,17 @@ código de uno con el otro. Ver "Relación con el prototipo existente" en
 
 ## Trampas conocidas
 
-- **SDK de Hyperledger Fabric:** el SDK de Python está sin mantenimiento activo; el de
-  Node.js (`fabric-network`) es el oficial. Por eso `anchor/` es Node mientras el resto
-  de los módulos criptográficos son Python — repositorio políglota, decisión ya cerrada
-  en ADR-0005. El puente entre `evidence-log/` (Python) y `anchor/` (Node) es un límite
-  de proceso, no una llamada de función — no importes código de un lenguaje desde el otro.
+- **SDK de Hyperledger Fabric:** el SDK de Python está sin mantenimiento activo; por eso
+  `anchor/` es Node mientras el resto de los módulos criptográficos son Python
+  (ADR-0005). Pero `fabric-network` también dejó de publicar versiones estables: el
+  cliente es `@hyperledger/fabric-gateway` (Gateway API), y el contrato que corre dentro
+  de la red es Go, porque el soporte de contratos en Node lleva años sin versiones
+  (enmienda de ADR-0017). El puente entre `evidence-log/` (Python) y `anchor/` (Node) es
+  un límite de proceso por archivos, no una llamada de función — no importes código de
+  un lenguaje desde el otro.
+- **La `test-network` de Fabric es de pruebas:** `./network.sh down` borra contenedores,
+  volúmenes y material criptográfico. En el servidor del CCAV se usan los scripts de
+  `infra/fabric/`, que solo detienen y arrancan la red ya creada (ADR-0017).
 - **"SecureQR" a secas ya está tomado** por una app de terceros. Usa siempre el nombre
   completo `SecureQR-ID` en código, documentos y publicaciones.
 - **CCAV vs CEAD Pitalito:** los documentos fuente alternan entre ambos. La forma

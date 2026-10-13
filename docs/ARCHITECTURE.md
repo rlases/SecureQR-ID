@@ -3,7 +3,9 @@
 > Estado: **implementación parcial**. `issuer/` y `verifier/` materializan la capa de
 > validación y `evidence-log/` la de consolidación local, conectadas mediante
 > `RecordingVerifier` (ADR-0013) y arrancadas juntas desde `verifier-service/`
-> (ADR-0014). El anclaje sigue pendiente.
+> (ADR-0014). El anclaje real en Fabric y el sellado en OpenTimestamps están decididos
+> en ADR-0017 y en implementación (issues #82 y #91 a #94); el registro de credenciales
+> y el portal del titular, en ADR-0016.
 
 ## Principio rector
 
@@ -21,8 +23,10 @@ Ocurre en el punto de control cuando alguien presenta su credencial. Debe ser lo
 ultraligera: en un campus pasan cientos de personas por hora y ninguna espera a que una
 transacción blockchain confirme.
 
-Participan `issuer/` (offline, emitió el token antes), `verifier-web/` (captura y
-presenta) y `verifier/` (en línea, decide).
+Participan `issuer/` (emite el token; desde ADR-0016 corre como servicio local en el
+servidor del CCAV), el portal del titular en `mi-app-qr/` (pide a `issuer/` un token
+nuevo para el teléfono del titular), `verifier-web/` (captura y presenta) y `verifier/`
+(en línea, decide).
 
 ### 2. Consolidación local (sincrónica, ligera)
 
@@ -37,6 +41,15 @@ Participa `evidence-log/`.
 Un proceso en segundo plano agrupa los eventos recientes, construye un árbol de Merkle
 y publica **solo la raíz** en una blockchain permisionada. Eso convierte la bitácora
 local en algo verificable desde fuera de la institución.
+
+Concretamente (ADR-0017): cada 15 minutos una tarea programada exporta de
+`evidence-log/` un lote de hasta 500 eventos, `anchor/` publica su raíz en una red
+Hyperledger Fabric 2.5 propia mediante la Gateway API y un contrato en Go que no deja
+sobrescribir un lote, y el recibo (transacción y bloque) se registra en la tabla
+`anclajes` de solo agregar. Una vez al día, la última raíz anclada se sella en Bitcoin
+con OpenTimestamps, que es lo que protege incluso contra quien opera la red Fabric
+(ADR-0007). Si Fabric no responde, se reintenta en la siguiente corrida sin afectar la
+validación.
 
 Participa `anchor/`.
 
@@ -59,8 +72,11 @@ Corresponde al Algoritmo 1 del artículo. La implementación debe seguir este or
 8. Calcular el hash del evento a partir de: id de credencial, id del verificador,
    marca temporal y hash del evento anterior.
 9. Añadir el evento a la bitácora encadenada local.
-10. *(Periódico)* Calcular la raíz de Merkle de los eventos recientes.
-11. *(Periódico)* Anclar la raíz en la blockchain permisionada.
+10. *(Periódico, cada 15 min)* Calcular la raíz de Merkle del lote de eventos aún no
+    anclados (hasta 500).
+11. *(Periódico, cada 15 min)* Anclar la raíz en la red Fabric y registrar el recibo en
+    `anclajes` (ADR-0017).
+12. *(Diario)* Sellar la última raíz anclada en OpenTimestamps (ADR-0007, ADR-0017).
 
 El orden de los pasos 3–6 no es negociable: verificar la firma antes de procesar
 cualquier otro campo evita trabajar sobre un payload no confiable.
@@ -69,13 +85,14 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 
 | Módulo | Responsabilidad | Frontera dura |
 |---|---|---|
-| `issuer/` | Firma ECDSA de tokens; custodia del par de claves institucional | La clave privada no sale de aquí |
+| `issuer/` | Firma ECDSA de tokens; custodia del par de claves institucional; servicio local de emisión (ADR-0016) | La clave privada no sale de aquí; el servicio solo escucha en `127.0.0.1` |
 | `verifier/` | Decide aceptar o rechazar | No firma, no ancla |
 | `verifier-web/` | Captura el QR y presenta la decisión | No interpreta el token, no decide, no persiste identificadores |
 | `evidence-log/` | Encadena eventos por hash; append-only | No decide, solo registra lo aceptado |
-| `anchor/` | Merkle + Hyperledger Fabric | Solo ve hashes, nunca datos personales |
+| `anchor/` | Merkle; publicación de la raíz en Fabric (Gateway API, contrato en Go en `anchor/chaincode/`); sellado en OpenTimestamps (ADR-0017) | Solo ve hashes y números de evento, nunca datos personales |
 | `revocation/` | Lista firmada de credenciales invalidadas | Su firma se verifica igual que la de un token; clave propia, distinta de la de emisión (ADR-0014) |
 | `verifier-service/` | Arranque de producción: compone `verifier/`, `revocation/` y `evidence-log/` | No contiene reglas de validación; si una dependencia no es confiable, no arranca |
+| `mi-app-qr/` (servidor) | Registro `cid` → titular, portal del titular y pedido de tokens a `issuer/` (ADR-0016) | Nunca firma ni conoce la contraseña de la clave: pide tokens al servicio local; no importa código de los módulos Python |
 
 ## Decisiones de arquitectura pendientes
 
@@ -107,26 +124,41 @@ en el portal se cerraron en ADR-0012.
 
 ## Relación con el prototipo existente (`mi-app-qr/`)
 
-`mi-app-qr/` es una aplicación de escritorio (Electron + React) de registro de asistencia
-por QR, construida antes de este diseño y funcional de forma independiente. Es exactamente
-el sistema convencional que el planteamiento del problema describe: decodifica un QR de
-**texto plano** (nombre, documento, programa, ciudad y vigencia por expresión regular) y
-guarda los registros en `localStorage`, sin firma, sin nonce, sin bitácora encadenada.
+`mi-app-qr/` empezó como una aplicación de escritorio (Electron + React) de registro de
+asistencia por QR, construida antes de este diseño. Es exactamente el sistema
+convencional que el planteamiento del problema describe: decodifica un QR de **texto
+plano** (nombre, documento, programa, ciudad y vigencia por expresión regular), sin
+firma, sin nonce y sin bitácora encadenada.
 
-No implementa ninguno de los cinco módulos de este documento y no debe confundirse con
-`issuer/` o `verifier/`. Su valor es el de línea base empírica: sirve para medir, en la
-fase de evaluación (Fase 4 de `ROADMAP.md`), la reducción de suplantación y el tiempo de
-registro del modelo SecureQR-ID frente a un sistema QR convencional real, tal como plantea
-el diseño cuasi-experimental de la propuesta de grado.
+**Línea base del objetivo 3.** Esa versión sin controles se conserva con la etiqueta
+`baseline-o3` (ADR-0016, punto 11). El pretest de la fase de evaluación (Fase 4 de
+`ROADMAP.md`) se hace contra esa etiqueta, para medir la reducción de suplantación y el
+tiempo de registro del modelo SecureQR-ID frente a un sistema QR convencional real, tal
+como plantea el diseño cuasi-experimental de la propuesta de grado.
 
-**Evolución en curso (ADR-0008).** El prototipo pasa de monopuesto a cliente-servidor: al
-ejecutarse levanta un servidor accesible por su IP en la red institucional, con inicio de
-sesión para personal (nunca para estudiantes) y roles diferenciados para registrar,
-consultar, corregir y generar informes. Esto no lo convierte en `verifier/` — sigue sin
-validación criptográfica alguna — pero sí cambia dos cosas que importan para este diseño:
+**Servidor multiusuario (ADR-0008).** El prototipo pasó de monopuesto a
+cliente-servidor: al ejecutarse levanta un servidor accesible por su IP en la red
+institucional, con inicio de sesión para el personal, roles diferenciados y HTTPS con
+certificado por instalación. Las correcciones se registran como eventos nuevos, nunca
+como sobrescrituras, para no chocar con la invariante append-only de `evidence-log/`.
 
-1. **Aparece almacenamiento compartido y persistente**, que es donde eventualmente se
-   apoyaría `evidence-log/`.
-2. **Aparece la noción de "quién hizo qué"**, ausente hasta ahora. Las correcciones deben
-   registrarse como eventos nuevos, no como sobrescrituras, para no chocar de frente con
-   la invariante append-only de `evidence-log/` cuando ambos convivan.
+**Registro de credenciales y portal del titular (ADR-0016).** Desde esta decisión,
+`mi-app-qr/` entra al flujo de SecureQR-ID:
+
+1. Guarda la relación `cid` → titular (tablas `titulares`, `credenciales` con su
+   historial y `dispositivos`), que antes no existía en ningún módulo. Solo un `admin`
+   puede traducir un `cid` a una persona, y cada consulta queda registrada.
+2. Ofrece el portal del titular: autorregistro desde la red del CCAV, teléfono vinculado
+   con una llave de dispositivo y código de recuperación. El titular no tiene cuenta ni
+   contraseña; el portal solo le sirve para obtener su QR.
+3. Aplica las ventanas de horario del estamento **al emitir**: fuera de horario no pide
+   token. El estamento no viaja en el token, así que `SQRID/1` no cambia y `verifier/`
+   sigue sin conocer nombres ni roles.
+4. Pide cada token al servicio local de `issuer/` (`127.0.0.1`, secreto compartido) y
+   nunca conoce la contraseña de la clave.
+5. Revoca en dos niveles: deja de emitir de inmediato y exporta los `cid` revocados para
+   la lista firmada que llega al verificador (ADR-0015).
+
+La separación de código se mantiene: `mi-app-qr/` es Node.js y se comunica con los
+módulos Python solo a través de límites de proceso (el servicio local de `issuer/` y
+archivos), nunca importando su código.
