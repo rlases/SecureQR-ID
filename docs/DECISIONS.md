@@ -791,8 +791,11 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
      acceso que el estamento base y requieren confirmación: por ejemplo docente,
      administrativo y **Externo** (visitantes), que no tiene restricción de horario.
      Mientras el `admin` no lo confirme, el titular recibe las ventanas del **estamento
-     base**, que el `admin` elige y que por defecto es **«Estudiante»**. El estamento base
-     no requiere confirmación y no se puede borrar mientras sea la base. Así, declararse
+     base**. El código no trae ningún estamento predefinido (ADR-0009): en la
+     configuración inicial de cada instalación, el `admin` crea la lista y elige cuál es
+     la base; en el piloto del CCAV será **«Estudiante»**. Mientras no haya una base
+     elegida, el portal no admite altas. El estamento base no requiere confirmación y no
+     se puede borrar mientras sea la base. Así, declararse
      docente o externo no amplía el horario por sí solo (si Externo no requiriera
      confirmación, cualquiera podría elegirlo para saltarse los horarios), y el trabajo
      manual se limita a esos casos.
@@ -854,6 +857,10 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
    de firmar con él. La revocación queda para credenciales comprometidas. El titular no
    tiene que hacer nada: su teléfono sigue vinculado y recibe tokens con el `cid` nuevo.
+   El reseteo solo alcanza a titulares con una credencial `vigente`: un titular cuya
+   credencial está `revocada` queda suspendido y no recibe `cid` nuevo, porque si no, la
+   rotación le devolvería una credencial válida que no está en la lista de revocados.
+   Solo un `admin` puede reactivarlo, con una credencial nueva y registrando el cambio.
 9. **Revocación.** Hay dos niveles:
    - **Inmediato, en `mi-app-qr`.** Si un `admin` revoca una credencial o corta el
      vínculo de un teléfono, el servidor deja de emitir tokens para ella en ese momento.
@@ -900,8 +907,13 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   posterior: sirve para auditar quién figura como ingresado, no para impedir el préstamo.
 - **El servidor del CCAV custodia la clave de emisión.** Es el material más sensible del
   sistema: su protección (PEM cifrado, cuenta propia del sistema operativo, clave solo en
-  memoria del servicio, acceso físico al equipo) entra al modelo de amenazas. Un atacante
-  con control del equipo podría pedir tokens al servicio local, pero no llevarse la clave.
+  memoria del servicio, acceso físico al equipo) entra al modelo de amenazas. Hay que
+  distinguir dos casos. Quien compromete solo la cuenta de `mi-app-qr` puede pedir tokens
+  al servicio local, pero no leer la clave. Quien obtiene control total del equipo
+  (administrador del sistema) puede leer la memoria del proceso de `issuer/`: eso se trata
+  como **compromiso de la clave de emisión**, con generación de una clave nueva (nuevo
+  `kid`), retiro de la anterior de los verificadores y reemisión, no solo con cerrar el
+  acceso.
 - **`issuer/` gana una interfaz local nueva.** Hoy no expone ninguna API; el servicio
   local y su autenticación con `mi-app-qr` son trabajo nuevo, con sus pruebas.
 - **Superficie de ataque nueva**, que debe sumarse a `THREAT-MODEL.md`:
@@ -922,7 +934,12 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   lo que facilita suplantar el portal en la red local. Mitigación mínima para el piloto:
   la huella SHA-256 del certificado se publica en un cartel en la sede y en el panel de
   `mi-app-qr`, y la página de alta explica cómo compararla con la que muestra el
-  navegador. Una solución de fondo queda pendiente (ver «Pendiente de decidir»).
+  navegador. Para que esa huella no cambie, el servidor del piloto usa una IP fija
+  (reserva de DHCP o dirección estática): ADR-0008 regenera el certificado cuando cambian
+  las IP del equipo. Si aun así se regenera, el panel muestra la huella nueva con su
+  fecha, el custodio reemplaza el cartel ese mismo día y la página de alta indica la
+  fecha de la huella vigente. Una solución de fondo queda pendiente (ver «Pendiente de
+  decidir»).
 - **Los datos los aporta el titular**, así que la autorización de tratamiento se recoge
   en el propio formulario de alta, y el titular debe poder corregirlos (con registro del
   cambio, como en ADR-0008).
