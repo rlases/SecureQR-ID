@@ -740,10 +740,15 @@ proxy de módulos de Go).**
 2. **Contrato en Go** (`fabric-contract-api-go` v2), con dos operaciones:
    `registrarRaiz(loteId, raiz, cantidad, primerEvento, ultimoEvento)`, que rechaza un
    `loteId` ya registrado para que nadie pueda sobrescribir un lote, y
-   `consultarRaiz(loteId)`. El `loteId` es **determinista**: se forma con el primer y el
-   último número de secuencia del lote en la bitácora (por ejemplo `seq-000101-000600`),
-   así el mismo rango nunca se ancla dos veces con identificadores distintos. Solo guarda hashes y números de evento, nunca datos
-   personales. Vive en `anchor/chaincode/` con sus propias pruebas (`go test`).
+   `consultarRaiz(loteId)`. El `loteId` es **determinista**: se forma con el
+   `verifier_id` de la instalación (ADR-0013) y el primer y el último número de secuencia
+   del lote en su bitácora (por ejemplo `ccav-portal-1:seq-000101-000600`). Así el mismo
+   rango nunca se ancla dos veces con identificadores distintos, y dos instalaciones,
+   cuyas bitácoras empiezan cada una en 1, no chocan en la misma red. Junto con la raíz,
+   el contrato guarda el identificador de la transacción y su marca de tiempo
+   (`GetTxID`, `GetTxTimestamp`), y `consultarRaiz` los devuelve; el número de bloque se
+   recupera con la consulta del sistema `qscc` (`GetBlockByTxID`). Solo guarda hashes,
+   identificadores de instalación y números de evento, nunca datos personales. Vive en `anchor/chaincode/` con sus propias pruebas (`go test`).
 3. **Cliente en `anchor/` con la Fabric Gateway API.** `FabricLedgerClient` implementa
    `LedgerClient` con `@hyperledger/fabric-gateway`. `publishRoot` pasa a devolver un
    **recibo** (identificador de transacción y número de bloque). `InMemoryLedgerClient`
@@ -765,7 +770,10 @@ proxy de módulos de Go).**
    archivo). Como el `loteId` es determinista, la siguiente corrida recibe «ya
    registrado»; entonces consulta la raíz con `consultarRaiz` y la compara con la del lote
    local:
-   - si coinciden, registra el recibo y sigue (la operación es idempotente);
+   - si coinciden, reconstruye el recibo original (transacción y marca de tiempo desde
+     `consultarRaiz`, bloque desde `qscc`), lo registra y sigue: la operación es
+     idempotente y el recibo es el de la transacción que realmente ancló el lote, no el
+     del reintento rechazado;
    - si no coinciden, no registra nada, se detiene y alerta, porque significa que el lote
      local cambió después de anclarse.
 
@@ -773,10 +781,20 @@ proxy de módulos de Go).**
    Si pasan más de 2 horas sin anclar, el panel de `mi-app-qr` muestra una alerta.
 7. **Sellado diario en OpenTimestamps** (ADR-0007) con el cliente oficial en Python
    (`ots stamp`, luego `ots upgrade` y `ots verify`), no con la librería de JavaScript,
-   que está abandonada. Se sella la última raíz anclada del día. Solo envía un hash, sin
-   cuenta ni pago, a varios servidores públicos a la vez; necesita salida a internet. Si
-   no la hay o los servidores fallan, el sello queda pendiente y Fabric sigue siendo el
-   anclaje principal. La confirmación en Bitcoin tarda horas.
+   que está abandonada. Se sella el **hash del último bloque** del canal de Fabric
+   (consulta `GetChainInfo` de `qscc`), no la última raíz: cada bloque compromete a todos
+   los anteriores, así el sello cubre los lotes de todas las instalaciones de ese día y no
+   solo los de una. Solo envía un hash, sin cuenta ni pago, a varios servidores públicos a
+   la vez; necesita salida a internet. Si no la hay o los servidores fallan, el sello queda
+   pendiente y Fabric sigue siendo el anclaje principal. La confirmación en Bitcoin tarda
+   horas.
+   - **Verificación.** Crear el sello y completarlo (`ots stamp`, `ots upgrade`) no
+     necesita un nodo de Bitcoin, pero verificarlo de forma independiente (`ots verify`)
+     sí, según la documentación del cliente. No se instala un nodo en el servidor del CCAV:
+     la verificación se hace periódicamente, y para la evidencia del documento de grado,
+     desde un equipo con un nodo de Bitcoin Core podado, dejando constancia del resultado.
+     El comprobante `.ots` permite que cualquiera lo verifique después con sus propios
+     medios.
 8. **Estrategia de pruebas.**
    - Objetivo 2, demostrar que funciona: pruebas unitarias con el doble en memoria;
      pruebas del contrato con `go test` en cada PR; y una prueba de integración que
