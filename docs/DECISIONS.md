@@ -726,7 +726,7 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
 **Decisión.**
 
 1. **El registro vive en el servidor de `mi-app-qr`**, junto a sus usuarios, en el mismo
-   SQLite (ADR-0008). Tablas nuevas: `titulares` (nombre, documento, correo, estamento), `estamentos`, `reglas_horario`, `credenciales`
+   SQLite (ADR-0008). Tablas nuevas: `titulares` (nombre, documento, correo, estamento), `estamentos`, `reglas_horario`, `excepciones_calendario`, `credenciales`
    (`cid`, titular, estado `vigente` / `reemplazada` / `revocada`, periodo de vigencia,
    fechas) y `dispositivos` (hash de la llave del dispositivo vinculado, fechas). Se
    conserva el historial: un `cid` reemplazado nunca se borra, para poder auditar eventos
@@ -775,11 +775,17 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
      dura poco, uno emitido justo antes del cierre de la ventana solo sirve unos segundos
      después.
    - **Falla cerrado.** Un estamento sin ventanas no recibe tokens.
+   - **Festivos y jornadas especiales.** Un `admin` los configura desde el panel como
+     excepciones de calendario: una fecha (o un rango de fechas) que cierra el ingreso o
+     reemplaza las ventanas normales, para todos los estamentos o solo para algunos. En
+     una fecha con excepción, la excepción manda sobre las ventanas semanales. El sistema
+     no trae un calendario de festivos precargado: lo que no se configure no existe.
    - **Estamento declarado, con confirmación para los privilegiados.** En el alta, el
      titular elige su estamento de la lista. Un `admin` marca qué estamentos tienen
      ventanas más amplias y requieren confirmación (por ejemplo, docente o
      administrativo). Mientras el `admin` no lo confirme, el titular recibe las ventanas
-     del estamento base que la instalación defina. Así declararse docente no amplía el
+     del estamento base **«Externo»**, que existe desde la instalación, no requiere
+     confirmación y no se puede borrar (sí renombrar o cambiar sus ventanas). Así declararse docente no amplía el
      horario por sí solo, y el trabajo manual se limita a esos casos.
    - **Reglas por dominio del correo.** Un `admin` puede asociar dominios de correo a
      estamentos desde el panel (por ejemplo, el dominio de los estudiantes a «estudiante»
@@ -868,6 +874,3 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   exportación diaria o conexión directa.
 - Vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
 - Cuánto tiempo se conserva el registro de consultas `cid` → persona.
-- Cuál es el estamento base para quien aún no tiene confirmado un estamento privilegiado.
-- Festivos y excepciones (eventos, jornadas especiales): si se manejan como ventanas
-  adicionales con fecha o quedan para después.
