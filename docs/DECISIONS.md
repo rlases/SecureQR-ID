@@ -724,11 +724,25 @@ proxy de módulos de Go).**
    *peer* cada una), con versiones fijadas en los scripts de `infra/fabric/`, nunca «la
    última». La operan los autores del proyecto: como reconoce ADR-0007, eso no protege
    contra quien opera la red, y para eso existe el sellado en Bitcoin (punto 7). Requiere
-   Docker y unos 4 GB de RAM libres; en Windows, Docker Desktop con WSL2.
+   Docker y unos 4 GB de RAM libres.
+   - **Persistencia.** La `test-network` está pensada para pruebas: `./network.sh down`
+     borra contenedores, volúmenes y material criptográfico, y `up` crea una red nueva con
+     el ledger vacío. Para que el ledger dure todo el piloto, `infra/fabric/` tiene
+     scripts propios sobre la `test-network`: se crea una sola vez y después solo se
+     detienen y arrancan los contenedores existentes, nunca `down`/`up`. Los contenedores
+     usan la política de reinicio `unless-stopped`, para volver solos tras un reinicio del
+     servidor.
+   - **Respaldo.** Se respaldan los volúmenes de los *peers* y del *orderer* y el material
+     criptográfico generado (que `.gitignore` excluye y nunca entra al repositorio), con
+     la red detenida, en un medio externo cifrado que guarda el custodio. Se respalda al
+     crear la red y una vez por semana.
+   - Una prueba de #82 comprueba que el ledger sobrevive a un reinicio de la red.
 2. **Contrato en Go** (`fabric-contract-api-go` v2), con dos operaciones:
    `registrarRaiz(loteId, raiz, cantidad, primerEvento, ultimoEvento)`, que rechaza un
    `loteId` ya registrado para que nadie pueda sobrescribir un lote, y
-   `consultarRaiz(loteId)`. Solo guarda hashes y números de evento, nunca datos
+   `consultarRaiz(loteId)`. El `loteId` es **determinista**: se forma con el primer y el
+   último número de secuencia del lote en la bitácora (por ejemplo `seq-000101-000600`),
+   así el mismo rango nunca se ancla dos veces con identificadores distintos. Solo guarda hashes y números de evento, nunca datos
    personales. Vive en `anchor/chaincode/` con sus propias pruebas (`go test`).
 3. **Cliente en `anchor/` con la Fabric Gateway API.** `FabricLedgerClient` implementa
    `LedgerClient` con `@hyperledger/fabric-gateway`. `publishRoot` pasa a devolver un
@@ -746,7 +760,14 @@ proxy de módulos de Go).**
    `mark_batch_anchored`: un evento está anclado si cae dentro del rango de algún
    anclaje registrado. Así la bitácora no tiene ninguna operación de edición.
 6. **Falla de la red.** Si Fabric no responde, el lote no se registra como anclado y se
-   reintenta en la siguiente corrida. La validación en el punto de control no se entera
+   reintenta en la siguiente corrida. Puede pasar también que la raíz entre a Fabric y el
+   recibo no alcance a registrarse en `anclajes` (corte de energía, error al escribir el
+   archivo). Como el `loteId` es determinista, la siguiente corrida recibe «ya
+   registrado»; entonces consulta la raíz con `consultarRaiz` y la compara con la del lote
+   local:
+   - si coinciden, registra el recibo y sigue (la operación es idempotente);
+   - si no coinciden, no registra nada, se detiene y alerta, porque significa que el lote
+     local cambió después de anclarse. La validación en el punto de control no se entera
    (ADR-0003). Si pasan más de 2 horas sin anclar, el panel de `mi-app-qr` muestra una
    alerta.
 7. **Sellado diario en OpenTimestamps** (ADR-0007) con el cliente oficial en Python
@@ -772,7 +793,9 @@ proxy de módulos de Go).**
 - `evidence-log/` cambia su contrato de anclaje (`anclajes` en lugar de `UPDATE`); sus
   pruebas actuales sobre `mark_batch_anchored` se reescriben.
 - El servidor del CCAV necesita Docker y recursos para la red; hay que confirmarlo con
-  el equipo real antes del piloto.
+  el equipo real antes del piloto. Si el equipo es Windows, hay que verificar que la
+  licencia de Docker Desktop permita usarlo en un equipo de la universidad; la
+  alternativa sin esa licencia es Docker Engine dentro de WSL2 o un equipo con Linux.
 - `ARCHITECTURE.md` y `THREAT-MODEL.md` se actualizan: la red la opera el propio
   proyecto, y los servidores de OpenTimestamps los mantienen voluntarios.
 - El documento de grado podrá decir que el anclaje está cumplido solo cuando la prueba de
