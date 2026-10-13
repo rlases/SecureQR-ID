@@ -717,10 +717,10 @@ sección «Vinculabilidad del `cid`»).
 
 - **Alta presencial por un administrador**, con código de activación entregado en
   persona. Descartada: el alta debe ser autoservicio, sin trabajo manual por cada titular.
-- **Autorregistro solo con el dominio del correo.** Descartada: cualquier cuenta del
-  dominio (de otra sede, de un funcionario, una cuenta de servicio) podría registrarse, y
-  el nombre lo escribiría el propio titular sin verificación.
-- **Autorregistro contra un padrón importado.** Elegida: ver la decisión.
+- **Autorregistro contra un padrón importado del sistema académico.** Descartada:
+  depende de que la institución exporte y actualice periódicamente ese padrón, algo que
+  no controla el proyecto.
+- **Autorregistro con datos declarados por el titular.** Elegida: ver la decisión.
 
 **Decisión.** Opción (a), con estas piezas:
 
@@ -731,21 +731,24 @@ sección «Vinculabilidad del `cid`»).
    un `cid` reemplazado nunca se borra, para poder auditar eventos antiguos de la
    bitácora. El vocabulario sigue ADR-0009: en el modelo de datos es «titular», no
    «estudiante», y el dominio del correo institucional es configuración.
-2. **Alta por autorregistro, sin trabajo manual.** Un `admin` importa periódicamente el
-   padrón de titulares habilitados (correo, nombre, documento) exportado del sistema
-   académico; no se registra a nadie a mano. El titular entra al portal con su correo
-   universitario y, si el correo está en el padrón y el código que recibe es correcto, el
-   servidor activa su registro y le crea su `cid` automáticamente. El nombre y el
-   documento salen del padrón, nunca de lo que escriba el titular. La identidad queda
-   respaldada por la universidad, que verificó a la persona al darle su cuenta.
+2. **Alta por autorregistro, sin trabajo manual.** El titular entra al portal y escribe
+   su correo universitario, su nombre y su documento, y acepta la autorización de
+   tratamiento de datos (Ley 1581 de 2012). Solo se admiten correos del dominio
+   institucional configurado. Si el código que recibe en ese correo es correcto, el
+   servidor activa el registro y le crea su `cid` automáticamente. Reglas:
+   - un registro activo por correo y uno por documento; si el documento ya está
+     registrado con otro correo, el alta se detiene y queda para revisión de un `admin`
+     (es el único caso que requiere intervención humana);
+   - el nombre y el documento son **declarados**: lo único que el sistema comprueba es que
+     quien se registra controla esa cuenta de correo institucional.
 3. **Portal del titular** en el mismo servidor y con el mismo HTTPS (ADR-0008):
    - Inicio de sesión sin contraseña, igual para el alta y para cada sesión nueva: el
      titular escribe su correo institucional y recibe un código de un solo uso generado
      con CSPRNG. El servidor guarda solo su
      hash, el código vence a los 10 minutos, sirve una sola vez y admite como máximo
      5 intentos. Hay límite de solicitudes por correo y por IP.
-   - La respuesta es la misma exista o no el correo en el padrón, para no revelar quién
-     está registrado.
+   - La respuesta es la misma esté o no registrado el correo, para no revelar quién
+     tiene credencial.
    - La sesión del titular es un tipo aparte, sin acceso a ninguna ruta del personal
      (`admin` / `operador`). Dura hasta el siguiente reseteo del `cid` o hasta que un
      `admin` la cierre (por ejemplo, ante un teléfono reportado como perdido), para no
@@ -790,10 +793,16 @@ sección «Vinculabilidad del `cid`»).
   - suplantación del portal (*phishing*) para robar códigos;
   - robo de la sesión en el teléfono, que dura hasta el siguiente reseteo del `cid`
     (mitigado porque un `admin` puede cerrarla).
-- **El padrón pasa a ser una fuente de confianza.** Quien controla el archivo que se
-  importa decide quién puede obtener una credencial. La importación queda restringida a
-  `admin` y registrada (quién, cuándo, cuántos titulares entraron o salieron). Un titular
-  que sale del padrón no puede volver a activarse y su credencial vigente se revoca.
+- **La identidad del titular es declarada, no verificada.** La garantía real es «quien
+  presenta este QR controla esta cuenta de correo institucional», no «es la persona
+  cuyo nombre aparece en el registro». Alguien con una cuenta del dominio (de otra sede,
+  un funcionario, una cuenta de servicio) puede registrarse con un nombre que no es el
+  suyo. Lo mitigan la regla de un registro por documento y, si se adopta, que el
+  vigilante vea el nombre al aceptar el QR y pueda compararlo con un documento físico.
+  Esto debe declararse en el modelo de amenazas y en el documento de grado.
+- **Los datos los aporta el titular**, así que la autorización de tratamiento se recoge
+  en el propio formulario de alta, y el titular debe poder corregirlos (con registro del
+  cambio, como en ADR-0008).
 - **Dependencia crítica: envío de correo.** Sin correo no hay alta ni inicio de sesión.
   El servidor necesita salida a un servidor de correo de la institución, y hoy escucha
   solo en la red local (ADR-0008). Hay que confirmar con TI del CCAV qué servidor de
@@ -811,7 +820,7 @@ sección «Vinculabilidad del `cid`»).
   exportación diaria o conexión directa.
 - Vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
 - Cuánto tiempo se conserva el registro de consultas `cid` → persona.
-- De dónde sale el padrón (qué sistema académico lo exporta, en qué formato) y cada
-  cuánto se actualiza.
-- Si se adopta la foto del vigilante, de dónde sale: del sistema académico junto con el
-  padrón o de una captura en la primera activación.
+- Si el vigilante, además del nombre, debe ver una foto, y en ese caso si el titular la
+  sube en el alta.
+- Si se cierra el alta a una sede (por ejemplo, exigiendo indicar el CCAV) o queda
+  abierta a todo el dominio.
