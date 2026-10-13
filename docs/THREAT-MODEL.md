@@ -89,8 +89,12 @@ identificado.
 Hay que distinguir dos casos:
 
 - **Dentro del sistema la vinculación es deliberada.** `evidence-log/` registra el `cid`
-  de cada validación aceptada (ADR-0013) precisamente para poder auditar. Ese acceso lo
-  controla el sistema (sesión, rol, trazabilidad de consultas).
+  de cada validación aceptada (ADR-0013) precisamente para poder auditar. Ese acceso
+  todavía **no** está controlado: hoy la bitácora es un archivo SQLite que solo protege
+  el acceso al equipo, sin una interfaz de consulta autenticada ni registro de quién la
+  lee (ADR-0008 deja pendiente qué se audita). ADR-0016 propone que solo un `admin`
+  pueda traducir un `cid` a una persona y que cada consulta quede registrada; hasta que
+  eso exista, quien tenga acceso al archivo puede leer todos los `cid` sin dejar rastro.
 - **Fuera del sistema es un riesgo residual de privacidad**, que la firma y el nonce no
   cubren: no impiden leer el `cid`, solo impiden reutilizar el token.
 
@@ -109,7 +113,15 @@ decisión sobre el registro `cid` → persona en el servidor de `mi-app-qr`):
   cada reseteo.
 - El registro debe conservar la relación histórica (qué `cid` tuvo cada titular y en qué
   periodo) para que las auditorías sobre eventos antiguos de la bitácora sigan siendo
-  posibles. Esa historia es tan sensible como la tabla vigente y se protege igual.
+  posibles. Esa historia no solo es sensible: es el único enlace entre un evento de la
+  bitácora y su titular, porque la cadena de hashes solo compromete el `cid`. Si alguien
+  con acceso a la base de datos cambia una fila del historial, atribuye un evento intacto
+  a otra persona sin que `verify_chain()` lo detecte. Por eso el historial debe ser **a
+  prueba de manipulación**: de solo agregar (una asignación nueva nunca reescribe la
+  anterior) y con un compromiso verificable de cada asignación `cid` → titular, por
+  ejemplo registrándola en la bitácora encadenada con el identificador interno opaco del
+  titular, nunca con datos personales. El mecanismo concreto queda pendiente para la
+  implementación de ADR-0016 (#79 y #88).
 
 **Límite que se acepta.** Dentro de un trimestre la vinculabilidad persiste. Eliminarla
 del todo exigiría un identificador distinto en cada token, lo que obliga a rediseñar la
