@@ -726,19 +726,25 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
 **Decisión.**
 
 1. **El registro vive en el servidor de `mi-app-qr`**, junto a sus usuarios, en el mismo
-   SQLite (ADR-0008). Tablas nuevas: `titulares` (nombre, documento), `credenciales`
+   SQLite (ADR-0008). Tablas nuevas: `titulares` (nombre, documento, correo), `credenciales`
    (`cid`, titular, estado `vigente` / `reemplazada` / `revocada`, periodo de vigencia,
    fechas) y `dispositivos` (hash de la llave del dispositivo vinculado, fechas). Se
    conserva el historial: un `cid` reemplazado nunca se borra, para poder auditar eventos
    antiguos de la bitácora. El vocabulario sigue ADR-0009: en el modelo de datos es
    «titular», no «estudiante».
 2. **Alta por autorregistro, sin trabajo manual.** El titular abre el portal del titular
-   desde la red del CCAV, escribe su nombre y su documento y acepta la autorización de
-   tratamiento de datos (Ley 1581 de 2012). El servidor crea su `cid` automáticamente.
+   desde la red del CCAV, escribe su nombre, su documento y su correo, y acepta la
+   autorización de tratamiento de datos (Ley 1581 de 2012). El servidor crea su `cid`
+   automáticamente.
    - Un registro activo por documento. Si el documento ya existe, el alta se detiene y
      queda para revisión de un `admin`.
-   - El nombre y el documento son **declarados**: el sistema no comprueba que
+   - El nombre, el documento y el correo son **declarados**: el sistema no comprueba que
      pertenezcan a quien se registra.
+   - El correo es solo un dato de contacto para que un `admin` pueda comunicarse con el
+     titular (finalidad que se informa en la autorización). No se verifica, no se usa para
+     iniciar sesión ni para recuperar la credencial, y el sistema no envía mensajes
+     automáticos. Tampoco es único: si lo fuera, alguien podría registrar el correo de
+     otra persona para impedirle el alta.
 3. **Vínculo con el teléfono.** Al terminar el alta, el servidor genera una llave del
    dispositivo de 256 bits con CSPRNG y la entrega al teléfono en una cookie `HttpOnly`,
    `Secure` y `SameSite=Strict`. Guarda solo su hash. Con esa llave el teléfono pide su
@@ -792,7 +798,7 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   existente» de `ARCHITECTURE.md`. La separación de código se mantiene: Node y Python se
   comunican por límite de proceso.
 - **La identidad del titular es declarada, no verificada.** Nadie comprueba que el
-  nombre y el documento sean de quien se registra, ni que pertenezca a la institución.
+  nombre, el documento y el correo sean de quien se registra, ni que pertenezca a la institución.
   Lo acotan: el portal solo es accesible desde la red del CCAV (ADR-0008), así que el
   alta exige estar físicamente en la sede; la regla de un registro por documento; y la
   revisión del `admin` sobre la bitácora. Debe declararse en el modelo de amenazas y en
