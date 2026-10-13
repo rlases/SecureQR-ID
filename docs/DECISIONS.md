@@ -763,7 +763,11 @@ sección «Vinculabilidad del `cid`»).
 5. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
    persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
    Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
-   conocer nombres.
+   conocer nombres. El vigilante, en el punto de control, solo ve «aceptada» o
+   «rechazada». Es el `admin`, al revisar la bitácora y los informes, quien ve el nombre
+   asociado a cada `cid`, y cada una de esas consultas queda registrada. No se recoge foto
+   del titular: la revisión ocurre después del paso, sin la persona presente, así que una
+   foto no aportaría control y sí más datos personales.
 6. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
    de firmar con él. La revocación queda para credenciales comprometidas.
@@ -797,9 +801,12 @@ sección «Vinculabilidad del `cid`»).
   presenta este QR controla esta cuenta de correo institucional», no «es la persona
   cuyo nombre aparece en el registro». Alguien con una cuenta del dominio (de otra sede,
   un funcionario, una cuenta de servicio) puede registrarse con un nombre que no es el
-  suyo. Lo mitigan la regla de un registro por documento y, si se adopta, que el
-  vigilante vea el nombre al aceptar el QR y pueda compararlo con un documento físico.
-  Esto debe declararse en el modelo de amenazas y en el documento de grado.
+  suyo. Lo mitiga la regla de un registro por documento. Esto debe declararse en el
+  modelo de amenazas y en el documento de grado.
+- **El teléfono prestado sigue fuera de alcance.** Como nadie compara a la persona con su
+  registro en el momento del paso, la cesión voluntaria no se detecta (ver
+  `THREAT-MODEL.md`, «Fuera del alcance»). La revisión del `admin` en la bitácora es
+  posterior: sirve para auditar quién figura como ingresado, no para impedir el préstamo.
 - **Los datos los aporta el titular**, así que la autorización de tratamiento se recoge
   en el propio formulario de alta, y el titular debe poder corregirlos (con registro del
   cambio, como en ADR-0008).
@@ -813,14 +820,10 @@ sección «Vinculabilidad del `cid`»).
 
 **Pendiente de decidir.**
 
-- Si el puesto del vigilante, que sí tiene sesión, muestra nombre y foto tras aceptar un
-  QR. Reduciría el riesgo de cesión voluntaria sin cambiar el portal público (ADR-0012).
 - En qué equipo corre `issuer/` y quién custodia la contraseña de la clave.
 - Cómo pasa la lista de revocados de `mi-app-qr` a quien firma la lista de `revocation/`:
   exportación diaria o conexión directa.
 - Vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
 - Cuánto tiempo se conserva el registro de consultas `cid` → persona.
-- Si el vigilante, además del nombre, debe ver una foto, y en ese caso si el titular la
-  sube en el alta.
 - Si se cierra el alta a una sede (por ejemplo, exigiendo indicar el CCAV) o queda
   abierta a todo el dominio.
