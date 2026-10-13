@@ -781,6 +781,15 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
      administrativo). Mientras el `admin` no lo confirme, el titular recibe las ventanas
      del estamento base que la instalación defina. Así declararse docente no amplía el
      horario por sí solo, y el trabajo manual se limita a esos casos.
+   - **Reglas por dominio del correo.** Un `admin` puede asociar dominios de correo a
+     estamentos desde el panel (por ejemplo, el dominio de los estudiantes a «estudiante»
+     y el de los docentes a «docente»). En el alta, el estamento se preselecciona según el
+     dominio del correo declarado. Como el correo no se verifica, el dominio solo sugiere:
+     si apunta a un estamento sin privilegios, se asigna directamente; si apunta a uno que
+     requiere confirmación, queda pendiente del `admin` igual que si el titular lo hubiera
+     elegido. Si más adelante el correo se verifica, el dominio podría confirmar el
+     estamento sin intervención; con correo no verificado, cualquiera podría escribir un
+     correo del dominio de docentes para obtener su horario.
    - **Todo cambio queda registrado:** quién cambió el estamento de un titular o las
      ventanas de un estamento, cuándo y qué valor tenía antes.
    - Las reglas son por estamento y por hora, iguales en todos los puntos de control.
