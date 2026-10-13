@@ -680,3 +680,103 @@ la lista debe volver a firmarla periódicamente aunque no cambie, para renovar s
 Esto exige además relojes razonablemente sincronizados entre quien firma y quien
 verifica, como ya ocurre con los tokens. No se resuelve aquí quién opera el servidor de
 publicación ni la CLI para firmar listas.
+
+---
+
+## ADR-0016 — Registro de credenciales en `mi-app-qr` y portal del titular
+
+**Estado:** Propuesta
+
+**Contexto.** El `cid` es opaco (`docs/SQRID-1.md`): el token no lleva datos personales y
+`verifier/` decide sin saber de quién es la credencial. La relación `cid` → persona tiene
+que existir en algún lugar, y hoy no existe en ningún módulo: `issuer/` recibe el `cid`
+ya hecho (`issue --cid`) y no guarda a quién pertenece. Además, el token dura poco
+(ADR-0004), así que el teléfono del titular necesita pedir uno nuevo cada vez que lo va a
+presentar, y para eso el servidor tiene que saber que quien lo pide es ese titular.
+ADR-0008 dice hoy que el estudiante nunca inicia sesión. Por último, el `cid` se repite en
+todos los tokens de un titular y permite vincular sus apariciones (`THREAT-MODEL.md`,
+sección «Vinculabilidad del `cid`»).
+
+**Opciones consideradas para la entrega del QR al teléfono.**
+
+- **(a) Portal ligero para el titular, con código al correo institucional.** El titular
+  escribe su correo, recibe un código de un solo uso y la página genera el QR al momento.
+  Cambia ADR-0008 y suma superficie de ataque.
+- **(b) Teléfono vinculado una sola vez.** Se registra el dispositivo con un código y
+  luego pide tokens sin contraseña. Exige guardar un secreto en el dispositivo y
+  gestionar su pérdida; es más complejo de construir y de explicar.
+- **(c) QR generado en un punto de la sede.** Sin teléfono, pero poco práctico y no
+  escala a varias entradas por día.
+
+**Decisión.** Opción (a), con estas piezas:
+
+1. **El registro vive en el servidor de `mi-app-qr`**, junto a sus usuarios, en el mismo
+   SQLite (ADR-0008). Dos tablas nuevas: `titulares` (nombre, documento, correo
+   institucional) y `credenciales` (`cid`, titular, estado `vigente` / `reemplazada` /
+   `revocada`, periodo de vigencia, quién la creó y cuándo). Se conserva el historial:
+   un `cid` reemplazado nunca se borra, para poder auditar eventos antiguos de la
+   bitácora. El vocabulario sigue ADR-0009: en el modelo de datos es «titular», no
+   «estudiante», y el dominio del correo institucional es configuración.
+2. **Portal del titular** en el mismo servidor y con el mismo HTTPS (ADR-0008):
+   - Inicio de sesión sin contraseña: el titular escribe su correo institucional y
+     recibe un código de un solo uso generado con CSPRNG. El servidor guarda solo su
+     hash, el código vence a los 10 minutos, sirve una sola vez y admite como máximo
+     5 intentos. Hay límite de solicitudes por correo y por IP.
+   - La respuesta es la misma exista o no el correo, para no revelar quién está
+     registrado.
+   - La sesión del titular es un tipo aparte, sin acceso a ninguna ruta del personal
+     (`admin` / `operador`), y dura poco.
+   - La página no guarda el token en `localStorage`, en el historial ni en caché, igual
+     que el portal de verificación (ADR-0012), y pide uno nuevo antes de que venza.
+3. **Emisión.** Con la sesión del titular, el servidor busca su `cid` vigente y le pide
+   el token a `issuer/` a través de un límite de proceso:
+   `secureqr-issuer issue --cid=<cid>`, con signo igual porque un `cid` puede empezar con
+   `-` (PR #66). `mi-app-qr` nunca lee la clave privada ni importa código de `issuer/`;
+   recibe el token ya firmado. Hay límite de tokens por sesión.
+4. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
+   persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
+   Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
+   conocer nombres.
+5. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
+   el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
+   de firmar con él. La revocación queda para credenciales comprometidas.
+6. **Revocación.** Un `admin` marca una credencial como `revocada` en `mi-app-qr`, y esa
+   lista alimenta la lista firmada de `revocation/` que se distribuye según ADR-0015.
+7. **Línea base del objetivo 3.** Antes de implementar esta decisión se etiqueta la
+   versión actual de `mi-app-qr` (por ejemplo `baseline-o3`). El pretest se hace contra
+   esa etiqueta, que sigue siendo la aplicación sin controles.
+
+**Consecuencias.**
+
+- **Cambia ADR-0008.** Su frase «el estudiante nunca inicia sesión» pasa a decir: el
+  titular no tiene cuenta ni contraseña; solo abre una sesión corta en el portal del
+  titular para obtener su QR, sin acceso a nada más.
+- **`mi-app-qr` entra al flujo de SecureQR-ID** como registro de credenciales y portal
+  del titular. Hay que actualizar `CLAUDE.md` y la sección «Relación con el prototipo
+  existente» de `ARCHITECTURE.md`. La separación de código se mantiene: Node y Python se
+  comunican por límite de proceso.
+- **La clave privada vive en el equipo que corre `issuer/`.** Si es el mismo servidor de
+  `mi-app-qr`, ese equipo pasa a custodiar el material más sensible del sistema. Su
+  protección (PEM cifrado, contraseña por entorno, acceso al equipo) entra al modelo de
+  amenazas.
+- **Superficie de ataque nueva**, que debe sumarse a `THREAT-MODEL.md`:
+  - un correo institucional comprometido equivale a una credencial comprometida;
+  - fuerza bruta sobre el código y enumeración de correos;
+  - suplantación del portal (*phishing*) para robar códigos;
+  - robo de la sesión en el teléfono.
+- **Dependencia nueva: envío de correo.** El servidor necesita salida a un servidor de
+  correo de la institución. Hoy escucha solo en la red local (ADR-0008); hay que confirmar
+  con TI del CCAV qué servidor de correo se puede usar desde ahí.
+- **El titular necesita estar en la red del CCAV** para abrir el portal, porque el
+  servidor no se expone a internet (ADR-0008). Es coherente con generar el QR en la
+  entrada, pero hay que comprobarlo en el piloto.
+
+**Pendiente de decidir.**
+
+- Si el puesto del vigilante, que sí tiene sesión, muestra nombre y foto tras aceptar un
+  QR. Reduciría el riesgo de cesión voluntaria sin cambiar el portal público (ADR-0012).
+- En qué equipo corre `issuer/` y quién custodia la contraseña de la clave.
+- Cómo pasa la lista de revocados de `mi-app-qr` a quien firma la lista de `revocation/`:
+  exportación diaria o conexión directa.
+- Duración de la sesión del titular y vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
+- Cuánto tiempo se conserva el registro de consultas `cid` → persona.
