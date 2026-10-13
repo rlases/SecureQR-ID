@@ -692,97 +692,83 @@ publicación ni la CLI para firmar listas.
 que existir en algún lugar, y hoy no existe en ningún módulo: `issuer/` recibe el `cid`
 ya hecho (`issue --cid`) y no guarda a quién pertenece. Además, el token dura poco
 (ADR-0004), así que el teléfono del titular necesita pedir uno nuevo cada vez que lo va a
-presentar, y para eso el servidor tiene que saber que quien lo pide es ese titular.
-ADR-0008 dice hoy que el estudiante nunca inicia sesión. Por último, el `cid` se repite en
-todos los tokens de un titular y permite vincular sus apariciones (`THREAT-MODEL.md`,
-sección «Vinculabilidad del `cid`»).
+presentar, y para eso el servidor tiene que reconocer que quien lo pide es ese titular.
+ADR-0008 dice hoy que el estudiante nunca inicia sesión. El `cid` se repite en todos los
+tokens de un titular y permite vincular sus apariciones (`THREAT-MODEL.md`, sección
+«Vinculabilidad del `cid`»). Por último, el proyecto no debe depender de permisos ni
+servicios de la universidad (buzones de correo, proveedor de identidad, directorios): la
+solución tiene que funcionar solo con lo que el propio proyecto opera.
 
 **Opciones consideradas para la entrega del QR al teléfono.**
 
-- **(a) Portal ligero para el titular, con código al correo institucional.** El titular
-  escribe su correo, recibe un código de un solo uso y la página genera el QR al momento.
-  Cambia ADR-0008 y suma superficie de ataque.
-- **(b) Teléfono vinculado una sola vez.** Se registra el dispositivo con un código y
-  luego pide tokens sin contraseña. Exige guardar un secreto en el dispositivo y
-  gestionar su pérdida; es más complejo de construir y de explicar.
+- **(a) Portal del titular con código enviado al correo institucional.** Descartada:
+  enviar al buzón institucional exige un buzón de servicio de la universidad o un dominio
+  propio con un proveedor de correo externo; ninguna de las dos es independiente de
+  terceros.
+- **(b) Portal del titular con el teléfono vinculado en el alta.** Elegida: ver la
+  decisión.
 - **(c) QR generado en un punto de la sede.** Sin teléfono, pero poco práctico y no
   escala a varias entradas por día.
-- **(d) Inicio de sesión con la cuenta institucional (OpenID Connect).** El titular entra
-  con la misma cuenta de su correo universitario, sin código por correo, y hereda la
-  autenticación de la universidad. Exige que TI registre la aplicación en el proveedor de
-  identidad de la institución y que el servidor tenga salida a internet. Se deja como
-  evolución si TI lo habilita, no como requisito del piloto.
+- **(d) Inicio de sesión con la cuenta institucional (OpenID Connect).** Descartada por
+  la misma razón que (a): requiere que TI registre la aplicación.
+- **(e) Llaves de acceso del teléfono (WebAuthn / *passkeys*).** Descartada por ahora:
+  exigen un nombre de dominio real, y el servidor de `mi-app-qr` se usa por IP con un
+  certificado autofirmado por instalación (ADR-0008).
 
 **Opciones consideradas para dar de alta al titular.**
 
-- **Alta presencial por un administrador**, con código de activación entregado en
-  persona. Descartada: el alta debe ser autoservicio, sin trabajo manual por cada titular.
+- **Alta presencial por un administrador.** Descartada: el alta debe ser autoservicio,
+  sin trabajo manual por cada titular.
 - **Autorregistro contra un padrón importado del sistema académico.** Descartada:
-  depende de que la institución exporte y actualice periódicamente ese padrón, algo que
-  no controla el proyecto.
-- **Autorregistro con datos declarados por el titular.** Elegida: ver la decisión.
+  depende de una exportación periódica que el proyecto no controla.
+- **Autorregistro con datos declarados por el titular.** Elegida.
 
-**Decisión.** Opción (a), con estas piezas:
+**Decisión.**
 
 1. **El registro vive en el servidor de `mi-app-qr`**, junto a sus usuarios, en el mismo
-   SQLite (ADR-0008). Dos tablas nuevas: `titulares` (nombre, documento, correo
-   institucional, y si el titular ya se activó) y `credenciales` (`cid`, titular, estado `vigente` / `reemplazada` /
-   `revocada`, periodo de vigencia, quién la creó y cuándo). Se conserva el historial:
-   un `cid` reemplazado nunca se borra, para poder auditar eventos antiguos de la
-   bitácora. El vocabulario sigue ADR-0009: en el modelo de datos es «titular», no
-   «estudiante», y el dominio del correo institucional es configuración.
-2. **Alta por autorregistro, sin trabajo manual.** El titular entra al portal y escribe
-   su correo universitario, su nombre y su documento, y acepta la autorización de
-   tratamiento de datos (Ley 1581 de 2012). Solo se admiten correos del dominio
-   institucional configurado. Si el código que recibe en ese correo es correcto, el
-   servidor activa el registro y le crea su `cid` automáticamente. Reglas:
-   - un registro activo por correo y uno por documento; si el documento ya está
-     registrado con otro correo, el alta se detiene y queda para revisión de un `admin`
-     (es el único caso que requiere intervención humana);
-   - el nombre y el documento son **declarados**: lo único que el sistema comprueba es que
-     quien se registra controla esa cuenta de correo institucional.
-3. **Portal del titular** en el mismo servidor y con el mismo HTTPS (ADR-0008):
-   - Inicio de sesión sin contraseña, igual para el alta y para cada sesión nueva: el
-     titular escribe su correo institucional y recibe un código de un solo uso generado
-     con CSPRNG. El servidor guarda solo su
-     hash, el código vence a los 10 minutos, sirve una sola vez y admite como máximo
-     5 intentos. Hay límite de solicitudes por correo y por IP.
-   - La respuesta es la misma esté o no registrado el correo, para no revelar quién
-     tiene credencial.
+   SQLite (ADR-0008). Tablas nuevas: `titulares` (nombre, documento), `credenciales`
+   (`cid`, titular, estado `vigente` / `reemplazada` / `revocada`, periodo de vigencia,
+   fechas) y `dispositivos` (hash de la llave del dispositivo vinculado, fechas). Se
+   conserva el historial: un `cid` reemplazado nunca se borra, para poder auditar eventos
+   antiguos de la bitácora. El vocabulario sigue ADR-0009: en el modelo de datos es
+   «titular», no «estudiante».
+2. **Alta por autorregistro, sin trabajo manual.** El titular abre el portal del titular
+   desde la red del CCAV, escribe su nombre y su documento y acepta la autorización de
+   tratamiento de datos (Ley 1581 de 2012). El servidor crea su `cid` automáticamente.
+   - Un registro activo por documento. Si el documento ya existe, el alta se detiene y
+     queda para revisión de un `admin`.
+   - El nombre y el documento son **declarados**: el sistema no comprueba que
+     pertenezcan a quien se registra.
+3. **Vínculo con el teléfono.** Al terminar el alta, el servidor genera una llave del
+   dispositivo de 256 bits con CSPRNG y la entrega al teléfono en una cookie `HttpOnly`,
+   `Secure` y `SameSite=Strict`. Guarda solo su hash. Con esa llave el teléfono pide su
+   QR sin contraseña ni código.
+   - Un dispositivo vinculado por titular: vincular otro desactiva el anterior.
+   - El vínculo dura hasta el siguiente reseteo del `cid` o hasta que un `admin` lo
+     revoque (por ejemplo, ante un teléfono reportado como perdido).
    - La sesión del titular es un tipo aparte, sin acceso a ninguna ruta del personal
-     (`admin` / `operador`). Dura hasta el siguiente reseteo del `cid` o hasta que un
-     `admin` la cierre (por ejemplo, ante un teléfono reportado como perdido), para no
-     pedir un código por correo en cada ingreso.
+     (`admin` / `operador`).
    - La página no guarda el token en `localStorage`, en el historial ni en caché, igual
      que el portal de verificación (ADR-0012), y pide uno nuevo antes de que venza.
-4. **Emisión.** Con la sesión del titular, el servidor busca su `cid` vigente y le pide
-   el token a `issuer/` a través de un límite de proceso:
+4. **Código de recuperación.** En el alta, la página muestra una sola vez un código de
+   recuperación generado con CSPRNG, que el titular debe guardar; el servidor guarda solo
+   su hash. Con ese código y su documento, el titular vincula un teléfono nuevo (cambio de
+   equipo o datos del navegador borrados); al usarlo se genera uno nuevo. Hay límite de
+   intentos por documento y por IP. Si el titular pierde el teléfono y el código, lo
+   resuelve un `admin` de `mi-app-qr`: es el único caso manual.
+5. **Emisión.** Con el dispositivo vinculado, el servidor busca el `cid` vigente del
+   titular y le pide el token a `issuer/` a través de un límite de proceso:
    `secureqr-issuer issue --cid=<cid>`, con signo igual porque un `cid` puede empezar con
    `-` (PR #66). `mi-app-qr` nunca lee la clave privada ni importa código de `issuer/`;
-   recibe el token ya firmado. Hay límite de tokens por sesión.
-5. **Envío del código por correo.** El servidor de `mi-app-qr` envía el código por SMTP
-   con `nodemailer`, configurado solo por variables de entorno (`SMTP_HOST`,
-   `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_REQUIRE_TLS`). El código no
-   cambia entre entornos; cambia el servidor al que apunta:
-   - **Desarrollo, pruebas y demostraciones:** Mailpit corriendo en local (SMTP en
-     `127.0.0.1:1025`, bandeja web en `127.0.0.1:8025`). No entrega correo a nadie: lo
-     atrapa y lo muestra, así que se puede probar el alta completa sin buzones reales.
-   - **Piloto:** envío autenticado (puerto 587 con STARTTLS obligatorio) desde un buzón de
-     servicio, por ejemplo `no-responder@` en el dominio institucional, que TI crea en el
-     proveedor de correo de la universidad, o por el relé SMTP que TI indique. Así los
-     mensajes salen firmados por el dominio institucional y llegan a la bandeja de entrada.
-   - **Descartado:** un servidor de correo saliente propio en el CCAV, porque sin un
-     dominio verificado los proveedores rechazan o mandan a spam sus mensajes; y un
-     proveedor externo de correo transaccional, porque implicaría entregar los correos de
-     los titulares a un tercero (Ley 1581 de 2012).
+   recibe el token ya firmado. Hay límite de tokens por dispositivo.
 6. **Consulta `cid` → persona.** Solo el permiso `admin` puede traducir un `cid` a una
    persona, y cada consulta queda registrada (quién, cuándo, qué `cid`), como exige la
    Ley 1581 de 2012. `verifier/`, `verifier-service/` y el portal público siguen sin
    conocer nombres: el punto de control solo muestra «aceptada» o «rechazada»
    (ADR-0012). Es el `admin`, al revisar la bitácora y los informes, quien ve el nombre
-   asociado a cada `cid`, y cada una de esas consultas queda registrada. No se recoge foto
-   del titular: la revisión ocurre después del paso, sin la persona presente, así que una
-   foto no aportaría control y sí más datos personales.
+   asociado a cada `cid`. No se recoge foto del titular: la revisión ocurre después del
+   paso, sin la persona presente, así que una foto no aportaría control y sí más datos
+   personales.
 7. **Reseteo trimestral del `cid`.** Cada trimestre se crea un `cid` nuevo por titular y
    el anterior pasa a `reemplazada`. No se revoca: sus tokens vencen solos y el emisor deja
    de firmar con él. La revocación queda para credenciales comprometidas.
@@ -794,46 +780,43 @@ sección «Vinculabilidad del `cid`»).
 
 **Consecuencias.**
 
+- **No depende de la universidad.** No hacen falta buzones, dominios, proveedores de
+  correo ni de identidad. Lo único que se usa de la institución es lo que ADR-0008 ya
+  supone: el equipo servidor corre en la red del CCAV.
 - **Cambia ADR-0008.** Su frase «el estudiante nunca inicia sesión» pasa a decir: el
-  titular no tiene contraseña; se autorregistra y abre sesión en el portal del titular
-  con un código a su correo institucional, solo para obtener su QR y sin acceso a nada
-  más.
+  titular no tiene contraseña ni cuenta en la universidad dentro del sistema; se
+  autorregistra en el portal del titular, que vincula su teléfono, solo para obtener su
+  QR y sin acceso a nada más.
 - **`mi-app-qr` entra al flujo de SecureQR-ID** como registro de credenciales y portal
   del titular. Hay que actualizar `CLAUDE.md` y la sección «Relación con el prototipo
   existente» de `ARCHITECTURE.md`. La separación de código se mantiene: Node y Python se
   comunican por límite de proceso.
+- **La identidad del titular es declarada, no verificada.** Nadie comprueba que el
+  nombre y el documento sean de quien se registra, ni que pertenezca a la institución.
+  Lo acotan: el portal solo es accesible desde la red del CCAV (ADR-0008), así que el
+  alta exige estar físicamente en la sede; la regla de un registro por documento; y la
+  revisión del `admin` sobre la bitácora. Debe declararse en el modelo de amenazas y en
+  el documento de grado.
+- **El teléfono prestado sigue fuera de alcance.** Como nadie compara a la persona con su
+  registro en el momento del paso, la cesión voluntaria no se detecta (ver
+  `THREAT-MODEL.md`, «Fuera del alcance»). La revisión del `admin` en la bitácora es
+  posterior: sirve para auditar quién figura como ingresado, no para impedir el préstamo.
 - **La clave privada vive en el equipo que corre `issuer/`.** Si es el mismo servidor de
   `mi-app-qr`, ese equipo pasa a custodiar el material más sensible del sistema. Su
   protección (PEM cifrado, contraseña por entorno, acceso al equipo) entra al modelo de
   amenazas.
 - **Superficie de ataque nueva**, que debe sumarse a `THREAT-MODEL.md`:
-  - un correo institucional comprometido equivale a una credencial comprometida;
-  - fuerza bruta sobre el código y enumeración de correos;
-  - suplantación del portal (*phishing*) para robar códigos;
-  - robo de la sesión en el teléfono, que dura hasta el siguiente reseteo del `cid`
-    (mitigado porque un `admin` puede cerrarla).
-- **La identidad del titular es declarada, no verificada.** La garantía real es «quien
-  presenta este QR controla esta cuenta de correo institucional», no «es la persona
-  cuyo nombre aparece en el registro». Alguien con una cuenta del dominio (de otra sede,
-  un funcionario, una cuenta de servicio) puede registrarse con un nombre que no es el
-  suyo. Lo mitiga la regla de un registro por documento. Esto debe declararse en el
-  modelo de amenazas y en el documento de grado.
-- **El teléfono prestado sigue fuera de alcance.** Como nadie compara a la persona con su
-  registro en el momento del paso, la cesión voluntaria no se detecta (ver
-  `THREAT-MODEL.md`, «Fuera del alcance»). La revisión del `admin` en la bitácora es
-  posterior: sirve para auditar quién figura como ingresado, no para impedir el préstamo.
+  - registro masivo con datos falsos desde la red del CCAV;
+  - robo de la cookie del dispositivo o del teléfono desbloqueado, que equivale a robar
+    la credencial hasta que un `admin` revoque el vínculo;
+  - fuerza bruta sobre el código de recuperación;
+  - suplantación del portal (*phishing*) dentro de la red local.
 - **Los datos los aporta el titular**, así que la autorización de tratamiento se recoge
   en el propio formulario de alta, y el titular debe poder corregirlos (con registro del
   cambio, como en ADR-0008).
-- **Dependencia crítica: envío de correo.** Sin correo no hay alta ni inicio de sesión.
-  El desarrollo no depende de TI gracias a Mailpit, pero el piloto sí: TI debe crear el
-  buzón de servicio (o indicar el relé) y permitir que el servidor del CCAV salga por el
-  puerto 587, aunque siga escuchando solo en la red local (ADR-0008). Las credenciales del
-  buzón se tratan como secreto: variables de entorno, nunca en el repositorio.
-- **Dependencia nueva en `mi-app-qr/server`:** `nodemailer` (licencia MIT-0).
-- **El titular necesita estar en la red del CCAV** para abrir el portal, porque el
-  servidor no se expone a internet (ADR-0008). Es coherente con generar el QR en la
-  entrada, pero hay que comprobarlo en el piloto.
+- **El titular necesita estar en la red del CCAV** para registrarse y para pedir su QR,
+  porque el servidor no se expone a internet (ADR-0008). Es coherente con generar el QR
+  en la entrada, pero hay que comprobarlo en el piloto.
 
 **Pendiente de decidir.**
 
@@ -842,5 +825,3 @@ sección «Vinculabilidad del `cid`»).
   exportación diaria o conexión directa.
 - Vigencia del token (`SQRID_TOKEN_TTL_SECONDS`).
 - Cuánto tiempo se conserva el registro de consultas `cid` → persona.
-- Si se cierra el alta a una sede (por ejemplo, exigiendo indicar el CCAV) o queda
-  abierta a todo el dominio.
