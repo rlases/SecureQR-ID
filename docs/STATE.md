@@ -139,7 +139,6 @@ solo falta `anchor/` (issue #9) para completarla.
   ya). `src/App.js` sigue con su propia referencia a `window.electronAPI.checkLicense`,
   pero como ese archivo entero ya estaba huérfano (no lo carga ninguna ventana), no
   introduce ningún problema nuevo — es limpieza aparte, no parte de esta decisión.
-
 - **Issue #45 — validación aceptada registrada en `evidence-log/` (PR #68 fusionado).**
   `RecordingVerifier` (en `verifier/`, sin importar `evidence-log/`) envuelve al
   `Verifier` y encadena cada aceptación; si la bitácora falla, rechaza (falla cerrado).
@@ -313,6 +312,11 @@ abajo.
 - Fase 4/5 de `ROADMAP.md` (batería de ataques, instrumentos de evaluación, piloto,
   manuales, publicación) — trabajo conjunto de investigación, todavía no tiene issues
   de código.
+- Confirmar los estándares de #71/#58 (accesibilidad) y #72/#57 (catálogo de
+  componentes) — siguen en borrador. Jhunier dejó respuestas a las preguntas abiertas de
+  ambos en la nota de sesión 2026-10-12; falta acordarlas con Duverney.
+- No existe aún una CLI para generar la clave de revocación ni firmar listas (anotado en
+  ADR-0014/15); sin issue todavía.
 
 WebSockets si el polling de 7s de `RegistrosPage` resulta insuficiente — no es
 bloqueante todavía, sin issue.
@@ -355,7 +359,26 @@ cookie `Secure`. **No verificado:** instalar el `.exe` de Windows en una máquin
 CCAV. Al fusionar se aprovechó para poner al día el resto de `STATE.md`: issues #45-48
 seguían marcados "pendiente de revisión" en varias secciones pese a estar ya fusionados
 (PR #68, #69, #70, #65) — corregido en todas partes, no solo en la sección que tocaba
-este PR.
+este PR. GitHub no deja autoaprobar el propio PR; quedó como revisión tipo comentario y
+se fusionó directo como dueño del repositorio.
+
+**2026-10-12 — Revisión cruzada y fusión de #45/#46/#47 (PR #68, #69, #70).** Jhunier.
+Revisados en orden de dependencia, con los test suites reales corridos tras instalar
+cada módulo (no solo confiando en la descripción del PR): en #68 se reprodujo el bug de
+bifurcación de cadena contra el código anterior en `main` para confirmar que el fix era
+real. Los tres quedaron sin hallazgos y se fusionaron con squash. ADR-0013/14/15
+coinciden con lo implementado; recomendado pasarlos de *Propuesta* a *Aceptada*, aún sin
+confirmar formalmente en `DECISIONS.md`. Nota técnica: cada squash-merge dejaba a la
+siguiente rama marcada como "en conflicto" por git (mismo contenido, reescrito por el
+squash) — se resolvió fusionando `main` dentro de las ramas de Duverney y pusheando
+directo, verificando en cada caso que ningún lado perdiera contenido y volviendo a
+correr los tests. Pendiente de Duverney: confirmar los ADR, las respuestas que dejó
+Jhunier a las preguntas de #71/#58 y #72/#57 (siguen en borrador hasta entonces), y
+quién opera el servidor de publicación de la lista de revocación y la cadencia de
+refirmado (propuesta de Jhunier: diario, `MAX_AGE` 48-72h, `REFRESH` 300s). Pendiente de
+Duverney también: revisión cruzada de #66 y #64 (de Jhunier, ninguno con aprobación
+todavía) y confirmación del contenido de #63 (guía de contenido, ya verificado y listo
+para revisión).
 
 **2026-10-11 — Issue #47: lista de revocación con conectividad intermitente.** Duverney.
 ADR-0015 (*Propuesta*) registrado antes de implementar. `RevocationListCache` en
