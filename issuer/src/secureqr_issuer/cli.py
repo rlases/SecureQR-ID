@@ -45,7 +45,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "generate-key", help="crea un par P-256 cifrado sin sobrescribir archivos"
     )
     issue_parser = subparsers.add_parser("issue", help="emite un token SQRID/1")
-    issue_parser.add_argument("--cid", required=True, help="cid opaco de 128 bits")
+    issue_parser.add_argument(
+        "--cid",
+        required=True,
+        help=(
+            "cid opaco de 128 bits; si empieza por '-', pasarlo como --cid=<cid> "
+            "para que no se confunda con una opcion"
+        ),
+    )
     return parser
 
 

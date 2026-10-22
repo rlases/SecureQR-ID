@@ -41,6 +41,15 @@ $cid = secureqr-issuer generate-cid
 secureqr-issuer issue --cid $cid
 ```
 
+`generate-cid` nunca produce un `cid` que empiece por `-`, pero un `cid` valido
+emitido antes de ese cambio si puede empezar asi. Para esos casos use la forma con
+signo igual, porque con `--cid <cid>` `argparse` toma el valor como si fuera otra
+opcion y termina con codigo 2:
+
+```powershell
+secureqr-issuer issue --cid=$cid
+```
+
 `generate-key` falla si cualquiera de los archivos ya existe. La clave privada nunca es
 un valor de retorno; `Issuer.public_key_pem()` devuelve unicamente la parte publica para
 distribuirla por un canal confiable al futuro `verifier/`.
