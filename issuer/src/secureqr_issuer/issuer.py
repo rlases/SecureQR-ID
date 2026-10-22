@@ -163,9 +163,18 @@ def _compact_signature(
 
 
 def create_credential_id() -> str:
-    """Genera un identificador opaco de credencial con 128 bits de CSPRNG."""
+    """Genera un identificador opaco de credencial con 128 bits de CSPRNG.
 
-    return encode_base64url(secrets.token_bytes(IDENTIFIER_SIZE))
+    Se descarta y regenera el candidato si el Base64url resultante empieza con
+    "-": ese caracter es valido en el alfabeto pero `argparse` lo confunde con
+    otra opcion de linea de comandos al pasarlo como `--cid <valor>` (ver
+    `cli.py`), rompiendo el flujo real `generate-cid` -> `issue --cid ...`.
+    """
+
+    while True:
+        candidate = encode_base64url(secrets.token_bytes(IDENTIFIER_SIZE))
+        if not candidate.startswith("-"):
+            return candidate
 
 
 class Issuer:
