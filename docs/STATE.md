@@ -114,7 +114,49 @@ antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
   (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
   No declarar terminado #9 por tener pruebas con un cliente en memoria.
 
-### Revisión técnica y reparto vigente — 2026-10-24
+### Correcciones implementadas — 2026-10-24
+
+Los hallazgos de Jhunier descritos en la revisión inicial de abajo ya tienen
+corrección y pruebas de regresión en sus ramas. Siguen pendientes de revisión
+cruzada; los issues no se dan por cerrados antes de la integración.
+
+| PR | Commit actual | Corrección |
+|---|---|---|
+| #104 | `cd4865f` | Consumo condicional y único del código; reserva atómica de cuota por documento e IP antes de bcrypt |
+| #105 | `a33ff3f` | Consulta desde la asignación comprometida; detección de incoherencias/cadena rota y auditoría del intento sin datos ni atribución |
+| #106 | `7bd8c00` | Hereda las correcciones sin alterar el alcance de revocación |
+| #107 | `b9230e0` | Hereda las correcciones sin alterar el alcance del reseteo |
+| #108 | `d38b75e` | Limpieza de motivos de correcciones y texto de cid inválido, al cierre y por vencimiento, preservando cid canónicos y metadatos |
+
+Las ramas descendientes incorporan a su base corregida como padre adicional; se
+conservó el historial existente y los diff de #105–#108 siguen mostrando su propia
+tarea, sin duplicar las correcciones heredadas.
+
+**Verificación final:** compilación del servidor correcta y **183/183 pruebas**
+en la rama acumulada #108, incluidas once pruebas nuevas. Se comprobó que los
+archivos publicados coinciden, por hash de blob, con los once archivos locales
+verificados. Los fixtures de portal, consultas y anonimización usan directorios
+temporales propios. La prueba de CLI usa el mismo Node con `--import tsx` y
+ejecuta el módulo real sin depender del socket IPC de la CLI de tsx; también pasó.
+
+La anonimización de correcciones conserva un motivo no nulo («Anonimizado») y el
+enlace al registro anterior. En consultas solo se puede reemplazar un cid
+**no canónico** por `anon-<id de consulta>`; autor, fecha, atribución y cid
+canónicos permanecen protegidos. Se mantiene el límite ya documentado de los
+motivos de `cambios_configuracion`, que siguen conservados y no deben incluir
+datos personales.
+
+**Lo siguiente para Jhunier:** obtener revisión cruzada de estos arreglos,
+completar #78, acordar #55, cerrar administrativamente #56 y revalidar los
+arreglos de Duverney. La integración conserva sus dependencias (#77 y línea
+base); el CI de PR con base distinta de main sigue siendo un pendiente.
+
+**Lo siguiente para Duverney:** revisar #77 y las ramas corregidas de Jhunier,
+resolver #98–#100 y continuar #82, #85, #93, #94 y #109. El detalle del reparto
+permanece más abajo. No se alteraron asignaciones ni se incorporaron cambios
+visuales.
+
+### Revisión técnica inicial — 2026-10-24
 
 Se revisaron los once PR de arquitectura, documentación e implementación (#77,
 #98–#100 y #102–#108) contra sus commits actuales, además de corregir este handoff.
@@ -130,11 +172,11 @@ sustituyen la revisión cruzada de Duverney.
 | #100 | Duverney | Sigue el cambio solicitado: aceptar/validar loteId con prefijo de instalación; el formato de ADR-0017 hoy se rechaza |
 | #102 | Jhunier | Sin hallazgo nuevo en el diff; pendiente #77, #78, revisión cruzada e integración |
 | #103 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; pendiente revisión cruzada y CI al integrar |
-| #104 | Jhunier | Corregir consumo concurrente del código de recuperación y reserva atómica de intentos |
-| #105 | Jhunier | Resolver la identidad desde la asignación comprometida y detectar inconsistencias antes de atribuir el cid |
+| #104 | Jhunier | Corregido en cd4865f; pendiente revisión cruzada |
+| #105 | Jhunier | Corregido en a33ff3f; pendiente revisión cruzada |
 | #106 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; el consumo efectivo de puedeEmitir sigue en #85 |
 | #107 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; pendiente revisión cruzada y CI al integrar |
-| #108 | Jhunier | Completar anonimización de motivos de correcciones y texto sensible introducido como cid inválido |
+| #108 | Jhunier | Corregido en d38b75e; pendiente revisión cruzada |
 
 **Reproducciones confirmadas con datos sintéticos, sin servicios del piloto:**
 
@@ -174,8 +216,8 @@ sin confirmación devolvió 1 y con la frase devolvió 0 y anonimizó. No se afi
 
 **Pendientes de Jhunier (`rlases`):**
 
-1. Corregir #104/#84, #105/#86 y #108/#90 y agregar las pruebas de regresión
-   correspondientes, propagando los cambios por la cadena de ramas.
+1. Obtener revisión cruzada de las correcciones de #104/#84, #105/#86 y #108/#90,
+   ya implementadas, probadas y propagadas por la cadena de ramas.
 2. Crear `baseline-o3` (#78) sobre el commit apropiado antes de integrar #102.
 3. Cerrar el acuerdo de diseño #55 con Duverney: el archivo de diseño sigue como
    borrador y no autoriza implementar unilateralmente sus propuestas.
