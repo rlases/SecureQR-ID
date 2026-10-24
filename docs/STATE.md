@@ -75,8 +75,8 @@ integrados en `main`.
   son otras ramas. No presentar esa ausencia de ejecución como CI aprobado.
 - La descripción de #108 reporta **172 pruebas del servidor, 97 del cliente y build
   del cliente correcto** sobre la rama final `modulo/90-anonimizacion`
-  (`79fb158`). Son resultados locales reportados por Claude; no se volvieron a
-  ejecutar en esta reanudación de documentación.
+  (`79fb158`). Eran resultados locales reportados por Claude; la revisión técnica de abajo
+  detalla la ejecución independiente posterior y su limitación de entorno.
 - Límite documentado en #108: los motivos de `cambios_configuracion` se conservan.
   La interfaz pide no escribir datos personales allí, pero no los elimina si se
   introducen. Revisar esa limitación antes de afirmar anonimización completa de
@@ -107,12 +107,110 @@ antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
 - **#98 (Duverney, documentación):** abierto en borrador; actualizarlo contra el
   texto final de #77, incluidos los riesgos residuales y el lote fijo, antes de dar
   por actualizados `CLAUDE.md`, `ARCHITECTURE.md` y `THREAT-MODEL.md`.
-- **#99 y #100 (Duverney):** abiertos; GitHub los marca con conflictos con `main`.
-  Reconciliar las ramas y revisar la alineación de `lotes`, `loteId`, recibos y
-  estado de anclaje con el texto final de #77 antes de fusionar.
+- **#99 y #100 (Duverney):** abiertos; la comprobación actual de GitHub ya no los
+  marca con conflictos con `main`. Siguen pendientes los cambios solicitados de
+  `lotes`, `loteId`, recibos y estado de anclaje descritos en la revisión de abajo.
 - El anclaje real y su evidencia de operación siguen pendientes: red y contrato
   (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
   No declarar terminado #9 por tener pruebas con un cliente en memoria.
+
+### Revisión técnica y reparto vigente — 2026-10-24
+
+Se revisaron los once PR de arquitectura, documentación e implementación (#77,
+#98–#100 y #102–#108) contra sus commits actuales, además de corregir este handoff.
+Se publicaron revisiones en GitHub. No se fusionaron PR ni se modificó código de la
+aplicación. Los comentarios publicados desde `rlases` sobre sus propios PR no
+sustituyen la revisión cruzada de Duverney.
+
+| PR | Autor | Resultado y siguiente acción |
+|---|---|---|
+| #77 | Jhunier | Sin hallazgo nuevo de diseño en el diff; Duverney debe revisar la versión actual y formalizar el acuerdo |
+| #98 | Duverney | Cambios solicitados: sellar el bloque del canal, incorporar lote fijo/alerta y reconciliar ADR-0015 ya aceptada |
+| #99 | Duverney | Siguen los cambios solicitados sobre lote fijo e identidad de instalación; hallazgo adicional: acepta recibos con raíz ajena al lote |
+| #100 | Duverney | Sigue el cambio solicitado: aceptar/validar loteId con prefijo de instalación; el formato de ADR-0017 hoy se rechaza |
+| #102 | Jhunier | Sin hallazgo nuevo en el diff; pendiente #77, #78, revisión cruzada e integración |
+| #103 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; pendiente revisión cruzada y CI al integrar |
+| #104 | Jhunier | Corregir consumo concurrente del código de recuperación y reserva atómica de intentos |
+| #105 | Jhunier | Resolver la identidad desde la asignación comprometida y detectar inconsistencias antes de atribuir el cid |
+| #106 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; el consumo efectivo de puedeEmitir sigue en #85 |
+| #107 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; pendiente revisión cruzada y CI al integrar |
+| #108 | Jhunier | Completar anonimización de motivos de correcciones y texto sensible introducido como cid inválido |
+
+**Reproducciones confirmadas con datos sintéticos, sin servicios del piloto:**
+
+- #104: dos recuperaciones simultáneas con un mismo código devolvieron 200/200 y
+  códigos nuevos distintos. Ocho fallos simultáneos para un documento superaron el
+  máximo de cinco: ocho 401 y ocho fallos registrados.
+- #105: tras retirar el trigger y cambiar la relación de una credencial de Alfa a
+  Beta, la consulta devolvió Beta mientras `verifyAsignaciones` seguía siendo
+  verdadera. La cadena intacta comprometía a Alfa, pero no se usaba para atribuir.
+- #108: el motivo de una corrección conservó nombre, documento y correo tras el
+  cierre. Una consulta de `alfa@ejemplo.test` como cid inválido también conservó
+  ese texto. Estos campos son adicionales al límite conocido de
+  `cambios_configuracion`.
+- #99: agregar un evento entre exportación y reintento cambió
+  `seq-000001-000001` por `seq-000001-000002`; dos instalaciones produjeron el
+  mismo primer identificador. Un recibo con raíz sintética ajena se aceptó y dejó
+  cero eventos pendientes.
+- #100: el parser rechazó `ccav-portal-1:seq-000001-000001`, formato previsto por
+  ADR-0017.
+
+**Pruebas ejecutadas independientemente:**
+
+| Componente | Resultado |
+|---|---|
+| mi-app-qr/client, rama acumulada #108 | 97/97 y build correcto |
+| mi-app-qr/server, rama acumulada #108 | Build correcto; 171/172 pruebas pasan |
+| anchor, commit de #100 | 45/45 y build correcto |
+| evidence-log, commit de #99 | 43/43 |
+| verifier con evidence-log de #99 | 83/83 |
+| verifier-service con evidence-log de #99 | 48/48 |
+
+La prueba restante del servidor invoca `npx tsx`, cuyo socket IPC
+`/tmp/tsx-*` recibe EPERM en este entorno; no se clasificó como fallo de la
+aplicación. La CLI compilada se comprobó aparte con Node 22 y base sintética:
+sin confirmación devolvió 1 y con la frase devolvió 0 y anonimizó. No se afirma
+172/172 en esta sesión. No se probó la red Fabric real, Windows ni el piloto.
+
+**Pendientes de Jhunier (`rlases`):**
+
+1. Corregir #104/#84, #105/#86 y #108/#90 y agregar las pruebas de regresión
+   correspondientes, propagando los cambios por la cadena de ramas.
+2. Crear `baseline-o3` (#78) sobre el commit apropiado antes de integrar #102.
+3. Cerrar el acuerdo de diseño #55 con Duverney: el archivo de diseño sigue como
+   borrador y no autoriza implementar unilateralmente sus propuestas.
+4. Cerrar administrativamente #56: la guía actual ya dice que está acordada con
+   Duverney y el PR #63 está integrado.
+5. Revalidar los arreglos de Duverney en #98–#100 y completar la integración de los
+   siete PR tras revisión cruzada y CI.
+6. Este handoff (#110) queda como PR de documentación para revisión, sin merge.
+
+**Pendientes de Duverney (`Duverney24`):**
+
+1. Corregir #99/#92 (lote fijo, identidad de instalación, validación de raíz y archivo
+   de estado), #100/#91 (formato compartido) y #98/#95 (documentación final).
+2. Revisar la aceptación de #77 y los siete PR de Jhunier, incluidos sus arreglos.
+3. Desarrollar #82: red Fabric y contrato en Go, con persistencia tras reinicio.
+4. Desarrollar #85: cliente del emisor y QR renovable, usando puedeEmitir y límite por
+   dispositivo; el servicio local #97 ya existe.
+5. Desarrollar #93: integración contra Fabric en CI y evidencia de ejecución real.
+6. Desarrollar #94: sellado del bloque del canal, reintentos/comprobantes y verificación
+   independiente de OpenTimestamps.
+7. Desarrollar #109: resolución auditada de altas duplicadas, con la decisión de
+   rechazo/reemplazo y entrega del código definida antes de implementar.
+8. Acordar con Jhunier los puntos abiertos de #55.
+
+El inventario abierto comprobado es de **10 issues para rlases y 8 para Duverney24**.
+Esto no significa diez y ocho desarrollos sin empezar: incluye siete implementaciones
+de Jhunier en PR, tres entregas de Duverney en PR y el cierre administrativo de #56.
+Se mantienen las asignaciones actuales; los arreglos corresponden al trabajo ya
+asignado, no se creó un lote nuevo.
+
+**Integración y piloto, responsabilidad conjunta:** tras corregir los hallazgos,
+aceptar #77, fijar #78 e integrar secuencialmente #102–#108 con CI sobre cada resultado
+real. Después comprobar el recorrido portal → emisión → verificación → bitácora →
+Fabric → sello y el instalador Windows en el equipo del CCAV. La revisión no acredita
+todavía ese recorrido de extremo a extremo.
 
 ### Punto exacto de la reanudación
 
