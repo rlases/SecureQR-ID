@@ -244,9 +244,11 @@ reparto de módulos, aquí ninguno tiene ventaja de experiencia previa sobre el 
 - Issue #57 — catálogo de componentes UI y patrones de interacción (inventario de
   componentes, estados loading/vacío/error, patrón de modal de corrección) →
   `docs/COMPONENTS.md`. Asignado a Duverney.
-- Issue #58 — guía de accesibilidad WCAG AA para todo el frontend (hoy ADR-0012 solo
-  la exige en `verifier-web/`; se extiende a `mi-app-qr/client` con auditoría del
-  estado actual) → `docs/ACCESSIBILITY.md`. Asignado a Duverney.
+- Issue #58 — guía de accesibilidad WCAG AA para todo el frontend → `docs/ACCESSIBILITY.md`.
+  Asignado a Duverney. **Estándar acordado con Jhunier el 2026-10-12** (PR #71): WCAG 2.2
+  AA, E7 obligatorio, E14 deseable, Playwright + axe en CI para `mi-app-qr/client` y NVDA
+  antes del piloto sobre los flujos con hallazgo Alta/Media. Los arreglos de la auditoría
+  quedan por repartir; el más serio es `CorregirRegistroModal` sin gestión de foco.
 
 **Ajuste (2026-09-23, mismo día):** el asignado de cada issue redacta y hace el trabajo
 de auditar/levantar el contenido, pero las decisiones de estilo en sí (valores de color,
