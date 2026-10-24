@@ -146,3 +146,47 @@ export interface ReglaDominio {
   dominio: string;
   estamentoId: number;
 }
+
+// --- Portal del titular (ADR-0016, puntos 2 a 4) ---------------------------------------
+
+export interface InfoAltaPortal {
+  // false mientras el admin no elija un estamento base: no se admiten altas.
+  abierta: boolean;
+  estamentos: Pick<Estamento, 'id' | 'nombre' | 'requiereConfirmacion'>[];
+  // Huella SHA-256 del certificado del servidor, para compararla con la del navegador.
+  huella: { sha256: string; desde: string } | null;
+}
+
+export interface AltaTitularRequest {
+  nombre: string;
+  documento: string;
+  correo: string;
+  estamentoId: number;
+  autorizaDatos: true;
+}
+
+export type AltaTitularResponse =
+  | {
+      estado: 'activo';
+      // Se muestra UNA sola vez; el servidor solo guarda su hash.
+      codigoRecuperacion: string;
+      estamentoPendiente: boolean;
+    }
+  | { estado: 'en_revision' };
+
+export interface RecuperarRequest {
+  documento: string;
+  codigo: string;
+}
+
+export interface RecuperarResponse {
+  // El código usado deja de servir; este es el nuevo, que se muestra una sola vez.
+  codigoRecuperacion: string;
+}
+
+export interface EstadoPortal {
+  nombre: string;
+  estado: 'activo' | 'suspendido';
+  estamento: string;
+  estamentoPendiente: boolean;
+}

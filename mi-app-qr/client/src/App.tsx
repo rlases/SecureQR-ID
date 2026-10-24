@@ -9,6 +9,9 @@ import InformesPage from './pages/InformesPage';
 import RegistrosPage from './pages/RegistrosPage';
 import UsuariosPage from './pages/UsuariosPage';
 import EstamentosPage from './pages/EstamentosPage';
+import PortalPage from './pages/portal/PortalPage';
+import AltaPage from './pages/portal/AltaPage';
+import RecuperarPage from './pages/portal/RecuperarPage';
 
 const queryClient = new QueryClient();
 
@@ -28,6 +31,11 @@ function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            {/* Portal del titular (ADR-0016): sin sesión del personal, con la cookie del
+                dispositivo. */}
+            <Route path="/portal" element={<PortalPage />} />
+            <Route path="/portal/alta" element={<AltaPage />} />
+            <Route path="/portal/recuperar" element={<RecuperarPage />} />
             <Route
               path="/"
               element={

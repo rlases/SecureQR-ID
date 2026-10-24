@@ -13,6 +13,12 @@ import type {
   ExcepcionCalendario,
   ReglaDominio,
   VentanaHorario,
+  AltaTitularRequest,
+  AltaTitularResponse,
+  EstadoPortal,
+  InfoAltaPortal,
+  RecuperarRequest,
+  RecuperarResponse,
 } from '@mi-app-qr/shared';
 
 export class ApiError extends Error {
@@ -184,4 +190,35 @@ export function deleteDominio(id: number): Promise<void> {
 
 export function listCambiosConfiguracion(): Promise<{ cambios: CambioConfiguracion[] }> {
   return request<{ cambios: CambioConfiguracion[] }>('/api/estamentos/cambios');
+}
+
+// --- Portal del titular (ADR-0016, puntos 2 a 4) ---------------------------------------
+// La sesión del titular es la cookie del dispositivo, distinta de la del personal.
+
+export function getInfoAlta(): Promise<InfoAltaPortal> {
+  return request<InfoAltaPortal>('/api/portal/alta');
+}
+
+export function getSugerenciaEstamento(correo: string): Promise<{ estamentoId: number | null }> {
+  return request<{ estamentoId: number | null }>(
+    `/api/portal/alta/sugerencia?correo=${encodeURIComponent(correo)}`
+  );
+}
+
+export function altaTitular(data: AltaTitularRequest): Promise<AltaTitularResponse> {
+  return request<AltaTitularResponse>('/api/portal/alta', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function recuperarTelefono(data: RecuperarRequest): Promise<RecuperarResponse> {
+  return request<RecuperarResponse>('/api/portal/recuperar', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function getEstadoPortal(): Promise<EstadoPortal> {
+  return request<EstadoPortal>('/api/portal/yo');
 }

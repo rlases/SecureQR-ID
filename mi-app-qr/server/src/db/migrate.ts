@@ -212,4 +212,23 @@ function runScheduleMigrations(db: Database.Database): void {
     BEFORE DELETE ON cambios_configuracion
     BEGIN SELECT RAISE(ABORT, 'el registro de cambios es de solo agregar'); END;
   `);
+  runPortalMigrations(db);
+}
+
+// Portal del titular (ADR-0016, puntos 2 a 4; issue #84).
+function runPortalMigrations(db: Database.Database): void {
+  db.exec(`
+    -- Intentos de recuperación con código, para limitar la fuerza bruta por documento y
+    -- por IP. Solo se cuentan los fallidos dentro de una ventana de tiempo.
+    CREATE TABLE IF NOT EXISTS intentos_recuperacion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      documento TEXT NOT NULL,
+      ip TEXT NOT NULL,
+      exito INTEGER NOT NULL CHECK (exito IN (0, 1)),
+      en TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS intentos_recuperacion_documento
+      ON intentos_recuperacion (documento, en);
+    CREATE INDEX IF NOT EXISTS intentos_recuperacion_ip ON intentos_recuperacion (ip, en);
+  `);
 }

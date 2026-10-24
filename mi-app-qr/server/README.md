@@ -55,3 +55,21 @@ en `src/db/migrate.ts`:
 
 Disparadores de SQLite impiden borrar o reescribir el historial. Quien tenga el archivo
 puede quitarlos, pero no recalcular la cadena sin que `verifyAsignaciones` lo note.
+
+## Portal del titular (ADR-0016, puntos 2 a 4)
+
+Rutas bajo `/api/portal`, para el teléfono del titular:
+
+- `GET /alta`: si el registro está abierto (hay estamento base), los estamentos y la
+  huella SHA-256 del certificado, para compararla con la del navegador.
+- `POST /alta`: alta con datos declarados y autorización de tratamiento de datos. Vincula
+  el teléfono y devuelve el código de recuperación **una sola vez**. Un documento repetido
+  queda `en_revision`, sin vínculo ni código.
+- `POST /recuperar`: documento + código vinculan un teléfono nuevo, desactivan el anterior
+  y renuevan el código. Límite: 5 fallos por documento y 20 por IP cada 15 minutos.
+- `GET /yo`: estado de la credencial del teléfono vinculado.
+
+La sesión del titular es la cookie `sqrid_dispositivo` (llave de 256 bits, `HttpOnly`,
+`SameSite=Strict`, `Secure` con HTTPS, solo para `/api/portal`). No usa la sesión del
+personal: ninguna ruta del personal la acepta y el portal no acepta la del personal. Del
+lado del servidor solo se guardan el SHA-256 de la llave y el bcrypt del código.
