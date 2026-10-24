@@ -115,3 +115,34 @@ export interface Credencial {
 }
 
 export type EstadoDispositivo = 'activo' | 'reemplazado' | 'revocado';
+
+// Ventana de ingreso semanal, en la hora local de la sede. «fin» puede ser «24:00».
+export interface VentanaHorario {
+  diaSemana: number; // 1 = lunes … 7 = domingo
+  inicio: string; // HH:MM
+  fin: string; // HH:MM
+}
+
+export interface EstamentoDetalle extends Estamento {
+  ventanas: VentanaHorario[];
+}
+
+// cierre: nadie entra · reemplazo: valen solo las ventanas de la excepción.
+export type TipoExcepcion = 'cierre' | 'reemplazo';
+
+export interface ExcepcionCalendario {
+  id: number;
+  fechaDesde: string; // AAAA-MM-DD
+  fechaHasta: string; // AAAA-MM-DD, inclusive
+  tipo: TipoExcepcion;
+  // null = todos los estamentos.
+  estamentoId: number | null;
+  descripcion: string;
+  ventanas: { inicio: string; fin: string }[];
+}
+
+export interface ReglaDominio {
+  id: number;
+  dominio: string;
+  estamentoId: number;
+}
