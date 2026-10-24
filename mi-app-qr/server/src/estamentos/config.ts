@@ -46,7 +46,7 @@ function esFechaValida(valor: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === valor;
 }
 
-function registrarCambio(
+export function registrarCambio(
   db: Database.Database,
   usuarioId: number,
   entidad: string,

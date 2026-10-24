@@ -7,6 +7,7 @@ import {
   LogOut,
   ScanSearch,
   ShieldCheck,
+  UserCheck,
   Users,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -21,6 +22,7 @@ const primaryItems = [
 // Solo para el permiso admin (ADR-0009).
 const adminItems = [
   { to: '/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/titulares', label: 'Titulares', icon: UserCheck },
   { to: '/estamentos', label: 'Estamentos', icon: CalendarClock },
   { to: '/consultas', label: 'Consulta de cid', icon: ScanSearch },
 ];

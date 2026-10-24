@@ -21,6 +21,8 @@ export interface AppDependencies {
   // Certificado TLS del servidor (ADR-0008): su huella se muestra en el portal del
   // titular para que la compare con la que muestra el navegador (ADR-0016).
   certificate?: Buffer;
+  // Archivo donde se exportan, sin firmar, los cid revocados (ADR-0016, punto 9).
+  revocadosExportPath?: string;
 }
 
 declare module 'express-session' {
@@ -43,7 +45,7 @@ export function createApp(deps: AppDependencies): Express {
   app.use('/api/registros', createRegistrosRouter());
   app.use('/api/users', createUsersRouter());
   app.use('/api/estamentos', createEstamentosRouter());
-  app.use('/api/titulares', createTitularesRouter());
+  app.use('/api/titulares', createTitularesRouter({ revocadosPath: deps.revocadosExportPath }));
   app.use(
     '/api/portal',
     createPortalRouter({
