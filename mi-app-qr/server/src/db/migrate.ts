@@ -147,6 +147,9 @@ function runCredentialMigrations(db: Database.Database): void {
 
     CREATE TRIGGER IF NOT EXISTS titulares_no_delete BEFORE DELETE ON titulares
     BEGIN SELECT RAISE(ABORT, 'un titular se anonimiza, no se borra'); END;
+    CREATE TRIGGER IF NOT EXISTS titulares_referencia_fija BEFORE UPDATE OF ref ON titulares
+    WHEN NEW.ref <> OLD.ref
+    BEGIN SELECT RAISE(ABORT, 'la referencia opaca del titular no cambia'); END;
   `);
   runScheduleMigrations(db);
 }
