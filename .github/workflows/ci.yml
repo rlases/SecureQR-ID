@@ -1,10 +1,19 @@
 name: CI
 
 on:
+  # Validar también los PR encadenados cuya base es otra rama.
   pull_request:
-    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+
+# Las pruebas no requieren modificar el repositorio.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
