@@ -159,10 +159,9 @@ solo falta `anchor/` (issue #9) para completarla.
   `RevocationListCache` con recarga en caliente, antirretroceso por `iat` y rechazo
   (falla cerrado) si la lista supera su antigüedad máxima; CLI `python -m
   secureqr_verifier_service.sync` para traerla por HTTPS con reemplazo atómico. ADR-0015
-  revisado y verificado por Jhunier. **Queda pendiente, fuera de este PR:** decidir
-  quién opera el servidor de publicación y la cadencia de refirmado — ver "Pendiente" y
-  la nota de sesión de hoy.
-
+  revisado y verificado por Jhunier. Operación del piloto acordada el 2026-10-12 (ver
+  ADR-0015): Duverney custodia la clave de revocación en el CCAV y refirma a diario,
+  con antigüedad máxima de 48 a 72 h y revisión cada 300 s.
 - **Issue #48 — integración en `RegistrosPage` (PR #65 fusionado).**
   Se descarta y elimina `client/src/components/EditRecordModal.tsx` junto con sus
   pruebas aisladas; la única corrección sigue siendo `CorregirRegistroModal`, con
@@ -281,7 +280,7 @@ estaban pendientes:
   `modulo/46-revocation-produccion`, ya fusionado (PR #69); ver "Hecho".
 - Issue #47 — distribución de la lista de revocación a verificadores con conectividad
   intermitente (decisión de arquitectura abierta en `ARCHITECTURE.md` desde el inicio).
-  Implementado en `modulo/47-distribucion-revocacion` con ADR-0015 (*Propuesta*), ya
+  Implementado en `modulo/47-distribucion-revocacion` con ADR-0015 (aceptada), ya
   fusionado (PR #70); ver "Hecho".
 
 **Cerrados desde el reparto original (2026-09-26):**
@@ -313,11 +312,6 @@ abajo.
 - Fase 4/5 de `ROADMAP.md` (batería de ataques, instrumentos de evaluación, piloto,
   manuales, publicación) — trabajo conjunto de investigación, todavía no tiene issues
   de código.
-- Quién opera el servidor de publicación de la lista de revocación y cada cuánto se
-  refirma (ADR-0015 lo deja abierto a propósito). Propuesta de Jhunier en la nota de
-  sesión 2026-10-12: quien administre el despliegue de `verifier-service/` en el piloto
-  del CCAV Pitalito tenga la clave y refirme diario, con `SQRID_REVOCATION_MAX_AGE_SECONDS`
-  en 48-72h y `SQRID_REVOCATION_REFRESH_SECONDS` en 300s. Sin confirmar con Duverney.
 - Confirmar los estándares de #71/#58 (accesibilidad) y #72/#57 (catálogo de
   componentes) — siguen en borrador. Jhunier dejó respuestas a las preguntas abiertas de
   ambos en la nota de sesión 2026-10-12; falta acordarlas con Duverney.
@@ -346,6 +340,12 @@ bloqueante todavía, sin issue.
 ---
 
 ## Notas de sesiones recientes
+
+**2026-10-12 — ADR-0013, 0014 y 0015 aceptadas.** Duverney y Jhunier. Jhunier revisó y
+fusionó #68-#70 y aceptó los tres ADR sin cambios. Se acordó la operación de la lista de
+revocación para el piloto: Duverney estará en el CCAV en la Fase 4, custodia la clave de
+revocación y refirma a diario (`MAX_AGE` 48-72 h, `REFRESH` 300 s). Queda pendiente una
+CLI para generar la clave de revocación y firmar la lista; hoy se hace desde Python.
 
 **2026-10-12 — Revisión y fusión de #49/#51 (PR #67).** Jhunier, con el acuerdo
 explícito de revisarlo él mismo por el tema de HTTPS (no cruzado por Duverney). Verifica
