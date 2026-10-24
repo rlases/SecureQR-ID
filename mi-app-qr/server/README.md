@@ -85,3 +85,12 @@ lado del servidor solo se guardan el SHA-256 de la llave y el bcrypt del código
 - Con `REVOCADOS_EXPORT_PATH`, el servidor escribe ese archivo al arrancar y cada 24
   horas, con reemplazo atómico; `POST /api/titulares/revocados/exportar` lo escribe en el
   momento («exportar ahora»).
+
+## Reseteo trimestral del cid (ADR-0016, punto 8)
+
+Al arrancar y cada seis horas, el servidor comprueba el trimestre local de la sede
+(`SITE_TIME_ZONE`, por defecto `America/Bogota`). La primera vez solo anota la línea base;
+después, la primera vez en un trimestre nuevo, da un `cid` nuevo a cada titular activo y
+deja el anterior `reemplazada`. El teléfono sigue vinculado, los suspendidos no reciben
+`cid` nuevo y el historial encadenado conserva cada `cid` anterior. `reseteos_cid` impide
+reiniciar dos veces el mismo trimestre.

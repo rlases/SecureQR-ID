@@ -252,4 +252,25 @@ function runConsultasMigrations(db: Database.Database): void {
     CREATE TRIGGER IF NOT EXISTS consultas_cid_no_delete BEFORE DELETE ON consultas_cid
     BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
   `);
+  runReseteoMigrations(db);
+}
+
+// Reseteo trimestral del cid (ADR-0016, punto 8; issue #88). Una fila por trimestre: el
+// índice único impide reiniciar dos veces el mismo trimestre aunque la tarea se dispare
+// varias veces o el servidor se reinicie.
+function runReseteoMigrations(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reseteos_cid (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trimestre TEXT NOT NULL UNIQUE CHECK (trimestre GLOB '[0-9][0-9][0-9][0-9]-T[1-4]'),
+      -- linea_base: primer arranque, no reinicia nada · reseteo: cid nuevos.
+      tipo TEXT NOT NULL CHECK (tipo IN ('linea_base', 'reseteo')),
+      cantidad INTEGER NOT NULL,
+      ejecutado_en TEXT NOT NULL
+    );
+    CREATE TRIGGER IF NOT EXISTS reseteos_cid_no_update BEFORE UPDATE ON reseteos_cid
+    BEGIN SELECT RAISE(ABORT, 'el registro de reseteos es de solo agregar'); END;
+    CREATE TRIGGER IF NOT EXISTS reseteos_cid_no_delete BEFORE DELETE ON reseteos_cid
+    BEGIN SELECT RAISE(ABORT, 'el registro de reseteos es de solo agregar'); END;
+  `);
 }
