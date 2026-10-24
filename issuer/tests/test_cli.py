@@ -8,6 +8,7 @@ import cbor2
 
 from secureqr_issuer._encoding import decode_identifier
 from secureqr_issuer.cli import main
+from secureqr_issuer.issuer import create_credential_id
 
 
 def test_generate_cid_command(capsys) -> None:
@@ -44,6 +45,37 @@ def test_cli_generates_keys_and_issues_token(
     assert fields["exp"] - fields["iat"] == 75
 
 
+def test_cli_issues_token_for_cid_with_leading_dash(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    # Un cid valido puede empezar por "-" (por ejemplo, los que generaba el emisor
+    # antes de descartarlos): `verifier/` los sigue aceptando. `argparse` solo los
+    # acepta con la forma `--cid=<cid>`, que es la que documenta la ayuda del CLI.
+    credential_id = "-" + "A" * 21
+    assert len(decode_identifier(credential_id)) == 16
+    monkeypatch.setenv("SQRID_PRIVATE_KEY_PATH", str(tmp_path / "private.pem"))
+    monkeypatch.setenv("SQRID_PUBLIC_KEY_PATH", str(tmp_path / "public.pem"))
+    monkeypatch.setenv("SQRID_PRIVATE_KEY_PASSWORD", secrets.token_urlsafe(24))
+    monkeypatch.setenv("SQRID_TOKEN_TTL_SECONDS", "75")
+    assert main(["generate-key"]) == 0
+    capsys.readouterr()
+
+    assert main(["issue", f"--cid={credential_id}"]) == 0
+    token = capsys.readouterr().out.strip()
+    raw_token = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+
+    assert cbor2.loads(raw_token)["cid"] == credential_id
+
+
+def test_cli_help_documents_cid_with_leading_dash(capsys) -> None:
+    try:
+        main(["issue", "--help"])
+    except SystemExit as exit_info:
+        assert exit_info.code == 0
+
+    assert "--cid=<cid>" in capsys.readouterr().out
+
+
 def test_cli_reports_missing_configuration_without_values(monkeypatch, capsys) -> None:
     for name in (
         "SQRID_PRIVATE_KEY_PATH",
@@ -59,4 +91,6 @@ def test_cli_reports_missing_configuration_without_values(monkeypatch, capsys) -
 
 
 def create_valid_cid() -> str:
-    return base64.urlsafe_b64encode(secrets.token_bytes(16)).rstrip(b"=").decode("ascii")
+    # Reutiliza el generador real: ya evita el "-" inicial que argparse
+    # confundiria con otra opcion al pasarlo como --cid <valor>.
+    return create_credential_id()
