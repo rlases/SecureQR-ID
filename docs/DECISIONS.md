@@ -528,7 +528,7 @@ evento aceptado sigue perteneciendo a `evidence-log/` y queda fuera de esta inte
 
 ## ADR-0013 — Registro de la validación aceptada en la bitácora encadenada
 
-**Estado:** Propuesta
+**Estado:** Aceptada (2026-10-12)
 
 **Contexto.** `evidence-log/` (PR #43) y `verifier/` (PR #29) existían por separado: el
 verificador decidía aceptar o rechazar sin que nada quedara encadenado, así que la capa
@@ -584,7 +584,7 @@ un punto de entrada de producción que construya el `Verifier` real; cuando exis
 
 ## ADR-0014 — Arranque de producción del verificador y clave de revocación dedicada
 
-**Estado:** Propuesta
+**Estado:** Aceptada (2026-10-12)
 
 **Contexto.** `revocation/` (PR #44) firma y verifica listas, y su `is_revoked` coincide
 con la interfaz `RevocationChecker` de `verifier/`, pero ningún código construía el
@@ -636,7 +636,7 @@ lista; hoy se hace desde Python.
 
 ## ADR-0015 — Distribución y frescura de la lista de revocación
 
-**Estado:** Propuesta
+**Estado:** Aceptada (2026-10-12)
 
 **Contexto.** ADR-0014 carga la lista firmada una sola vez al arrancar. Un punto de
 control del CCAV Pitalito puede perder la conexión con el lugar donde se publica la
@@ -685,8 +685,19 @@ recibe la lista que la incluye, y nunca más allá de la antigüedad máxima. Qu
 la lista debe volver a firmarla periódicamente aunque no cambie, para renovar su
 `iat`; sin eso, todos los puntos de control empiezan a rechazar al vencerse el umbral.
 Esto exige además relojes razonablemente sincronizados entre quien firma y quien
-verifica, como ya ocurre con los tokens. No se resuelve aquí quién opera el servidor de
-publicación ni la CLI para firmar listas.
+verifica, como ya ocurre con los tokens. No se resuelve aquí la CLI para firmar listas.
+
+**Operación en el piloto del CCAV Pitalito (acordado 2026-10-12).** Quien administra el
+despliegue de `verifier-service/` en el piloto custodia la clave privada de revocación y
+vuelve a firmar la lista: será **Duverney**, que estará en el CCAV durante la Fase 4. Una
+sola persona guarda la clave, para no tenerla en dos equipos. Parámetros:
+
+- Refirmado **diario**, cambie o no la lista.
+- `SQRID_REVOCATION_MAX_AGE_SECONDS` entre **48 y 72 horas** (172800 a 259200 s): con
+  refirmado diario, tolera uno o dos días sin conexión o sin refirmar antes de que el
+  punto de control empiece a rechazar.
+- `SQRID_REVOCATION_REFRESH_SECONDS` = **300** (cinco minutos): una revocación llega al
+  punto de control a lo sumo cinco minutos después de instalarse el archivo.
 
 ---
 

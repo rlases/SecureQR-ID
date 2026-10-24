@@ -86,4 +86,6 @@ atómico solo si es más nueva. Si no hay red o la lista no verifica, termina co
 también funciona: la confianza viene de la firma, no del transporte.
 
 Quien publica la lista debe volver a firmarla periódicamente aunque no cambie, para
-renovar su `iat` antes de que venza en los puntos de control.
+renovar su `iat` antes de que venza en los puntos de control. El comando para crear la
+clave de revocación y firmar la lista es `secureqr-revocation`; ver
+[`revocation/README.md`](../revocation/README.md).
