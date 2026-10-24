@@ -4,16 +4,130 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-12
+**Última actualización:** 2026-10-24
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
 unificado en tres (issue #4). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al
 cerrar cada fase — pendiente, decisión conjunta, no depende de código. De los cinco
 módulos de Fase 3 (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`)
-solo falta `anchor/` (issue #9) para completarla.
+sigue pendiente completar el anclaje real de `anchor/` (issue #9). El resumen
+vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ---
+
+## Estado vigente — 2026-10-24
+
+Este resumen sustituye, para planificar el trabajo siguiente, los pendientes del corte
+2026-10-12 que se conservan más abajo como historial. Comprobado contra GitHub al
+retomar la sesión interrumpida de Claude; no se modificó código ni diseño.
+
+### Integrado en `main` desde el corte anterior
+
+- PR #76: texto de ADR-0016, todavía como **Propuesta** en `main`.
+- PR #75: vinculabilidad del `cid` documentada en el modelo de amenazas.
+- PR #63, #71 y #72: guía de contenido, accesibilidad y catálogo de componentes.
+  #71/#72 ya están fusionados; las referencias antiguas a sus borradores no son
+  pendientes actuales. Aplicar los estándares en las pantallas y verificar los
+  flujos del piloto sigue siendo trabajo distinto.
+- PR #66: corrección del `cid` con guion inicial; PR #101 (issue #80):
+  documentación de `--cid=<cid>`.
+- PR #96 (issue #81): CLI para crear la clave de revocación y firmar listas.
+- PR #97 (issue #83): servicio local de emisión en `127.0.0.1`, autenticado con
+  secreto compartido. No equivale a tener conectado el portal del titular (#85).
+
+### Decisiones y línea base
+
+- **PR #77 abierto:** su commit `4ea53a8` propone pasar ADR-0016 y ADR-0017 a
+  **Aceptada (2026-10-24)**. Eso aún no está integrado en `main`; no dar las ADR
+  por formalmente aceptadas allí. La última ejecución de CI de ese commit terminó
+  correctamente ([ejecución 40137408598](https://github.com/rlases/SecureQR-ID/actions/runs/40137408598)).
+- El ajuste del lote fijo ya está propuesto en #77: registrar el rango en `lotes`
+  antes de exportarlo y reutilizarlo hasta obtener recibo, aunque lleguen eventos
+  nuevos; incluir `verifier_id` en `loteId`.
+- **Issue #78 (Jhunier):** `baseline-o3` todavía no existe (la consulta de su
+  referencia devuelve 404). Debe crearse sobre una versión anterior al primer cambio
+  de ADR-0016 en `mi-app-qr/`, y anotarse aquí su commit exacto, antes de fusionar
+  #102. No confundir las ramas de implementación con la línea base del pretest.
+
+### Siete PR de `mi-app-qr` guardados, pendientes de revisión
+
+Los siete son de Jhunier (`rlases`), siguen abiertos y en **borrador**. Están
+encadenados para que cada diff muestre solo su tarea; no son siete cambios ya
+integrados en `main`.
+
+| Orden | Issue | PR | Cambio | Rama base actual |
+|---|---|---|---|---|
+| 1 | #79 | [#102](https://github.com/rlases/SecureQR-ID/pull/102) | Tablas de titulares, credenciales, dispositivos e historial encadenado | `main` |
+| 2 | #89 | [#103](https://github.com/rlases/SecureQR-ID/pull/103) | Estamentos, horarios, excepciones y dominios | `modulo/79-tablas-titulares` |
+| 3 | #84 | [#104](https://github.com/rlases/SecureQR-ID/pull/104) | Autorregistro, vínculo del teléfono y recuperación | `modulo/89-estamentos-horarios` |
+| 4 | #86 | [#105](https://github.com/rlases/SecureQR-ID/pull/105) | Consulta auditada `cid` → persona | `modulo/84-portal-titular` |
+| 5 | #87 | [#106](https://github.com/rlases/SecureQR-ID/pull/106) | Revocación, reactivación, desvinculación y exportación | `modulo/86-consulta-cid` |
+| 6 | #88 | [#107](https://github.com/rlases/SecureQR-ID/pull/107) | Reseteo trimestral del `cid` | `modulo/87-revocacion` |
+| 7 | #90 | [#108](https://github.com/rlases/SecureQR-ID/pull/108) | Anonimización al cierre y conservación configurable | `modulo/88-reseteo-cid` |
+
+**Verificación disponible, con su alcance:**
+
+- #102 tiene CI completo en verde sobre `fcbe422`
+  ([ejecución 40137801080](https://github.com/rlases/SecureQR-ID/actions/runs/40137801080)).
+- #103–#108 no tienen ejecuciones de PR para sus commits actuales. El flujo
+  `.github/workflows/ci.yml` solo atiende PR cuya base es `main`; estas seis bases
+  son otras ramas. No presentar esa ausencia de ejecución como CI aprobado.
+- La descripción de #108 reporta **172 pruebas del servidor, 97 del cliente y build
+  del cliente correcto** sobre la rama final `modulo/90-anonimizacion`
+  (`79fb158`). Son resultados locales reportados por Claude; no se volvieron a
+  ejecutar en esta reanudación de documentación.
+- Límite documentado en #108: los motivos de `cambios_configuracion` se conservan.
+  La interfaz pide no escribir datos personales allí, pero no los elimina si se
+  introducen. Revisar esa limitación antes de afirmar anonimización completa de
+  cualquier dato personal que pudiera haberse escrito en texto libre.
+- No se verificaron en esta reanudación el instalador Windows, el piloto en el CCAV
+  ni el flujo completo con Fabric real.
+
+**Orden para integrar:** cerrar la aceptación de #77 y fijar #78; luego revisión
+cruzada de Duverney e integración secuencial #102 → #103 → #104 → #105 → #106 →
+#107 → #108. Tras cada squash, actualizar la base y reconciliar la rama siguiente
+con `main`, conservando lo ya integrado; ejecutar el CI sobre el resultado real
+antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
+
+### Issue faltante y trabajo restante
+
+- [#109](https://github.com/rlases/SecureQR-ID/issues/109), **resolver altas en revisión
+  por documento repetido**, ya fue creado por Claude antes de la interrupción.
+  Está asignado a **Duverney**, con las mismas etiquetas que #84 (`enhancement`,
+  `mi-app-qr`) y milestone 2. No crearlo otra vez ni reasignarlo por conveniencia:
+  es el issue impar que corresponde a quien tiene menos carga acumulada.
+  Falta decidir el rechazo o reemplazo y la entrega del código de recuperación;
+  registrar primero una enmienda si se cambia el diseño, y probar ambas salidas
+  con auditoría e integridad del historial. Depende de #102, #104 y #106.
+- **#85 (Duverney):** conectar el portal con el servicio de emisión y mostrar el QR
+  que se renueva. El servicio #97 ya está integrado, pero los siete PR anteriores no
+  implementan esa página. Debe consumir `puedeEmitir`, respetar los horarios y
+  limitar la emisión por dispositivo.
+- **#98 (Duverney, documentación):** abierto en borrador; actualizarlo contra el
+  texto final de #77, incluidos los riesgos residuales y el lote fijo, antes de dar
+  por actualizados `CLAUDE.md`, `ARCHITECTURE.md` y `THREAT-MODEL.md`.
+- **#99 y #100 (Duverney):** abiertos; GitHub los marca con conflictos con `main`.
+  Reconciliar las ramas y revisar la alineación de `lotes`, `loteId`, recibos y
+  estado de anclaje con el texto final de #77 antes de fusionar.
+- El anclaje real y su evidencia de operación siguen pendientes: red y contrato
+  (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
+  No declarar terminado #9 por tener pruebas con un cliente en memoria.
+
+### Punto exacto de la reanudación
+
+Claude alcanzó a crear #109 y copiar sus etiquetas; dejó sin publicar la actualización
+de `docs/STATE.md` (el archivo de `main` y el de la rama final #108 tenían el mismo
+blob `64d76e1`, del corte anterior). Esta actualización cierra ese pendiente y deja
+separados el trabajo guardado en PR, la evidencia de pruebas y lo que falta revisar.
+
+---
+
+## Corte anterior conservado — 2026-10-12
+
+Se conserva el contenido previo para no perder decisiones ni notas de sesiones.
+Sus menciones a pendientes, borradores y reparto reflejan ese corte; para continuar,
+usar el estado vigente de arriba.
 
 ## Hecho
 
