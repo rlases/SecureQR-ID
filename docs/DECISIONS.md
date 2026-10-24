@@ -703,7 +703,7 @@ sola persona guarda la clave, para no tenerla en dos equipos. Parámetros:
 
 ## ADR-0016 — Registro de credenciales en `mi-app-qr` y portal del titular
 
-**Estado:** Propuesta
+**Estado:** Aceptada (2026-10-24)
 
 **Contexto.** El `cid` es opaco (`docs/SQRID-1.md`): el token no lleva datos personales y
 `verifier/` decide sin saber de quién es la credencial. La relación `cid` → persona tiene
@@ -979,7 +979,7 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
 
 ## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps
 
-**Estado:** Propuesta
+**Estado:** Aceptada (2026-10-24)
 
 **Contexto.** `anchor/` construye el árbol de Merkle, genera y verifica pruebas de
 inclusión y publica la raíz a través de la interfaz `LedgerClient`, pero la única
