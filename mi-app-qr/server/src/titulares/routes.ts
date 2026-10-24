@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { requireAdmin } from '../auth/requireAdmin.js';
-import { ConsultaError, MAX_CIDS_POR_CONSULTA, consultarCids, listConsultas } from './consultas.js';
+import { ConsultaError, IntegridadConsultaError, MAX_CIDS_POR_CONSULTA, consultarCids, listConsultas } from './consultas.js';
 
 // Rutas de admin sobre el registro de titulares. Ninguna está disponible para el
 // operador: traducir un cid a una persona es solo del admin (ADR-0016, punto 7).
@@ -34,6 +34,10 @@ export function createTitularesRouter(): Router {
       res.set('Cache-Control', 'no-store');
       return res.json({ resultados });
     } catch (error) {
+      if (error instanceof IntegridadConsultaError) {
+        res.set('Cache-Control', 'no-store');
+        return res.status(503).json({ error: error.message });
+      }
       if (error instanceof ConsultaError) return res.status(400).json({ error: error.message });
       throw error;
     }
