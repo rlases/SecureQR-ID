@@ -241,9 +241,13 @@ reparto de módulos, aquí ninguno tiene ventaja de experiencia previa sobre el 
   espaciado, iconografía) → `docs/DESIGN-SYSTEM.md`. Asignado a Jhunier.
 - Issue #56 — guía de contenido y microcopy en español (tono, mensajes de error/vacío,
   confirmaciones) → `docs/CONTENT-GUIDE.md`. Asignado a Jhunier.
-- Issue #57 — catálogo de componentes UI y patrones de interacción (inventario de
-  componentes, estados loading/vacío/error, patrón de modal de corrección) →
-  `docs/COMPONENTS.md`. Asignado a Duverney.
+- Issue #57 — catálogo de componentes UI y patrones de interacción → `docs/COMPONENTS.md`.
+  Asignado a Duverney. **Patrones acordados con Jhunier el 2026-10-12** (PR #72):
+  estructuras de diálogo y de tabla con filtros aceptadas; D1 montar `Toaster`, D2 unificar
+  diálogos en `useModalFocus`, D3 desplazar en tablas de consulta y ocultar columnas en
+  tablas de trabajo, D4 crear `ui/select.tsx`, D5 unificar banners de error, D6 mantener
+  separados los dos frontends. Sin Storybook por ahora. La implementación queda por
+  repartir.
 - Issue #58 — guía de accesibilidad WCAG AA para todo el frontend → `docs/ACCESSIBILITY.md`.
   Asignado a Duverney. **Estándar acordado con Jhunier el 2026-10-12** (PR #71): WCAG 2.2
   AA, E7 obligatorio, E14 deseable, Playwright + axe en CI para `mi-app-qr/client` y NVDA
