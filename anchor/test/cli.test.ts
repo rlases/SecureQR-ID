@@ -12,7 +12,7 @@ function setup(hashes = [h('1'), h('2'), h('3')]) {
   const dir = mkdtempSync(join(tmpdir(), 'anclar-'));
   const batch = join(dir, 'lote.json');
   writeFileSync(batch, JSON.stringify({
-    version: 1, batch_id: `seq-000001-${String(hashes.length).padStart(6, '0')}`,
+    version: 1, batch_id: `ccav-test-1:seq-000001-${String(hashes.length).padStart(6, '0')}`,
     first_event: 1, last_event: hashes.length, hashes,
   }));
   return { dir, batch, receipt: join(dir, 'recibo.json') };
@@ -40,7 +40,7 @@ describe('anclar', () => {
     expect(result.code).toBe(EXIT_OK);
     expect(result.closed()).toBe(true);
     const recibo = JSON.parse(readFileSync(receipt, 'utf-8'));
-    expect(recibo).toMatchObject({ batch_id: 'seq-000001-000003', event_count: 3, block_number: 1, anchored_at: 1_800_000_000 });
+    expect(recibo).toMatchObject({ batch_id: 'ccav-test-1:seq-000001-000003', event_count: 3, block_number: 1, anchored_at: 1_800_000_000 });
   });
 
   it('dos corridas sobre el mismo ledger dan el mismo recibo', async () => {

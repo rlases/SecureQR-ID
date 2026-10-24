@@ -21,7 +21,7 @@ No se corre a mano: lo invoca `evidence-log cycle` cada 15 minutos (ver
 `evidence-log/README.md`). Lee el lote que exportó la bitácora, publica la raíz y
 escribe el recibo de forma atómica. El formato de ambos archivos está en
 `evidence-log/README.md`; este paquete lo valida de forma estricta (`version: 1`,
-`batch_id` igual a `seq-%06d-%06d` de sus eventos, hashes SHA-256 en hexadecimal).
+`batch_id` igual a `<verifier_id>:seq-%06d-%06d` de sus eventos, con el `verifier_id` de la instalación, hashes SHA-256 en hexadecimal).
 
 | Código | Significado |
 |---|---|

@@ -16,7 +16,7 @@ function batch(first = 1, count = 3): Batch {
   const hashes = Array.from({ length: count }, (_, i) => h(`evento-${first + i}`));
   const last = first + count - 1;
   const pad = (n: number) => String(n).padStart(6, '0');
-  return { batchId: `seq-${pad(first)}-${pad(last)}`, firstEvent: first, lastEvent: last, hashes };
+  return { batchId: `ccav-test-1:seq-${pad(first)}-${pad(last)}`, firstEvent: first, lastEvent: last, hashes };
 }
 
 describe('anchorBatch', () => {
@@ -28,12 +28,12 @@ describe('anchorBatch', () => {
 
     expect(recibo).toEqual({
       version: 1,
-      batch_id: 'seq-000001-000003',
+      batch_id: 'ccav-test-1:seq-000001-000003',
       merkle_root: buildMerkleTree(lote.hashes).root,
       first_event: 1,
       last_event: 3,
       event_count: 3,
-      transaction_id: 'tx-seq-000001-000003',
+      transaction_id: 'tx-ccav-test-1:seq-000001-000003',
       block_number: 1,
       anchored_at: 1_800_000_000,
     });

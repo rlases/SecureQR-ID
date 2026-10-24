@@ -16,10 +16,34 @@ const HEX64 = /^[0-9a-f]{64}$/;
 
 export class BatchFormatError extends Error {}
 
-/** `loteId` determinista: el mismo rango siempre da el mismo id (ADR-0017). */
-export function batchIdFor(firstEvent: number, lastEvent: number): string {
+const MAX_VERIFIER_ID_LENGTH = 128;
+// Texto imprimible sin espacios en los extremos, igual que `verifier-service/` y
+// `evidence-log/`. Sin \p{C} (control, formato, sin asignar) ni separadores, salvo el
+// espacio entre palabras.
+const NON_PRINTABLE = /[\p{C}\p{Zl}\p{Zp}]/u;
+const BATCH_ID = /^(.+):seq-\d+-\d+$/su;
+
+export function isValidVerifierId(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= MAX_VERIFIER_ID_LENGTH &&
+    value === value.trim() &&
+    !NON_PRINTABLE.test(value)
+  );
+}
+
+/**
+ * `loteId` determinista (ADR-0017): `<verifier_id>:seq-<primero>-<último>`. El mismo
+ * rango de la misma instalación siempre da el mismo id; el prefijo evita que dos
+ * instalaciones, cuyas bitácoras empiezan en 1, choquen en la misma red.
+ */
+export function batchIdFor(verifierId: string, firstEvent: number, lastEvent: number): string {
+  if (!isValidVerifierId(verifierId)) {
+    throw new BatchFormatError('El verifier_id del loteId no es válido.');
+  }
   const pad = (value: number) => String(value).padStart(6, '0');
-  return `seq-${pad(firstEvent)}-${pad(lastEvent)}`;
+  return `${verifierId}:seq-${pad(firstEvent)}-${pad(lastEvent)}`;
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -38,8 +62,15 @@ export function parseBatch(data: unknown): Batch {
   if (!isPositiveInteger(firstEvent) || !isPositiveInteger(lastEvent) || lastEvent < firstEvent) {
     throw new BatchFormatError('El rango de eventos del lote no es válido.');
   }
-  if (batchId !== batchIdFor(firstEvent, lastEvent)) {
-    throw new BatchFormatError('El loteId no corresponde al rango de eventos.');
+  const verifierId = typeof batchId === 'string' ? BATCH_ID.exec(batchId)?.[1] : undefined;
+  if (
+    verifierId === undefined ||
+    !isValidVerifierId(verifierId) ||
+    batchId !== batchIdFor(verifierId, firstEvent, lastEvent)
+  ) {
+    throw new BatchFormatError(
+      'El loteId no corresponde al rango de eventos y a la instalación.',
+    );
   }
   if (!Array.isArray(hashes) || hashes.length === 0) {
     throw new BatchFormatError('El lote no tiene hashes.');
