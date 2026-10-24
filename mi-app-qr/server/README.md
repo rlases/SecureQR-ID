@@ -94,3 +94,18 @@ después, la primera vez en un trimestre nuevo, da un `cid` nuevo a cada titular
 deja el anterior `reemplazada`. El teléfono sigue vinculado, los suspendidos no reciben
 `cid` nuevo y el historial encadenado conserva cada `cid` anterior. `reseteos_cid` impide
 reiniciar dos veces el mismo trimestre.
+
+## Anonimización y conservación (ADR-0016, punto 10)
+
+- **Cierre del piloto:** `npm run anonimizar -- --cierre` pide escribir `ANONIMIZAR TODO`
+  y anonimiza nombre, documento y correo de todos los titulares, los registros de
+  asistencia y los motivos de las consultas, y borra los intentos de recuperación. Después,
+  ningún `cid` se puede atribuir a una persona. No toca la bitácora de `evidence-log/`, el
+  historial encadenado (solo tiene el identificador opaco del titular), las credenciales
+  ni los dispositivos.
+- **Uso posterior:** un `admin` fija un plazo en días (`PUT /api/titulares/conservacion`).
+  Cada día se anonimizan los registros y las consultas más antiguos, que se conservan el
+  mismo tiempo (ADR-0016). `npm run anonimizar -- --vencidos` lo aplica a mano.
+- Cada ejecución queda en `anonimizaciones`.
+- Límite: los motivos escritos en el registro de cambios no se anonimizan; el formulario
+  pide no escribir datos personales en ellos.

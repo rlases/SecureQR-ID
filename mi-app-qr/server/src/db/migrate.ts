@@ -273,4 +273,38 @@ function runReseteoMigrations(db: Database.Database): void {
     CREATE TRIGGER IF NOT EXISTS reseteos_cid_no_delete BEFORE DELETE ON reseteos_cid
     BEGIN SELECT RAISE(ABORT, 'el registro de reseteos es de solo agregar'); END;
   `);
+  runConservacionMigrations(db);
+}
+
+// Conservación y anonimización de datos personales (ADR-0016, punto 10; issue #90).
+function runConservacionMigrations(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS configuracion (
+      clave TEXT PRIMARY KEY,
+      valor TEXT
+    );
+
+    -- Cada anonimización queda registrada: qué alcance, cuántas filas y quién.
+    CREATE TABLE IF NOT EXISTS anonimizaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      alcance TEXT NOT NULL CHECK (alcance IN ('cierre', 'plazo')),
+      titulares INTEGER NOT NULL,
+      registros INTEGER NOT NULL,
+      consultas INTEGER NOT NULL,
+      ejecutado_por TEXT NOT NULL,
+      ejecutado_en TEXT NOT NULL
+    );
+
+    -- El registro de consultas es de solo agregar, salvo una excepción: anonimizar su
+    -- motivo (texto libre que podría nombrar a alguien) dejándolo en NULL. Nada más de la
+    -- fila puede cambiar.
+    DROP TRIGGER IF EXISTS consultas_cid_no_update;
+    CREATE TRIGGER consultas_cid_no_update BEFORE UPDATE ON consultas_cid
+    WHEN NOT (
+      NEW.motivo IS NULL
+      AND NEW.id = OLD.id AND NEW.usuario_id = OLD.usuario_id AND NEW.cid = OLD.cid
+      AND NEW.titular_id IS OLD.titular_id AND NEW.en = OLD.en
+    )
+    BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
+  `);
 }

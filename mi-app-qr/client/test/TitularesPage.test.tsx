@@ -14,6 +14,8 @@ vi.mock('../src/lib/apiClient', async (importOriginal) => {
     accionTitular: vi.fn(),
     confirmarEstamentoTitular: vi.fn(),
     exportarRevocadosAhora: vi.fn(),
+    getConservacion: vi.fn(),
+    setConservacion: vi.fn(),
   };
 });
 
@@ -45,6 +47,17 @@ describe('TitularesPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(apiClient.listTitulares).mockResolvedValue({ titulares: [ana] });
+    vi.mocked(apiClient.getConservacion).mockResolvedValue({ plazoDias: null });
+  });
+
+  it('guarda el plazo de conservación', async () => {
+    vi.mocked(apiClient.setConservacion).mockResolvedValue({ plazoDias: 365 });
+    renderPage();
+    const user = userEvent.setup();
+    expect(await screen.findByText(/sin plazo \(hasta el cierre\)/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Plazo en días/), '365');
+    await user.click(screen.getByRole('button', { name: 'Guardar plazo' }));
+    await waitFor(() => expect(apiClient.setConservacion).toHaveBeenCalledWith(365));
   });
 
   it('revocar pide un motivo en un diálogo con el foco adentro', async () => {

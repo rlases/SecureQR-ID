@@ -280,3 +280,15 @@ export function exportarRevocadosAhora(): Promise<{ cantidad: number; ruta: stri
 }
 
 export const URL_REVOCADOS = '/api/titulares/revocados.txt';
+
+// Plazo de conservación de registros y consultas (ADR-0016, punto 10). null = hasta el cierre.
+export function getConservacion(): Promise<{ plazoDias: number | null }> {
+  return request<{ plazoDias: number | null }>('/api/titulares/conservacion');
+}
+
+export function setConservacion(plazoDias: number | null): Promise<{ plazoDias: number | null }> {
+  return request<{ plazoDias: number | null }>('/api/titulares/conservacion', {
+    method: 'PUT',
+    body: JSON.stringify({ plazoDias }),
+  });
+}

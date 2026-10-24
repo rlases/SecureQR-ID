@@ -8,7 +8,9 @@ import {
   accionTitular,
   confirmarEstamentoTitular,
   exportarRevocadosAhora,
+  getConservacion,
   listTitulares,
+  setConservacion,
   type AccionTitular,
 } from '../lib/apiClient';
 import { useModalFocus } from '../hooks/useModalFocus';
@@ -102,7 +104,7 @@ function DialogoAccion({
               maxLength={200}
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Queda en el registro de cambios"
+              placeholder="Queda en el registro de cambios; sin datos personales"
             />
           </div>
           {mutation.error && (
@@ -163,6 +165,66 @@ function ExportarRevocados() {
           {exportar.error instanceof ApiError
             ? `No se pudo exportar: ${exportar.error.message}.`
             : 'No se pudo exportar. Inténtalo de nuevo.'}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Conservacion() {
+  const queryClient = useQueryClient();
+  const actual = useQuery({ queryKey: ['conservacion'], queryFn: getConservacion });
+  const [dias, setDias] = useState('');
+  const guardar = useMutation({
+    mutationFn: (valor: number | null) => setConservacion(valor),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conservacion'] });
+      setDias('');
+    },
+  });
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    guardar.mutate(dias.trim() === '' ? null : Number(dias));
+  }
+
+  return (
+    <section aria-labelledby="conservacion-title" className="space-y-3">
+      <h3 id="conservacion-title" className="text-base font-semibold text-foreground">
+        Conservación de datos
+      </h3>
+      <p className="max-w-2xl text-sm text-muted-foreground">
+        En el piloto, los datos personales se anonimizan al cierre con el comando
+        <code className="mx-1">npm run anonimizar -- --cierre</code>. Para un uso posterior,
+        fija un plazo: cada día se anonimizan los registros y las consultas más antiguos.
+        Informa el plazo en la autorización de tratamiento de datos.
+      </p>
+      {actual.data && (
+        <p className="text-sm text-foreground">
+          Plazo actual:{' '}
+          {actual.data.plazoDias === null ? 'sin plazo (hasta el cierre)' : `${actual.data.plazoDias} días`}
+        </p>
+      )}
+      <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="plazo-dias">Plazo en días (vacío = hasta el cierre)</Label>
+          <Input
+            id="plazo-dias"
+            inputMode="numeric"
+            value={dias}
+            onChange={(e) => setDias(e.target.value.replace(/\D/g, ''))}
+            className="w-40"
+          />
+        </div>
+        <Button type="submit" variant="outline" disabled={guardar.isPending}>
+          Guardar plazo
+        </Button>
+      </form>
+      {guardar.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {guardar.error instanceof ApiError
+            ? `No se pudo guardar: ${guardar.error.message}.`
+            : 'No se pudo guardar. Inténtalo de nuevo.'}
         </p>
       )}
     </section>
@@ -309,6 +371,8 @@ export default function TitularesPage() {
       </section>
 
       <ExportarRevocados />
+
+      <Conservacion />
 
       {accion && (
         <DialogoAccion titular={accion.titular} accion={accion.accion} onCancel={() => setAccion(null)} />
