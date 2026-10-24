@@ -8,6 +8,7 @@ import cbor2
 
 from secureqr_issuer._encoding import decode_identifier
 from secureqr_issuer.cli import main
+from secureqr_issuer.issuer import create_credential_id
 
 
 def test_generate_cid_command(capsys) -> None:
@@ -59,4 +60,6 @@ def test_cli_reports_missing_configuration_without_values(monkeypatch, capsys) -
 
 
 def create_valid_cid() -> str:
-    return base64.urlsafe_b64encode(secrets.token_bytes(16)).rstrip(b"=").decode("ascii")
+    # Reutiliza el generador real: ya evita el "-" inicial que argparse
+    # confundiria con otra opcion al pasarlo como --cid <valor>.
+    return create_credential_id()
