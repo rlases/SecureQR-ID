@@ -45,10 +45,10 @@ retomar la sesión interrumpida de Claude; no se modificó código ni diseño.
 - El ajuste del lote fijo ya está propuesto en #77: registrar el rango en `lotes`
   antes de exportarlo y reutilizarlo hasta obtener recibo, aunque lleguen eventos
   nuevos; incluir `verifier_id` en `loteId`.
-- **Issue #78 (Jhunier):** `baseline-o3` todavía no existe (la consulta de su
-  referencia devuelve 404). Debe crearse sobre una versión anterior al primer cambio
-  de ADR-0016 en `mi-app-qr/`, y anotarse aquí su commit exacto, antes de fusionar
-  #102. No confundir las ramas de implementación con la línea base del pretest.
+- **Issue #78 (Jhunier):** `baseline-o3` ya está fijada en
+  `1b4498af0d2a76ceeadce0a114c40d9d758c7aab`, anterior a los cambios de
+  ADR-0016 en `mi-app-qr/`. Ver el procedimiento y su ejecución en #112 y la nota
+  de verificación de abajo. Falta revisión e integración documental, no crear otra etiqueta.
 
 ### Siete PR de `mi-app-qr` guardados, pendientes de revisión
 
@@ -70,9 +70,10 @@ integrados en `main`.
 
 - #102 tiene CI completo en verde sobre `fcbe422`
   ([ejecución 40137801080](https://github.com/rlases/SecureQR-ID/actions/runs/40137801080)).
-- #103–#108 no tienen ejecuciones de PR para sus commits actuales. El flujo
-  `.github/workflows/ci.yml` solo atiende PR cuya base es `main`; estas seis bases
-  son otras ramas. No presentar esa ausencia de ejecución como CI aprobado.
+- El flujo ya valida las bases de los PR encadenados. Los commits actuales de
+  #102–#108 tienen CI completo en verde; la tabla de verificación de abajo contiene
+  los siete commits y sus ejecuciones. Las referencias a ausencia de CI del corte
+  de revisión inicial se conservan solo como historia de ese hallazgo.
 - La descripción de #108 reporta **172 pruebas del servidor, 97 del cliente y build
   del cliente correcto** sobre la rama final `modulo/90-anonimizacion`
   (`79fb158`). Eran resultados locales reportados por Claude; la revisión técnica de abajo
@@ -84,7 +85,7 @@ integrados en `main`.
 - No se verificaron en esta reanudación el instalador Windows, el piloto en el CCAV
   ni el flujo completo con Fabric real.
 
-**Orden para integrar:** cerrar la aceptación de #77 y fijar #78; luego revisión
+**Orden para integrar:** cerrar la aceptación de #77; #78 ya tiene etiqueta fijada. Luego revisión
 cruzada de Duverney e integración secuencial #102 → #103 → #104 → #105 → #106 →
 #107 → #108. Tras cada squash, actualizar la base y reconciliar la rama siguiente
 con `main`, conservando lo ya integrado; ejecutar el CI sobre el resultado real
@@ -114,13 +115,65 @@ antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
   (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
   No declarar terminado #9 por tener pruebas con un cliente en memoria.
 
+### Línea base fijada y CI de la cadena verificado — 2026-10-24
+
+**`baseline-o3` ya existe** y apunta exactamente a
+`1b4498af0d2a76ceeadce0a114c40d9d758c7aab`. Es la versión de main anterior al
+registro de titulares de ADR-0016: la ruta
+`mi-app-qr/server/src/titulares` no existe en ese commit. La referencia remota se
+leyó después de crearla para comprobar el destino.
+
+El [PR #112](https://github.com/rlases/SecureQR-ID/pull/112) contiene el procedimiento
+idempotente y sus ocho pruebas. El flujo
+[40144582787](https://github.com/rlases/SecureQR-ID/actions/runs/40144582787) terminó
+correctamente y creó la etiqueta. No sobrescribe una referencia diferente; acepta
+etiquetas anotadas, comprueba la pertenencia del commit a main y se detiene ante una
+carrera con otro destino. El CI completo del PR también pasó
+([40144614643](https://github.com/rlases/SecureQR-ID/actions/runs/40144614643)).
+#78 ya no requiere trabajo de creación de etiqueta: queda la revisión e integración
+de su procedimiento y de esta constancia documental.
+
+**CI corregido en #102 y propagado hasta #108.** Se retiró el filtro que solo admitía
+PR dirigidos a main. Se ejecuta al abrir, actualizar, reabrir o marcar un PR listo,
+con permisos de lectura y cancelación de ejecuciones obsoletas de la misma rama/PR.
+Se conservaron exactamente los diez trabajos existentes y el evento push de main.
+Los siete commits actuales tienen CI completo en verde:
+
+| PR | Commit actual | Ejecución | Resultado |
+|---|---|---|---|
+| #102 | `1eb3e93` | [40144619493](https://github.com/rlases/SecureQR-ID/actions/runs/40144619493) | Correcto |
+| #103 | `bee2420` | [40144621976](https://github.com/rlases/SecureQR-ID/actions/runs/40144621976) | Correcto |
+| #104 | `e926816` | [40144624863](https://github.com/rlases/SecureQR-ID/actions/runs/40144624863) | Correcto |
+| #105 | `13a18d4` | [40144627778](https://github.com/rlases/SecureQR-ID/actions/runs/40144627778) | Correcto |
+| #106 | `a6e6e95` | [40144628713](https://github.com/rlases/SecureQR-ID/actions/runs/40144628713) | Correcto |
+| #107 | `8b1ac70` | [40144632168](https://github.com/rlases/SecureQR-ID/actions/runs/40144632168) | Correcto |
+| #108 | `8c98c2a` | [40144634248](https://github.com/rlases/SecureQR-ID/actions/runs/40144634248) | Correcto |
+
+En la ejecución final de #108 se comprobó también el log del servidor:
+**19 archivos y 183 pruebas aprobadas**. El cliente, el verificador web con E2E y los
+módulos Python/anchor completaron sus trabajos. Esto acredita la ejecución de las
+suites de CI; no sustituye la integración con una red Fabric real, la instalación
+Windows ni el piloto.
+
+**Novedad de Duverney:** abrió #111, enmienda en borrador a ADR-0016 para resolver
+#109. Se revisó y se dejó comentario técnico: concretar la vigencia del código
+provisional (72 horas sigue siendo propuesta), reutilizar el canje atómico y las
+cuotas de #104, rechazar decisiones repetidas, conservar id/ref y claves foráneas
+durante la migración y comprobar la anonimización de reemplazados/rechazados.
+La vigencia requiere acuerdo de los autores; no se formalizó su aceptación.
+
+**Siguiente paso:** revisión cruzada de los PR corregidos y de #112, aceptación de
+#77 y acuerdo de #111. Las correcciones pendientes de Duverney en #98–#100 y sus
+frentes #82, #85, #93, #94 y #109 conservan su asignación. La creación de la línea
+base y la ejecución del CI de los siete PR ya quedaron verificadas.
+
 ### Correcciones implementadas — 2026-10-24
 
 Los hallazgos de Jhunier descritos en la revisión inicial de abajo ya tienen
 corrección y pruebas de regresión en sus ramas. Siguen pendientes de revisión
 cruzada; los issues no se dan por cerrados antes de la integración.
 
-| PR | Commit actual | Corrección |
+| PR | Commit del arreglo | Corrección |
 |---|---|---|
 | #104 | `cd4865f` | Consumo condicional y único del código; reserva atómica de cuota por documento e IP antes de bcrypt |
 | #105 | `a33ff3f` | Consulta desde la asignación comprometida; detección de incoherencias/cadena rota y auditoría del intento sin datos ni atribución |
@@ -147,9 +200,9 @@ motivos de `cambios_configuracion`, que siguen conservados y no deben incluir
 datos personales.
 
 **Lo siguiente para Jhunier:** obtener revisión cruzada de estos arreglos,
-completar #78, acordar #55, cerrar administrativamente #56 y revalidar los
+completar la revisión documental de #78, acordar #55, cerrar administrativamente #56 y revalidar los
 arreglos de Duverney. La integración conserva sus dependencias (#77 y línea
-base); el CI de PR con base distinta de main sigue siendo un pendiente.
+base); el CI de PR con base distinta de main quedó corregido y verificado más arriba.
 
 **Lo siguiente para Duverney:** revisar #77 y las ramas corregidas de Jhunier,
 resolver #98–#100 y continuar #82, #85, #93, #94 y #109. El detalle del reparto
