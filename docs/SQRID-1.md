@@ -43,7 +43,12 @@ firmas que no verifican, o peor, permite maleabilidad del payload.
 
 1. Generar un `cid` opaco de 16 bytes con CSPRNG cuando se crea la credencial y
    representarlo como Base64url sin `=`. El emisor solo acepta esta forma canónica; un
-   número de documento no cumple el formato.
+   número de documento no cumple el formato. El generador del emisor descarta y
+   regenera los `cid` cuyo Base64url empieza por `-`, porque `argparse` los confunde con
+   una opción de línea de comandos; eso reduce la entropía en unos 0,02 bits (de 128 a
+   cerca de 127,98), sin impacto de seguridad. Es una decisión del generador, no del
+   formato: `verifier/` sigue aceptando cualquier `cid` válido, también los que
+   empiezan por `-`.
 2. Derivar `kid` como los primeros 16 bytes de SHA-256 sobre la clave pública P-256 en
    DER SubjectPublicKeyInfo y representarlo como Base64url sin `=`.
 3. Para cada emisión, fijar `iat` al segundo Unix UTC actual, calcular `exp` con una

@@ -42,14 +42,38 @@ Un proceso en segundo plano agrupa los eventos recientes, construye un árbol de
 y publica **solo la raíz** en una blockchain permisionada. Eso convierte la bitácora
 local en algo verificable desde fuera de la institución.
 
-Concretamente (ADR-0017): cada 15 minutos una tarea programada exporta de
-`evidence-log/` un lote de hasta 500 eventos, `anchor/` publica su raíz en una red
-Hyperledger Fabric 2.5 propia mediante la Gateway API y un contrato en Go que no deja
-sobrescribir un lote, y el recibo (transacción y bloque) se registra en la tabla
-`anclajes` de solo agregar. Una vez al día, la última raíz anclada se sella en Bitcoin
-con OpenTimestamps, que es lo que protege incluso contra quien opera la red Fabric
-(ADR-0007). Si Fabric no responde, se reintenta en la siguiente corrida sin afectar la
-validación.
+Concretamente (ADR-0017): cada 15 minutos una tarea programada hace tres cosas.
+`evidence-log/` **fija** un lote de hasta 500 eventos (lo registra en la tabla `lotes`,
+de solo agregar, con su `loteId`, rango, raíz y fecha) y lo exporta; `anchor/` publica su
+raíz en una red Hyperledger Fabric 2.5 propia mediante la Gateway API y un contrato en Go
+que no deja sobrescribir un lote; y `evidence-log/` registra el recibo (transacción y
+bloque) en la tabla `anclajes`, también de solo agregar, solo si corresponde al lote
+fijado pendiente (misma raíz, rango y cantidad).
+
+- **El `loteId` lleva la instalación:** `<verifier_id>:seq-<primero>-<último>`, para que
+  dos instalaciones cuyas bitácoras empiezan en 1 no choquen en la misma red.
+- **Reintentos seguros.** Mientras un lote fijado no tenga recibo, cada corrida vuelve a
+  exportar exactamente ese rango, aunque lleguen eventos nuevos; así el `loteId` no
+  cambia y, si la raíz ya había entrado a Fabric, la siguiente corrida recibe «ya
+  registrado», consulta la raíz y reconstruye el recibo original. Si la raíz de Fabric no
+  coincide con la del lote local, se detiene y alerta.
+- **Alerta de 2 horas.** Al terminar cada corrida, el ciclo escribe un archivo de estado
+  JSON (eventos pendientes, el más antiguo, último anclaje, `stale`) con reemplazo
+  atómico. El servidor de `mi-app-qr/` solo lee ese archivo, sin abrir el SQLite de
+  `evidence-log/` ni importar su código (ADR-0005), y alerta si `stale` es verdadero o si
+  el archivo tiene más de 2 horas, lo que también detecta que la tarea programada dejó de
+  correr.
+- **Sellado diario.** Una vez al día se sella en Bitcoin, con OpenTimestamps, el **hash
+  del último bloque del canal** de Fabric (consulta `GetChainInfo` de `qscc`), no la
+  última raíz anclada: cada bloque compromete a todos los anteriores, así el sello cubre
+  los lotes de todas las instalaciones de ese día y no solo los de una. Es lo que protege
+  incluso contra quien opera la red Fabric (ADR-0007). Crear y completar el sello no
+  necesita un nodo de Bitcoin, pero verificarlo de forma independiente (`ots verify`) sí:
+  no se instala un nodo en el servidor del CCAV, y la verificación se hace
+  periódicamente desde un equipo con Bitcoin Core podado, dejando constancia del
+  resultado; el comprobante `.ots` permite que cualquiera lo verifique con sus medios.
+
+Si Fabric no responde, se reintenta en la siguiente corrida sin afectar la validación.
 
 Participa `anchor/`.
 
@@ -72,11 +96,14 @@ Corresponde al Algoritmo 1 del artículo. La implementación debe seguir este or
 8. Calcular el hash del evento a partir de: id de credencial, id del verificador,
    marca temporal y hash del evento anterior.
 9. Añadir el evento a la bitácora encadenada local.
-10. *(Periódico, cada 15 min)* Calcular la raíz de Merkle del lote de eventos aún no
-    anclados (hasta 500).
+10. *(Periódico, cada 15 min)* Fijar el lote de eventos aún no anclados (hasta 500) en
+    `lotes`, con su `loteId` por instalación, y calcular su raíz de Merkle. Si ya hay un
+    lote fijado sin recibo, se reutiliza el mismo rango.
 11. *(Periódico, cada 15 min)* Anclar la raíz en la red Fabric y registrar el recibo en
-    `anclajes` (ADR-0017).
-12. *(Diario)* Sellar la última raíz anclada en OpenTimestamps (ADR-0007, ADR-0017).
+    `anclajes` solo si coincide con el lote fijado; escribir el archivo de estado para
+    el panel (ADR-0017).
+12. *(Diario)* Sellar en OpenTimestamps el hash del último bloque del canal de Fabric
+    (ADR-0007, ADR-0017).
 
 El orden de los pasos 3–6 no es negociable: verificar la firma antes de procesar
 cualquier otro campo evita trabajar sobre un payload no confiable.
@@ -96,16 +123,13 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 
 ## Decisiones de arquitectura pendientes
 
-Registradas en `DECISIONS.md`:
-
-- Distribución de la lista de revocación a verificadores con conectividad intermitente:
-  propuesta en ADR-0015, pendiente de aceptación conjunta (pull con caché local,
-  recarga en caliente, antirretroceso y rechazo cuando la lista supera su antigüedad
-  máxima).
+Ninguna abierta por ahora. La distribución de la lista de revocación a verificadores
+con conectividad intermitente se cerró en ADR-0015 (pull con caché local, recarga en
+caliente, antirretroceso y rechazo cuando la lista supera su antigüedad máxima).
 
 El stack se cerró en ADR-0005. La gobernanza de la red blockchain se cerró en ADR-0007:
 anclaje híbrido — Hyperledger Fabric para la operación local, más un sellado periódico
-de la raíz de la ledger en Bitcoin vía OpenTimestamps para la garantía de no repudio que
+del hash del último bloque de la ledger en Bitcoin vía OpenTimestamps para la garantía de no repudio que
 no depende de la institución. La tolerancia de reloj, la persistencia y purga de nonces,
 la atomicidad ante concurrencia y el comportamiento fail-closed de revocación se
 cerraron en ADR-0011.
@@ -131,7 +155,9 @@ plano** (nombre, documento, programa, ciudad y vigencia por expresión regular),
 firma, sin nonce y sin bitácora encadenada.
 
 **Línea base del objetivo 3.** Esa versión sin controles se conserva con la etiqueta
-`baseline-o3` (ADR-0016, punto 11). El pretest de la fase de evaluación (Fase 4 de
+`baseline-o3` (ADR-0016, punto 11), que crea el issue #78 antes de implementar ADR-0016
+en `mi-app-qr/`; mientras la etiqueta no exista, no hay línea base fijada y no debe darse
+por conservada. El pretest de la fase de evaluación (Fase 4 de
 `ROADMAP.md`) se hace contra esa etiqueta, para medir la reducción de suplantación y el
 tiempo de registro del modelo SecureQR-ID frente a un sistema QR convencional real, tal
 como plantea el diseño cuasi-experimental de la propuesta de grado.

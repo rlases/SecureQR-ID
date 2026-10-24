@@ -88,11 +88,14 @@ mismo equipo servidor que `mi-app-qr/`.
 
 | Amenaza | Riesgo | Control |
 |---|---|---|
-| La red Fabric la opera el propio proyecto | Quien opera la red podría reescribirla junto con la bitácora | Sellado diario de la última raíz en Bitcoin con OpenTimestamps, que no depende del proyecto ni de la universidad (ADR-0007) |
-| Servidores de OpenTimestamps caídos o sin salida a internet | La raíz del día queda sin sellar | Los servidores públicos los mantienen voluntarios: el sello queda pendiente y se reintenta; Fabric sigue siendo el anclaje principal |
+| La red Fabric la opera el propio proyecto | Quien opera la red podría reescribirla junto con la bitácora | Sellado diario del hash del último bloque del canal en Bitcoin con OpenTimestamps, que cubre los lotes de todas las instalaciones y no depende del proyecto ni de la universidad (ADR-0007) |
+| Servidores de OpenTimestamps caídos o sin salida a internet | El bloque del día queda sin sellar | Los servidores públicos los mantienen voluntarios: el sello queda pendiente y se reintenta; Fabric sigue siendo el anclaje principal |
 | Pérdida del ledger por reiniciar la red como en pruebas | Raíces ancladas que ya no se pueden consultar | La red se crea una sola vez y después solo se detiene y arranca (`unless-stopped`); respaldo semanal cifrado de volúmenes y material criptográfico |
-| La raíz entra a Fabric pero el recibo no se registra | Lote anclado dos veces o ciclo trabado | `loteId` determinista; ante «ya registrado» se compara la raíz: si coincide se registra el recibo, si no se detiene y alerta |
-| Fabric no responde por horas | Se amplía la ventana de riesgo residual (abajo) | Reintento cada 15 minutos y alerta en el panel tras 2 horas sin anclar |
+| La raíz entra a Fabric pero el recibo no se registra | Lote anclado dos veces, raíz huérfana en Fabric o ciclo trabado | El lote se fija en `lotes` antes de exportarlo y se reexporta con el mismo rango y `loteId` aunque lleguen eventos nuevos; ante «ya registrado» se compara la raíz: si coincide se registra el recibo original, si no se detiene y alerta |
+| Dos instalaciones anclan en la misma red | Conflicto falso de «ya registrado» con raíces distintas | El `loteId` lleva el `verifier_id`: `<verifier_id>:seq-<primero>-<último>` |
+| Recibo con una raíz ajena al lote | Eventos que figuran como anclados sin estarlo | `record_anchor` solo acepta el recibo de un lote fijado pendiente y compara raíz, rango y cantidad; si no coinciden, alerta |
+| Fabric no responde por horas | Se amplía la ventana de riesgo residual (abajo) | Reintento cada 15 minutos; el ciclo escribe un archivo de estado y el panel alerta si `stale` es verdadero |
+| La tarea programada deja de correr | Nadie se entera de que el anclaje está detenido | El panel también alerta si el archivo de estado tiene más de 2 horas |
 
 ## Fuera del alcance
 
@@ -123,6 +126,61 @@ limitación real del diseño, no un detalle de implementación. En el piloto, ad
 red la operan los propios autores (ADR-0017); por eso el sellado en Bitcoin con
 OpenTimestamps es lo que da la garantía externa. Ver ADR-0007.
 
+## Vinculabilidad del `cid`
+
+**Vinculabilidad:** posibilidad de relacionar varias apariciones de un mismo sujeto
+aunque no se sepa quién es.
+
+El `cid` es opaco (`docs/SQRID-1.md`): quien decodifica el QR no obtiene un dato
+personal. Pero el mismo `cid` se repite en cada token que se emite para un titular. Quien
+capture QR de forma repetida (una cámara frente al punto de control, un operador que
+fotografía los códigos) puede saber que «la misma persona» pasó el lunes, el martes y el
+jueves, y armar su patrón de asistencia, aunque no sepa su nombre. Si en algún momento
+asocia una sola aparición con la persona, todo el historial ligado a ese `cid` queda
+identificado.
+
+Hay que distinguir dos casos:
+
+- **Dentro del sistema la vinculación es deliberada.** `evidence-log/` registra el `cid`
+  de cada validación aceptada (ADR-0013) precisamente para poder auditar. Ese acceso
+  todavía **no** está controlado: hoy la bitácora es un archivo SQLite que solo protege
+  el acceso al equipo, sin una interfaz de consulta autenticada ni registro de quién la
+  lee (ADR-0008 deja pendiente qué se audita). ADR-0016 propone que solo un `admin`
+  pueda traducir un `cid` a una persona y que cada consulta quede registrada; hasta que
+  eso exista, quien tenga acceso al archivo puede leer todos los `cid` sin dejar rastro.
+- **Fuera del sistema es un riesgo residual de privacidad**, que la firma y el nonce no
+  cubren: no impiden leer el `cid`, solo impiden reutilizar el token.
+
+**Mitigación propuesta: reseteo trimestral del `cid`** (pendiente de ADR, junto con la
+decisión sobre el registro `cid` → persona en el servidor de `mi-app-qr`):
+
+- Cada trimestre, el registro de credenciales le asigna a cada titular un `cid` nuevo,
+  generado con CSPRNG, y deja de emitir tokens con el anterior. Así, quien observe desde
+  fuera solo puede encadenar apariciones dentro de un mismo trimestre.
+- No cambia el formato: `SQRID-1.md` ya define el `cid` como el identificador que se
+  genera al crear la credencial, así que un `cid` nuevo es una credencial nueva, no un
+  `SQRID/2`.
+- No hace falta revocar el `cid` anterior: los tokens ya emitidos con él vencen solos en
+  su ventana de vigencia, y el emisor no vuelve a firmar con él. La revocación sigue
+  reservada para credenciales comprometidas, de modo que la lista firmada no crece con
+  cada reseteo.
+- El registro debe conservar la relación histórica (qué `cid` tuvo cada titular y en qué
+  periodo) para que las auditorías sobre eventos antiguos de la bitácora sigan siendo
+  posibles. Esa historia no solo es sensible: es el único enlace entre un evento de la
+  bitácora y su titular, porque la cadena de hashes solo compromete el `cid`. Si alguien
+  con acceso a la base de datos cambia una fila del historial, atribuye un evento intacto
+  a otra persona sin que `verify_chain()` lo detecte. Por eso el historial debe ser **a
+  prueba de manipulación**: de solo agregar (una asignación nueva nunca reescribe la
+  anterior) y con un compromiso verificable de cada asignación `cid` → titular, por
+  ejemplo registrándola en la bitácora encadenada con el identificador interno opaco del
+  titular, nunca con datos personales. El mecanismo concreto queda pendiente para la
+  implementación de ADR-0016 (#79 y #88).
+
+**Límite que se acepta.** Dentro de un trimestre la vinculabilidad persiste. Eliminarla
+del todo exigiría un identificador distinto en cada token, lo que obliga a rediseñar la
+revocación y el registro en la bitácora. Esa alternativa se evalúa en la ADR, no se adopta
+aquí.
+
 ## Ventana de riesgo residual
 
 Entre que un evento se registra localmente y que su raíz de Merkle queda anclada existe
@@ -132,3 +190,15 @@ todo exigiría anclar por evento, lo que el diseño descarta por latencia (ADR-0
 
 **Este intervalo debe medirse y reportarse** en la evaluación del prototipo. Es un
 resultado del trabajo, no una debilidad que ocultar.
+
+**Riesgos residuales del anclaje real (ADR-0017), que se declaran también en el
+documento de grado:**
+
+- **Ventana sin sello externo.** Entre un sellado diario y su confirmación en Bitcoin
+  pasan un día o más. En ese lapso, quien opera la red Fabric podría reconstruir el
+  ledger sin que nadie de fuera lo detecte: Fabric aporta registro inmutable frente a
+  terceros, no frente a sus propios operadores. El sello cierra esa ventana, pero con
+  retraso.
+- **Sin descentralización real.** La `test-network` tiene un solo *orderer* y dos
+  organizaciones operadas por las mismas personas. No debe presentarse como una red
+  descentralizada: la garantía externa la da el sello en Bitcoin.

@@ -66,7 +66,7 @@ npm run test:e2e
 | `verifier/` | verifica firma, frescura, nonce, revocación | no firma, no ancla |
 | `verifier-web/` | captura QR y presenta la decisión pública | no interpreta ni persiste tokens |
 | `evidence-log/` | encadena eventos por hash | no decide aceptar/rechazar |
-| `anchor/` | construye Merkle, ancla la raíz en Fabric y la sella en OpenTimestamps | no ve datos personales, solo hashes |
+| `anchor/` | construye Merkle, ancla la raíz en Fabric y sella en OpenTimestamps el hash del último bloque del canal | no ve datos personales, solo hashes |
 | `verifier-service/` | arranca el verificador real componiendo los módulos | no añade reglas de validación |
 
 La separación es deliberada: es lo que permite que la validación sea local y rápida
@@ -76,8 +76,9 @@ mientras el anclaje corre asíncrono. No la colapses "por simplicidad".
 
 Empezó como un prototipo aparte: app Electron + React de registro de asistencia por QR
 **sin ninguno de los controles de este diseño** (QR de texto plano, sin firma, sin nonce).
-Esa versión se conserva con la etiqueta `baseline-o3`: es la línea base del pretest del
-objetivo 3 y no se toca.
+Esa versión debe conservarse con la etiqueta `baseline-o3` (la crea el issue #78; mientras
+no exista, no hay línea base fijada): es la línea base del pretest del objetivo 3 y no se
+toca.
 
 Desde ADR-0016, el servidor de `mi-app-qr/` también es el **registro de credenciales**
 (`cid` → titular) y el **portal del titular**, que entrega el QR al teléfono pidiéndole
