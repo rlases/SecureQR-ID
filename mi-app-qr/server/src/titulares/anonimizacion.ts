@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { canonicalCidSql } from './identificadores.js';
 
 // Eliminación o anonimización de datos personales (ADR-0016, punto 10; issue #90).
 //
@@ -64,12 +65,16 @@ export function anonimizarCierre(
       .run(ANONIMO).changes;
     const registros = db
       .prepare(
-        `UPDATE registros SET nombre = ?, documento = 'anon-' || id
-         WHERE NOT (nombre = ? AND documento = 'anon-' || id)`
+        `UPDATE registros SET nombre = ?, documento = 'anon-' || id,
+           motivo = CASE WHEN corrige_registro_id IS NOT NULL THEN ? ELSE NULL END
+         WHERE NOT (nombre = ? AND documento = 'anon-' || id)
+            OR (motivo IS NOT NULL AND motivo <> ?)`
       )
-      .run(ANONIMO, ANONIMO).changes;
+      .run(ANONIMO, ANONIMO, ANONIMO, ANONIMO).changes;
     const consultas = db
-      .prepare('UPDATE consultas_cid SET motivo = NULL WHERE motivo IS NOT NULL')
+      .prepare(`UPDATE consultas_cid
+        SET motivo = NULL, cid = CASE WHEN ${canonicalCidSql()} THEN cid ELSE 'anon-' || id END
+        WHERE motivo IS NOT NULL OR (NOT ${canonicalCidSql()} AND cid <> 'anon-' || id)`)
       .run().changes;
     db.prepare('DELETE FROM intentos_recuperacion').run();
     const resultado = { titulares, registros, consultas };
@@ -123,12 +128,17 @@ export function anonimizarVencidos(
   return db.transaction(() => {
     const registros = db
       .prepare(
-        `UPDATE registros SET nombre = ?, documento = 'anon-' || id
-         WHERE timestamp < ? AND NOT (nombre = ? AND documento = 'anon-' || id)`
+        `UPDATE registros SET nombre = ?, documento = 'anon-' || id,
+           motivo = CASE WHEN corrige_registro_id IS NOT NULL THEN ? ELSE NULL END
+         WHERE timestamp < ? AND (
+           NOT (nombre = ? AND documento = 'anon-' || id)
+           OR (motivo IS NOT NULL AND motivo <> ?))`
       )
-      .run(ANONIMO, limiteSqlite, ANONIMO).changes;
+      .run(ANONIMO, ANONIMO, limiteSqlite, ANONIMO, ANONIMO).changes;
     const consultas = db
-      .prepare('UPDATE consultas_cid SET motivo = NULL WHERE en < ? AND motivo IS NOT NULL')
+      .prepare(`UPDATE consultas_cid
+        SET motivo = NULL, cid = CASE WHEN ${canonicalCidSql()} THEN cid ELSE 'anon-' || id END
+        WHERE en < ? AND (motivo IS NOT NULL OR (NOT ${canonicalCidSql()} AND cid <> 'anon-' || id))`)
       .run(limite.toISOString()).changes;
     db.prepare('DELETE FROM intentos_recuperacion WHERE en < ?').run(limite.toISOString());
     const resultado = { titulares: 0, registros, consultas };

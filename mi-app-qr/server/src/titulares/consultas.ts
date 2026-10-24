@@ -5,6 +5,7 @@ import type {
   ResultadoConsultaCid,
 } from '@mi-app-qr/shared';
 import { isCanonicalCid } from './identificadores.js';
+import { verifyAsignaciones } from './asignaciones.js';
 
 // Consulta auditada cid → persona (ADR-0016, punto 7; issue #86).
 //
@@ -16,9 +17,15 @@ import { isCanonicalCid } from './identificadores.js';
 export const MAX_CIDS_POR_CONSULTA = 200;
 
 export class ConsultaError extends Error {}
+export class IntegridadConsultaError extends Error {
+  constructor() {
+    super('No se pudo comprobar la integridad del historial. Contacta al responsable del sistema.');
+  }
+}
 
 interface Fila {
   titular_id: number;
+  credencial_titular_id: number;
   estado_credencial: EstadoCredencial;
   vigente_desde: string;
   vigente_hasta: string | null;
@@ -41,19 +48,42 @@ export function consultarCids(
     throw new ConsultaError(`Como máximo ${MAX_CIDS_POR_CONSULTA} cid por consulta.`);
   }
   const buscar = db.prepare(
-    `SELECT c.titular_id, c.estado AS estado_credencial, c.vigente_desde, c.vigente_hasta,
+    `SELECT t.id AS titular_id, c.titular_id AS credencial_titular_id,
+            c.estado AS estado_credencial, c.vigente_desde, c.vigente_hasta,
             t.nombre, t.documento, t.estado AS estado_titular, e.nombre AS estamento
-     FROM credenciales c
-     JOIN titulares t ON t.id = c.titular_id
+     FROM titulares t CROSS JOIN credenciales c
      JOIN estamentos e ON e.id = t.estamento_id
-     WHERE c.cid = ?`
+     WHERE t.ref = ? AND c.cid = ?`
   );
+  const asignaciones = db.prepare('SELECT titular_ref FROM asignaciones_cid WHERE cid = ?');
+  const existeCredencial = db.prepare('SELECT 1 FROM credenciales WHERE cid = ?');
   const registrar = db.prepare(
     'INSERT INTO consultas_cid (usuario_id, cid, titular_id, motivo, en) VALUES (?, ?, ?, ?, ?)'
   );
-  return db.transaction(() =>
-    unicos.map((cid): ResultadoConsultaCid => {
-      const fila = isCanonicalCid(cid) ? (buscar.get(cid) as Fila | undefined) : undefined;
+  let inconsistente = false;
+  const resultados = db.transaction(() => {
+    inconsistente = !verifyAsignaciones(db);
+    const filas = unicos.map((cid): Fila | undefined => {
+      if (inconsistente || !isCanonicalCid(cid)) return undefined;
+      const enlaces = asignaciones.all(cid) as { titular_ref: string }[];
+      if (enlaces.length === 0) {
+        if (existeCredencial.get(cid)) inconsistente = true;
+        return undefined;
+      }
+      if (enlaces.length !== 1) {
+        inconsistente = true;
+        return undefined;
+      }
+      // La identidad procede del ref comprometido, no del FK mutable de credenciales.
+      const fila = buscar.get(enlaces[0].titular_ref, cid) as Fila | undefined;
+      if (!fila || fila.credencial_titular_id !== fila.titular_id) {
+        inconsistente = true;
+        return undefined;
+      }
+      return fila;
+    });
+    return unicos.map((cid, indice): ResultadoConsultaCid => {
+      const fila = inconsistente ? undefined : filas[indice];
       registrar.run(usuarioId, cid, fila?.titular_id ?? null, motivo, ahora.toISOString());
       if (!fila) return { cid, encontrado: false };
       // Tras el cierre del piloto (#90) la relación deja de existir: no hay a quién atribuir.
@@ -72,8 +102,12 @@ export function consultarCids(
         vigenteDesde: fila.vigente_desde,
         vigenteHasta: fila.vigente_hasta,
       };
-    })
-  )();
+    });
+  })();
+  // La auditoría del intento fallido se confirma sin atribuirlo a nadie. El error se
+  // lanza después de la transacción para no deshacer ese registro.
+  if (inconsistente) throw new IntegridadConsultaError();
+  return resultados;
 }
 
 export function listConsultas(db: Database.Database, limite = 200): ConsultaRegistrada[] {

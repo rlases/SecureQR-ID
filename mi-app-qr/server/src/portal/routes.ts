@@ -19,7 +19,7 @@ import {
   linkDevice,
   verifyRecoveryCode,
 } from './credencialesTitular.js';
-import { recuperacionBloqueada, registrarIntento } from './limiteIntentos.js';
+import { reservarIntento } from './limiteIntentos.js';
 
 // Portal del titular (ADR-0016, puntos 2 a 4; issue #84).
 //
@@ -186,7 +186,8 @@ export function createPortalRouter(opciones: {
     const { documento, codigo } = parsed.data;
     const ip = req.ip ?? 'desconocida';
     const ahora = new Date();
-    if (recuperacionBloqueada(db(req), documento, ip, ahora)) {
+    const intentoId = reservarIntento(db(req), documento, ip, ahora);
+    if (intentoId === null) {
       return res
         .status(429)
         .json({ error: 'demasiados intentos; espera 15 minutos o acude a un administrador' });
@@ -204,19 +205,25 @@ export function createPortalRouter(opciones: {
       titular?.codigo_recuperacion_hash ?? (await hashDeRelleno())
     );
     if (!titular || !titular.codigo_recuperacion_hash || !valido) {
-      registrarIntento(db(req), documento, ip, false, ahora);
       return res.status(401).json({ error: 'documento o código incorrectos' });
     }
     const nuevoCodigo = generateRecoveryCode();
     const nuevoHash = await hashRecoveryCode(nuevoCodigo);
     const llave = db(req).transaction(() => {
-      registrarIntento(db(req), documento, ip, true, ahora);
-      // El código se renueva al usarlo: el anterior deja de servir.
-      db(req)
-        .prepare('UPDATE titulares SET codigo_recuperacion_hash = ? WHERE id = ?')
-        .run(nuevoHash, titular.id);
+      // Consumir solo el hash que se verificó: otro request puede haberlo renovado
+      // durante bcrypt, o el titular puede haber sido anonimizado mientras tanto.
+      const cambio = db(req)
+        .prepare(`UPDATE titulares SET codigo_recuperacion_hash = ?
+                  WHERE id = ? AND codigo_recuperacion_hash = ?
+                    AND estado IN ('activo', 'suspendido')`)
+        .run(nuevoHash, titular.id, titular.codigo_recuperacion_hash);
+      if (cambio.changes !== 1) return null;
+      db(req).prepare('UPDATE intentos_recuperacion SET exito = 1 WHERE id = ?').run(intentoId);
       return linkDevice(db(req), titular.id, ahora);
     })();
+    if (llave === null) {
+      return res.status(401).json({ error: 'documento o código incorrectos' });
+    }
     setDeviceCookie(res, llave, opciones.secureCookies);
     const body: RecuperarResponse = { codigoRecuperacion: nuevoCodigo };
     return res.json(body);

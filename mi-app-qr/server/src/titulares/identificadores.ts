@@ -32,3 +32,11 @@ export function isCanonicalCid(value: string): boolean {
   const raw = Buffer.from(value, 'base64url');
   return raw.length === IDENTIFIER_BYTES && raw.toString('base64url') === value;
 }
+
+/** Predicado SQLite equivalente a isCanonicalCid. Solo admite nombres internos de
+ * columna; el último carácter de 16 bytes en Base64url es A, Q, g o w. */
+export function canonicalCidSql(column: 'cid' | 'OLD.cid' = 'cid'): string {
+  return `(length(${column}) = 22
+    AND ${column} NOT GLOB '*[^A-Za-z0-9_-]*'
+    AND substr(${column}, 22, 1) IN ('A', 'Q', 'g', 'w'))`;
+}

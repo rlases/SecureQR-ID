@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { canonicalCidSql } from '../titulares/identificadores.js';
 
 export function runMigrations(db: Database.Database): void {
   db.exec(`
@@ -147,6 +148,9 @@ function runCredentialMigrations(db: Database.Database): void {
 
     CREATE TRIGGER IF NOT EXISTS titulares_no_delete BEFORE DELETE ON titulares
     BEGIN SELECT RAISE(ABORT, 'un titular se anonimiza, no se borra'); END;
+    CREATE TRIGGER IF NOT EXISTS titulares_referencia_fija BEFORE UPDATE OF ref ON titulares
+    WHEN NEW.ref <> OLD.ref
+    BEGIN SELECT RAISE(ABORT, 'la referencia opaca del titular no cambia'); END;
   `);
   runScheduleMigrations(db);
 }
@@ -295,14 +299,17 @@ function runConservacionMigrations(db: Database.Database): void {
       ejecutado_en TEXT NOT NULL
     );
 
-    -- El registro de consultas es de solo agregar, salvo una excepción: anonimizar su
-    -- motivo (texto libre que podría nombrar a alguien) dejándolo en NULL. Nada más de la
-    -- fila puede cambiar.
+    -- Conservación de datos: solo se permite limpiar el motivo y reemplazar un cid
+    -- mal formado (texto libre, no una credencial) por la marca opaca de su fila.
+    -- Un cid canónico nunca se modifica, ni tampoco autor, fecha o atribución.
     DROP TRIGGER IF EXISTS consultas_cid_no_update;
     CREATE TRIGGER consultas_cid_no_update BEFORE UPDATE ON consultas_cid
     WHEN NOT (
       NEW.motivo IS NULL
-      AND NEW.id = OLD.id AND NEW.usuario_id = OLD.usuario_id AND NEW.cid = OLD.cid
+      AND NEW.id = OLD.id AND NEW.usuario_id = OLD.usuario_id
+      AND (NEW.cid = OLD.cid OR (
+        NOT ${canonicalCidSql('OLD.cid')} AND NEW.cid = 'anon-' || OLD.id
+      ))
       AND NEW.titular_id IS OLD.titular_id AND NEW.en = OLD.en
     )
     BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
