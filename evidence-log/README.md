@@ -35,37 +35,51 @@ encadenan sobre el mismo predecesor.
 ## Solo agregar, también en la base de datos
 
 Además de que el código no tiene operaciones de edición, la base de datos tiene
-disparadores que rechazan cualquier `UPDATE` o `DELETE` sobre `events` y `anclajes`.
+disparadores que rechazan cualquier `UPDATE` o `DELETE` sobre `events`, `lotes` y `anclajes`.
 Alguien con acceso al archivo puede quitarlos, pero no puede recalcular los hashes sin
 que `verify_chain()` lo detecte, ni reescribir lo que ya se ancló en Fabric.
 
 ## Anclaje (issue #92, ADR-0017)
 
-El estado de anclaje vive en la tabla `anclajes`, de solo agregar: un evento está
-anclado si cae dentro del rango de algún anclaje registrado. Antes se marcaba con un
-`UPDATE` sobre la tabla de eventos (`mark_batch_anchored`), que se eliminó.
+El anclaje usa dos tablas de solo agregar. `lotes` guarda cada lote **antes** de
+publicarlo (`loteId`, primer y último evento, cantidad, raíz de Merkle y fecha) y
+`anclajes` guarda su recibo. Un evento está anclado si cae dentro del rango de algún
+anclaje registrado. Antes se marcaba con un `UPDATE` sobre la tabla de eventos
+(`mark_batch_anchored`), que se eliminó.
 
-- **Lotes contiguos con `loteId` determinista.** Cada lote empieza justo después del
-  último evento anclado, tiene hasta 500 eventos (configurable) y se llama
-  `seq-<primero>-<último>`. Mientras su recibo no se registre, el mismo rango vuelve a
-  salir con el mismo `loteId`.
-- **Recibo idempotente.** Registrar dos veces el mismo recibo no cambia nada. Un recibo
-  distinto para un lote ya registrado, o uno que no empieza en el primer evento sin
-  anclar o no cuadra con la cantidad de eventos, se rechaza.
+- **`loteId` determinista, con la instalación.** Se forma como
+  `<verifier_id>:seq-<primero>-<último>`, por ejemplo `ccav-portal-1:seq-000101-000600`,
+  para que dos instalaciones cuyas bitácoras empiezan en 1 no choquen en la misma red.
+  `verifier_id` es el de `SQRID_VERIFIER_ID` (texto imprimible de hasta 128 caracteres).
+- **Lote fijado.** Cada lote empieza justo después del último evento anclado y tiene
+  hasta 500 eventos (configurable). `export-batch` lo fija en `lotes` antes de escribir
+  el archivo. Mientras ese lote no tenga recibo, cada corrida vuelve a exportar
+  **exactamente ese rango**, aunque hayan llegado eventos nuevos: así un reintento
+  siempre produce el mismo `loteId` y, si la raíz ya había entrado a Fabric, recibe
+  «ya registrado» en vez de anclar un rango solapado. Un lote fijado conserva su
+  `loteId` aunque cambien `--verifier-id` o `--max-events` antes de que llegue su recibo.
+- **La raíz se calcula aquí y en `anchor/` con el mismo algoritmo** (prefijos de dominio
+  RFC 6962, nodo impar promovido). Las pruebas comparan la versión de Python contra
+  vectores generados con `anchor/src/merkle.ts`; si uno de los dos cambia, rompen.
+- **Recibo comprobado contra el lote fijado.** Solo se acepta el recibo de un lote
+  fijado y pendiente, y su raíz, rango y cantidad deben coincidir con los guardados: una
+  raíz ajena con un rango válido se rechaza. Registrar dos veces el mismo recibo no
+  cambia nada; uno distinto para un lote ya registrado se rechaza como alerta.
 
 ### Comandos
 
 ```bash
-python -m secureqr_evidence_log export-batch   --db evidence.sqlite3 --output lote.json
+python -m secureqr_evidence_log export-batch   --db evidence.sqlite3 --verifier-id ccav-portal-1 --output lote.json
 python -m secureqr_evidence_log record-receipt --db evidence.sqlite3 --receipt recibo.json
 python -m secureqr_evidence_log status         --db evidence.sqlite3
-python -m secureqr_evidence_log cycle --db evidence.sqlite3 --workdir /var/lib/secureqr-id/anclaje \
+python -m secureqr_evidence_log cycle --db evidence.sqlite3 --verifier-id ccav-portal-1 \
+  --workdir /var/lib/secureqr-id/anclaje --status-file /var/lib/secureqr-id/anclaje/estado.json \
   --anchor-command "node /opt/secureqr-id/anchor/dist/cli.js anclar"
 ```
 
 (`secureqr-evidence-log` es el mismo comando instalado.)
 
-`cycle` es lo que corre la tarea programada cada 15 minutos: exporta el lote, ejecuta
+`cycle` es lo que corre la tarea programada cada 15 minutos: fija y exporta el lote, ejecuta
 `anchor/` como un proceso aparte con `--batch lote.json --receipt recibo.json` y
 registra el recibo. Códigos de salida:
 
@@ -81,19 +95,24 @@ evento pendiente más antiguo, último lote anclado y `stale`, que es `true` si 
 eventos sin anclar desde hace más de 2 horas (configurable con
 `--stale-after-seconds`).
 
+Con `--status-file`, `cycle` escribe ese mismo JSON (más `written_at`) al terminar cada
+corrida, también cuando falla, con reemplazo atómico. El servidor de `mi-app-qr` solo lo
+lee y alerta si `stale` es verdadero **o** si el archivo tiene más de 2 horas, lo que
+también detecta que la tarea programada dejó de correr.
+
 ### Formato de los archivos (contrato con `anchor/`)
 
 Lote que escribe `export-batch` (solo hashes y números de evento, nunca datos
 personales):
 
 ```json
-{"version": 1, "batch_id": "seq-000101-000600", "first_event": 101, "last_event": 600, "hashes": ["..."]}
+{"version": 1, "batch_id": "ccav-portal-1:seq-000101-000600", "first_event": 101, "last_event": 600, "hashes": ["..."]}
 ```
 
 Recibo que escribe `anchor/` y lee `record-receipt`:
 
 ```json
-{"version": 1, "batch_id": "seq-000101-000600", "merkle_root": "<64 hex>",
+{"version": 1, "batch_id": "ccav-portal-1:seq-000101-000600", "merkle_root": "<64 hex>",
  "first_event": 101, "last_event": 600, "event_count": 500,
  "transaction_id": "<id de transacción en Fabric>", "block_number": 1234,
  "anchored_at": 1800000000.0}
@@ -104,14 +123,14 @@ Recibo que escribe `anchor/` y lee `record-receipt`:
 Linux (`/etc/cron.d/secureqr-id`, cada 15 minutos; el sexto campo es la cuenta que lo ejecuta):
 
 ```cron
-*/15 * * * * secureqr python -m secureqr_evidence_log cycle --db /var/lib/secureqr-id/evidence.sqlite3 --workdir /var/lib/secureqr-id/anclaje --anchor-command "node /opt/secureqr-id/anchor/dist/cli.js anclar" >> /var/log/secureqr-id/anclaje.log 2>&1
+*/15 * * * * secureqr python -m secureqr_evidence_log cycle --db /var/lib/secureqr-id/evidence.sqlite3 --verifier-id ccav-portal-1 --workdir /var/lib/secureqr-id/anclaje --status-file /var/lib/secureqr-id/anclaje/estado.json --anchor-command "node /opt/secureqr-id/anchor/dist/cli.js anclar" >> /var/log/secureqr-id/anclaje.log 2>&1
 ```
 
 Windows (Programador de tareas):
 
 ```powershell
 schtasks /Create /SC MINUTE /MO 15 /TN "SecureQR-ID anclaje" /RU secureqr `
-  /TR "python -m secureqr_evidence_log cycle --db C:\secureqr-id\evidence.sqlite3 --workdir C:\secureqr-id\anclaje --anchor-command \"node C:\secureqr-id\anchor\dist\cli.js anclar\""
+  /TR "python -m secureqr_evidence_log cycle --db C:\secureqr-id\evidence.sqlite3 --verifier-id ccav-portal-1 --workdir C:\secureqr-id\anclaje --status-file C:\secureqr-id\anclaje\estado.json --anchor-command \"node C:\secureqr-id\anchor\dist\cli.js anclar\""
 ```
 
 Si una corrida se superpone con la anterior (Fabric lento), ambas exportan el mismo

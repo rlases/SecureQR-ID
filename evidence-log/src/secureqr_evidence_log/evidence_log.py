@@ -11,6 +11,7 @@ import sqlite3
 import struct
 import tempfile
 import threading
+import time
 from dataclasses import asdict, dataclass
 
 GENESIS_HASH = "0" * 64
@@ -28,9 +29,54 @@ class AnchorMismatchError(AnchoringError):
     """El lote ya tiene un anclaje registrado con datos distintos: hay que investigar."""
 
 
-def batch_id_for(first_event: int, last_event: int) -> str:
-    """`loteId` determinista (ADR-0017): el mismo rango siempre da el mismo id."""
-    return f"seq-{first_event:06d}-{last_event:06d}"
+_BATCH_ID = re.compile(r"^(?P<verifier>.+):seq-\d+-\d+$")
+MAX_VERIFIER_ID_LENGTH = 128
+
+
+def validate_verifier_id(verifier_id: object) -> str:
+    """Mismo criterio que `verifier-service/`: texto imprimible de hasta 128 caracteres,
+    sin espacios en los extremos."""
+    if (
+        not isinstance(verifier_id, str)
+        or not verifier_id
+        or len(verifier_id) > MAX_VERIFIER_ID_LENGTH
+        or not verifier_id.isprintable()
+        or verifier_id != verifier_id.strip()
+    ):
+        raise ValueError(
+            "verifier_id debe ser texto imprimible de hasta 128 caracteres, sin "
+            "espacios en los extremos."
+        )
+    return verifier_id
+
+
+def batch_id_for(verifier_id: str, first_event: int, last_event: int) -> str:
+    """`loteId` determinista (ADR-0017): `<verifier_id>:seq-<primero>-<último>`.
+
+    El prefijo evita que dos instalaciones, cuyas bitácoras empiezan cada una en 1,
+    choquen en la misma red de Fabric.
+    """
+    return f"{validate_verifier_id(verifier_id)}:seq-{first_event:06d}-{last_event:06d}"
+
+
+def _sha256_hex(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def merkle_root(leaf_hashes: list[str] | tuple[str, ...]) -> str:
+    """Raíz de Merkle del lote. Debe coincidir con `anchor/src/merkle.ts`: prefijos de
+    dominio RFC 6962 (`\\x00` hoja, `\\x01` nodo) y, con una capa impar, el último nodo
+    se promueve sin duplicarlo. Las pruebas comparan contra vectores generados con el
+    código de `anchor/`."""
+    if not leaf_hashes:
+        raise ValueError("No se puede calcular la raíz de un lote vacío.")
+    layer = [_sha256_hex("\x00" + leaf) for leaf in leaf_hashes]
+    while len(layer) > 1:
+        layer = [
+            _sha256_hex("\x01" + layer[i] + layer[i + 1]) if i + 1 < len(layer) else layer[i]
+            for i in range(0, len(layer), 2)
+        ]
+    return layer[0]
 
 
 @dataclass(frozen=True)
@@ -92,8 +138,19 @@ class AnchorReceipt:
     def validate(self) -> None:
         if self.first_event < 1 or self.last_event < self.first_event:
             raise AnchoringError("El rango de eventos del recibo no es válido.")
-        if self.batch_id != batch_id_for(self.first_event, self.last_event):
-            raise AnchoringError("El loteId no corresponde al rango de eventos.")
+        match = _BATCH_ID.match(self.batch_id)
+        try:
+            expected = (
+                batch_id_for(match["verifier"], self.first_event, self.last_event)
+                if match
+                else None
+            )
+        except ValueError:
+            expected = None
+        if self.batch_id != expected:
+            raise AnchoringError(
+                "El loteId no corresponde al rango de eventos y a la instalación."
+            )
         if not _HEX64.match(self.merkle_root):
             raise AnchoringError("La raíz de Merkle del recibo no es un hash válido.")
         if not self.transaction_id.strip() or self.block_number < 0:
@@ -196,6 +253,14 @@ class EvidenceLog:
                 anchored_at REAL,
                 merkle_root TEXT
             );
+            CREATE TABLE IF NOT EXISTS lotes (
+                batch_id TEXT PRIMARY KEY,
+                first_event INTEGER NOT NULL,
+                last_event INTEGER NOT NULL,
+                event_count INTEGER NOT NULL,
+                merkle_root TEXT NOT NULL,
+                fixed_at REAL NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS anclajes (
                 batch_id TEXT PRIMARY KEY,
                 first_event INTEGER NOT NULL,
@@ -211,6 +276,10 @@ class EvidenceLog:
             BEGIN SELECT RAISE(ABORT, 'La bitácora es de solo agregar'); END;
             CREATE TRIGGER IF NOT EXISTS events_no_delete BEFORE DELETE ON events
             BEGIN SELECT RAISE(ABORT, 'La bitácora es de solo agregar'); END;
+            CREATE TRIGGER IF NOT EXISTS lotes_no_update BEFORE UPDATE ON lotes
+            BEGIN SELECT RAISE(ABORT, 'Los lotes son de solo agregar'); END;
+            CREATE TRIGGER IF NOT EXISTS lotes_no_delete BEFORE DELETE ON lotes
+            BEGIN SELECT RAISE(ABORT, 'Los lotes son de solo agregar'); END;
             CREATE TRIGGER IF NOT EXISTS anclajes_no_update BEFORE UPDATE ON anclajes
             BEGIN SELECT RAISE(ABORT, 'Los anclajes son de solo agregar'); END;
             CREATE TRIGGER IF NOT EXISTS anclajes_no_delete BEFORE DELETE ON anclajes
@@ -298,35 +367,114 @@ class EvidenceLog:
         row = self._conn.execute("SELECT MAX(last_event) FROM anclajes").fetchone()
         return row[0] or 0
 
-    def pending_batch(self, max_events: int = DEFAULT_MAX_BATCH_EVENTS) -> Batch | None:
-        """Siguiente lote contiguo sin anclar, de hasta `max_events` eventos.
+    def _pinned_batch(self) -> sqlite3.Row | tuple | None:
+        """Lote fijado que todavía no tiene recibo; nunca puede haber más de uno."""
+        rows = self._conn.execute(
+            "SELECT batch_id, first_event, last_event, event_count, merkle_root "
+            "FROM lotes WHERE batch_id NOT IN (SELECT batch_id FROM anclajes) "
+            "ORDER BY first_event"
+        ).fetchall()
+        if len(rows) > 1:
+            raise AnchoringError("Hay más de un lote fijado sin anclar: hay que investigar.")
+        return rows[0] if rows else None
 
-        Los lotes nunca se solapan ni dejan huecos: empiezan justo después del último
-        evento anclado. Mientras su recibo no se registre, el mismo rango vuelve a salir
-        con el mismo `batch_id`, así un reintento nunca crea un lote distinto.
+    def _batch_events(self, first: int, last: int) -> list[tuple[int, str]]:
+        return self._conn.execute(
+            "SELECT seq, hash FROM events WHERE seq BETWEEN ? AND ? ORDER BY seq",
+            (first, last),
+        ).fetchall()
+
+    def _current_batch(
+        self, verifier_id: str, max_events: int
+    ) -> tuple[Batch, str, bool] | None:
+        """Lote a publicar y su raíz; el tercer valor indica que ya estaba fijado.
+
+        Si hay un lote fijado sin recibo, ese es el lote: mismo rango y mismo `loteId`
+        aunque hayan llegado eventos nuevos. Si no, se arma el siguiente candidato.
         """
-        if isinstance(max_events, bool) or not isinstance(max_events, int) or max_events < 1:
-            raise ValueError("max_events debe ser un entero positivo.")
-        with self._lock:
-            rows = self._conn.execute(
-                "SELECT seq, hash FROM events WHERE seq > ? ORDER BY seq LIMIT ?",
-                (self._anchored_until(), max_events),
-            ).fetchall()
+        pinned = self._pinned_batch()
+        if pinned is not None:
+            batch_id, first, last, count, root = pinned
+            rows = self._batch_events(first, last)
+            hashes = tuple(h for _, h in rows)
+            if len(rows) != count or merkle_root(hashes) != root:
+                raise AnchoringError(
+                    f"El lote fijado {batch_id} no coincide con la bitácora."
+                )
+            return Batch(batch_id, first, last, hashes), root, True
+        rows = self._conn.execute(
+            "SELECT seq, hash FROM events WHERE seq > ? ORDER BY seq LIMIT ?",
+            (self._anchored_until(), max_events),
+        ).fetchall()
         if not rows:
             return None
         first, last = rows[0][0], rows[-1][0]
-        return Batch(batch_id_for(first, last), first, last, tuple(h for _, h in rows))
+        hashes = tuple(h for _, h in rows)
+        batch = Batch(batch_id_for(verifier_id, first, last), first, last, hashes)
+        return batch, merkle_root(hashes), False
+
+    def pending_batch(
+        self, verifier_id: str, max_events: int = DEFAULT_MAX_BATCH_EVENTS
+    ) -> Batch | None:
+        """Lote que toca publicar ahora, sin modificar nada.
+
+        Mientras el lote fijado no tenga recibo, es siempre el mismo rango (y por tanto
+        el mismo `loteId`), aunque lleguen eventos nuevos: así un reintento nunca crea
+        un lote distinto ni deja una raíz huérfana en Fabric. Un lote ya fijado
+        conserva su `loteId` y su rango aunque cambien `verifier_id` o `max_events`.
+        """
+        validate_verifier_id(verifier_id)
+        if isinstance(max_events, bool) or not isinstance(max_events, int) or max_events < 1:
+            raise ValueError("max_events debe ser un entero positivo.")
+        with self._lock:
+            current = self._current_batch(verifier_id, max_events)
+        return None if current is None else current[0]
 
     def export_pending_batch(
-        self, path: str, max_events: int = DEFAULT_MAX_BATCH_EVENTS
+        self,
+        path: str,
+        verifier_id: str,
+        max_events: int = DEFAULT_MAX_BATCH_EVENTS,
+        *,
+        fixed_at: float | None = None,
     ) -> Batch | None:
-        """Escribe en `path` el siguiente lote (solo hashes y números de evento, nunca
-        datos personales). Si no hay eventos pendientes, no escribe nada."""
-        batch = self.pending_batch(max_events)
-        if batch is None:
+        """Fija el lote (si aún no estaba fijado) y lo escribe en `path`.
+
+        Solo hashes y números de evento, nunca datos personales. Fijar es insertar una
+        fila en `lotes` (solo agregar) antes de escribir el archivo: si el proceso muere
+        después, la siguiente corrida reexporta exactamente el mismo rango. Si no hay
+        eventos pendientes, no escribe nada.
+        """
+        validate_verifier_id(verifier_id)
+        if isinstance(max_events, bool) or not isinstance(max_events, int) or max_events < 1:
+            raise ValueError("max_events debe ser un entero positivo.")
+        with self._lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                current = self._current_batch(verifier_id, max_events)
+                if current is not None and not current[2]:
+                    batch, root, _ = current
+                    self._conn.execute(
+                        "INSERT INTO lotes (batch_id, first_event, last_event, "
+                        "event_count, merkle_root, fixed_at) VALUES (?, ?, ?, ?, ?, ?)",
+                        (
+                            batch.batch_id,
+                            batch.first_event,
+                            batch.last_event,
+                            len(batch.hashes),
+                            root,
+                            float(time.time() if fixed_at is None else fixed_at),
+                        ),
+                    )
+                self._conn.execute("COMMIT")
+            except BaseException:
+                if self._conn.in_transaction:
+                    self._conn.execute("ROLLBACK")
+                raise
+        if current is None:
             return None
-        _write_json_atomically(path, batch.to_json())
-        return batch
+        _write_json_atomically(path, current[0].to_json())
+        return current[0]
 
     def record_anchor(self, receipt: AnchorReceipt, recorded_at: float) -> bool:
         """Registra el recibo de un lote anclado. Devuelve False si ya estaba.
@@ -352,6 +500,22 @@ class EvidenceLog:
                         )
                     return False
 
+                pinned = self._conn.execute(
+                    "SELECT first_event, last_event, event_count, merkle_root "
+                    "FROM lotes WHERE batch_id = ?",
+                    (receipt.batch_id,),
+                ).fetchone()
+                if pinned is None:
+                    raise AnchoringError("El recibo no corresponde a un lote fijado.")
+                if pinned != (
+                    receipt.first_event,
+                    receipt.last_event,
+                    receipt.event_count,
+                    receipt.merkle_root,
+                ):
+                    raise AnchoringError(
+                        "La raíz o el rango del recibo no coinciden con el lote fijado."
+                    )
                 expected_first = self._conn.execute(
                     "SELECT MIN(seq) FROM events WHERE seq > ?", (self._anchored_until(),)
                 ).fetchone()[0]

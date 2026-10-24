@@ -1,13 +1,18 @@
 """Comandos de anclaje de la bitácora (issue #92, ADR-0017).
 
-    python -m secureqr_evidence_log export-batch   --db BITACORA --output lote.json
+    python -m secureqr_evidence_log export-batch   --db BITACORA --verifier-id ID --output lote.json
     python -m secureqr_evidence_log record-receipt --db BITACORA --receipt recibo.json
     python -m secureqr_evidence_log status         --db BITACORA
-    python -m secureqr_evidence_log cycle          --db BITACORA --workdir DIR --anchor-command "..."
+    python -m secureqr_evidence_log cycle          --db BITACORA --verifier-id ID --workdir DIR \\
+        --anchor-command "..." [--status-file estado.json]
 
-`cycle` es lo que ejecuta la tarea programada cada 15 minutos: exporta el lote, llama
-a `anchor/` como un proceso aparte (Python y Node no se importan, ADR-0005) y registra
-el recibo. Códigos de salida de `cycle`:
+`cycle` es lo que ejecuta la tarea programada cada 15 minutos: fija y exporta el lote,
+llama a `anchor/` como un proceso aparte (Python y Node no se importan, ADR-0005) y
+registra el recibo. `--verifier-id` es el de la instalación (`SQRID_VERIFIER_ID`) y forma
+parte del `loteId`. Con `--status-file`, `cycle` escribe al terminar, con reemplazo
+atómico, el estado del anclaje en JSON (más `written_at`); `mi-app-qr` solo lo lee y
+alerta si `stale` es verdadero o si el archivo tiene más de 2 horas, lo que también
+detecta que la tarea programada dejó de correr. Códigos de salida de `cycle`:
 
     0  lote anclado y registrado, o nada pendiente
     1  el anclaje falló (Fabric caído, red, etc.): no se registró nada; se reintenta
@@ -36,6 +41,8 @@ from .evidence_log import (
     AnchorMismatchError,
     AnchorReceipt,
     EvidenceLog,
+    _write_json_atomically,
+    validate_verifier_id,
 )
 
 EXIT_OK = 0
@@ -61,6 +68,18 @@ def _positive_int(value: str) -> int:
     return number
 
 
+def _verifier_id(value: str) -> str:
+    try:
+        return validate_verifier_id(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from None
+
+
+def _write_status_file(log: EvidenceLog, path: Path, now: float) -> None:
+    status = log.anchoring_status(now).to_json()
+    _write_json_atomically(str(path), {**status, "written_at": now})
+
+
 def _load_receipt(path: Path) -> AnchorReceipt:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -82,6 +101,7 @@ def run_cycle(
     log: EvidenceLog,
     workdir: Path,
     anchor_command: Sequence[str],
+    verifier_id: str,
     *,
     max_events: int = DEFAULT_MAX_BATCH_EVENTS,
     timeout_seconds: float = 300,
@@ -98,7 +118,11 @@ def run_cycle(
     _remove(batch_path)
     _remove(receipt_path)
 
-    batch = log.export_pending_batch(str(batch_path), max_events)
+    try:
+        batch = log.export_pending_batch(str(batch_path), verifier_id, max_events)
+    except AnchoringError as exc:
+        print(f"ALERTA al fijar el lote: {exc}", file=err)
+        return EXIT_ALERT
     if batch is None:
         print("sin eventos pendientes de anclar", file=out)
         return EXIT_OK
@@ -145,6 +169,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     export = commands.add_parser("export-batch", help="exporta el siguiente lote sin anclar")
     export.add_argument("--db", required=True)
+    export.add_argument("--verifier-id", required=True, type=_verifier_id)
     export.add_argument("--output", required=True)
     export.add_argument("--max-events", type=_positive_int, default=DEFAULT_MAX_BATCH_EVENTS)
 
@@ -160,7 +185,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     cycle = commands.add_parser("cycle", help="exportar, anclar y registrar (tarea programada)")
     cycle.add_argument("--db", required=True)
+    cycle.add_argument("--verifier-id", required=True, type=_verifier_id)
     cycle.add_argument("--workdir", required=True)
+    cycle.add_argument(
+        "--status-file",
+        help="archivo JSON donde `cycle` deja el estado del anclaje para el panel",
+    )
     cycle.add_argument(
         "--anchor-command",
         required=True,
@@ -180,7 +210,7 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
         return EXIT_USAGE
     try:
         if args.command == "export-batch":
-            batch = log.export_pending_batch(args.output, args.max_events)
+            batch = log.export_pending_batch(args.output, args.verifier_id, args.max_events)
             print("pendientes=0" if batch is None else f"lote={batch.batch_id} eventos={len(batch.hashes)}")
             return EXIT_OK
         if args.command == "record-receipt":
@@ -205,14 +235,19 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
         if not anchor_command:
             print("Error: --anchor-command está vacío o mal formado.", file=sys.stderr)
             return EXIT_USAGE
-        return run_cycle(
-            log,
-            Path(args.workdir),
-            anchor_command,
-            max_events=args.max_events,
-            timeout_seconds=args.timeout_seconds,
-            clock=clock,
-        )
+        try:
+            return run_cycle(
+                log,
+                Path(args.workdir),
+                anchor_command,
+                args.verifier_id,
+                max_events=args.max_events,
+                timeout_seconds=args.timeout_seconds,
+                clock=clock,
+            )
+        finally:
+            if args.status_file:
+                _write_status_file(log, Path(args.status_file), clock())
     finally:
         log.close()
 
