@@ -38,11 +38,26 @@ export function registrarIntento(
   ip: string,
   exito: boolean,
   ahora: Date
-): void {
-  db.prepare('INSERT INTO intentos_recuperacion (documento, ip, exito, en) VALUES (?, ?, ?, ?)').run(
+): number {
+  const resultado = db.prepare('INSERT INTO intentos_recuperacion (documento, ip, exito, en) VALUES (?, ?, ?, ?)').run(
     documento,
     ip,
     exito ? 1 : 0,
     ahora.toISOString()
   );
+  return Number(resultado.lastInsertRowid);
+}
+
+/** Reserva un intento antes de bcrypt; los pendientes cuentan como fallidos hasta
+ * confirmar el éxito. IMMEDIATE serializa también reservas de otros procesos. */
+export function reservarIntento(
+  db: Database.Database,
+  documento: string,
+  ip: string,
+  ahora: Date
+): number | null {
+  return db.transaction(() => {
+    if (recuperacionBloqueada(db, documento, ip, ahora)) return null;
+    return registrarIntento(db, documento, ip, false, ahora);
+  }).immediate();
 }
