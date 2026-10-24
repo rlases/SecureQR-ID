@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { requireAdmin } from '../auth/requireAdmin.js';
-import { ConsultaError, MAX_CIDS_POR_CONSULTA, consultarCids, listConsultas } from './consultas.js';
+import { ConsultaError, IntegridadConsultaError, MAX_CIDS_POR_CONSULTA, consultarCids, listConsultas } from './consultas.js';
 import {
   GestionError,
   archivoRevocados,
@@ -102,6 +102,10 @@ export function createTitularesRouter(opciones: { revocadosPath?: string } = {})
       res.set('Cache-Control', 'no-store');
       return res.json({ resultados });
     } catch (error) {
+      if (error instanceof IntegridadConsultaError) {
+        res.set('Cache-Control', 'no-store');
+        return res.status(503).json({ error: error.message });
+      }
       if (error instanceof ConsultaError) return res.status(400).json({ error: error.message });
       throw error;
     }

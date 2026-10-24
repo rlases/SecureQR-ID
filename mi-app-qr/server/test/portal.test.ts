@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import request from 'supertest';
 import selfsigned from 'selfsigned';
 import type Database from 'better-sqlite3';
@@ -16,7 +18,7 @@ import {
 import { MAX_FALLOS_POR_DOCUMENTO, MAX_FALLOS_POR_IP } from '../src/portal/limiteIntentos.js';
 
 // Datos sintéticos (SECURITY.md).
-const TEST_DB_PATH = './data/test-portal.sqlite';
+let testDirectory: string;
 let db: Database.Database;
 let app: ReturnType<typeof createApp>;
 let estudiante: number;
@@ -44,7 +46,8 @@ function prepararEstamentos(conBase = true) {
 }
 
 beforeEach(async () => {
-  db = openDatabase(TEST_DB_PATH);
+  testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'secureqr-portal-'));
+  db = openDatabase(path.join(testDirectory, 'test.sqlite'));
   runMigrations(db);
   await seedAdminUser(db, { username: 'admin', password: 'clave-correcta-123' });
   app = createApp({ db, sessionSecret: 'test-secret' });
@@ -52,9 +55,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   db.close();
-  for (const sufijo of ['', '-wal', '-shm']) {
-    if (fs.existsSync(TEST_DB_PATH + sufijo)) fs.unlinkSync(TEST_DB_PATH + sufijo);
-  }
+  fs.rmSync(testDirectory, { recursive: true, force: true });
 });
 
 describe('código de recuperación', () => {
@@ -301,4 +302,38 @@ describe('recuperación con código', () => {
       .send({ documento: '4000000034', codigo });
     expect(res.status).toBe(200);
   });
+
+  it('consume el mismo código una sola vez ante dos recuperaciones simultáneas', async () => {
+    const { codigo } = await altaConTelefono('4000000040');
+    const respuestas = await Promise.all(Array.from({ length: 2 }, () =>
+      request(app).post('/api/portal/recuperar').send({ documento: '4000000040', codigo })
+    ));
+    expect(respuestas.map((r) => r.status).sort()).toEqual([200, 401]);
+    const ganador = respuestas.find((r) => r.status === 200)!;
+    expect((await request(app).get('/api/portal/yo').set('Cookie', cookieDe(ganador)!.split(';')[0])).status).toBe(200);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM dispositivos WHERE estado = 'activo'").get()).toEqual({ n: 1 });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM intentos_recuperacion WHERE exito = 1').get()).toEqual({ n: 1 });
+  }, 30_000);
+
+  it('reserva la cuota por documento antes de verificar códigos simultáneos', async () => {
+    await altaConTelefono('4000000041');
+    const respuestas = await Promise.all(Array.from({ length: 8 }, () =>
+      request(app).post('/api/portal/recuperar').send({ documento: '4000000041', codigo: generateRecoveryCode() })
+    ));
+    expect(respuestas.filter((r) => r.status === 401)).toHaveLength(MAX_FALLOS_POR_DOCUMENTO);
+    expect(respuestas.filter((r) => r.status === 429)).toHaveLength(8 - MAX_FALLOS_POR_DOCUMENTO);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM intentos_recuperacion WHERE exito = 0').get()).toEqual({ n: MAX_FALLOS_POR_DOCUMENTO });
+  }, 30_000);
+
+  it('reserva también la última plaza por IP entre documentos distintos', async () => {
+    await request(app).post('/api/portal/recuperar').send({ documento: '4900000010', codigo: 'incorrecto' });
+    const { ip } = db.prepare('SELECT ip FROM intentos_recuperacion').get() as { ip: string };
+    const insertar = db.prepare('INSERT INTO intentos_recuperacion (documento, ip, exito, en) VALUES (?, ?, 0, ?)');
+    for (let i = 1; i < MAX_FALLOS_POR_IP - 1; i++) insertar.run(`49000001${i}`, ip, new Date().toISOString());
+    const respuestas = await Promise.all(['4900000041', '4900000042'].map((documento) =>
+      request(app).post('/api/portal/recuperar').send({ documento, codigo: generateRecoveryCode() })
+    ));
+    expect(respuestas.map((r) => r.status).sort()).toEqual([401, 429]);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM intentos_recuperacion WHERE ip = ? AND exito = 0').get(ip)).toEqual({ n: MAX_FALLOS_POR_IP });
+  }, 30_000);
 });
