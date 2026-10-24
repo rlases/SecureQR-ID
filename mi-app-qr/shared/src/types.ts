@@ -190,3 +190,30 @@ export interface EstadoPortal {
   estamento: string;
   estamentoPendiente: boolean;
 }
+
+// --- Consulta auditada cid → persona (ADR-0016, punto 7; solo admin) --------------------
+
+export type ResultadoConsultaCid =
+  | { cid: string; encontrado: false }
+  | { cid: string; encontrado: true; anonimizado: true; estadoCredencial: EstadoCredencial }
+  | {
+      cid: string;
+      encontrado: true;
+      anonimizado: false;
+      titularId: number;
+      nombre: string;
+      documento: string;
+      estamento: string;
+      estadoCredencial: EstadoCredencial;
+      vigenteDesde: string;
+      vigenteHasta: string | null;
+    };
+
+export interface ConsultaRegistrada {
+  id: number;
+  usuario: string;
+  cid: string;
+  encontrado: boolean;
+  motivo: string | null;
+  en: string;
+}

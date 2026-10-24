@@ -581,7 +581,7 @@ function SeccionCambios() {
         <p className="text-sm text-muted-foreground">Todavía no hay cambios registrados.</p>
       )}
       {data && data.cambios.length > 0 && (
-        <div role="region" aria-labelledby="cambios-title" tabIndex={0} className="overflow-x-auto">
+        <div role="region" aria-label="Tabla del registro de cambios" tabIndex={0} className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-border text-muted-foreground">

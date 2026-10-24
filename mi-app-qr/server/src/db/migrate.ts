@@ -231,4 +231,25 @@ function runPortalMigrations(db: Database.Database): void {
       ON intentos_recuperacion (documento, en);
     CREATE INDEX IF NOT EXISTS intentos_recuperacion_ip ON intentos_recuperacion (ip, en);
   `);
+  runConsultasMigrations(db);
+}
+
+// Consulta auditada cid → persona (ADR-0016, punto 7; issue #86). Cada consulta de un
+// admin queda registrada: quién, cuándo y qué cid, aunque el cid no exista.
+function runConsultasMigrations(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS consultas_cid (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL REFERENCES users(id),
+      cid TEXT NOT NULL,
+      -- NULL si el cid no corresponde a ninguna credencial.
+      titular_id INTEGER REFERENCES titulares(id),
+      motivo TEXT,
+      en TEXT NOT NULL
+    );
+    CREATE TRIGGER IF NOT EXISTS consultas_cid_no_update BEFORE UPDATE ON consultas_cid
+    BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
+    CREATE TRIGGER IF NOT EXISTS consultas_cid_no_delete BEFORE DELETE ON consultas_cid
+    BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
+  `);
 }

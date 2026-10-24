@@ -1,5 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { CalendarClock, ClipboardList, FileText, LayoutDashboard, LogOut, ShieldCheck, Users } from 'lucide-react';
+import {
+  CalendarClock,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  ScanSearch,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from './ui/button';
 
@@ -13,6 +22,7 @@ const primaryItems = [
 const adminItems = [
   { to: '/usuarios', label: 'Usuarios', icon: Users },
   { to: '/estamentos', label: 'Estamentos', icon: CalendarClock },
+  { to: '/consultas', label: 'Consulta de cid', icon: ScanSearch },
 ];
 
 export function Sidebar() {
