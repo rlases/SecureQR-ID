@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from .issuer import (
     ConfigurationError,
@@ -12,6 +13,7 @@ from .issuer import (
     create_credential_id,
     create_key_pair,
 )
+from .service import SharedSecret, generate_secret_file, require_loopback, serve
 
 
 def _required_environment(name: str) -> str:
@@ -53,14 +55,74 @@ def _build_parser() -> argparse.ArgumentParser:
             "para que no se confunda con una opcion"
         ),
     )
+
+    secret_parser = subparsers.add_parser(
+        "generate-secret",
+        help="crea el secreto compartido entre mi-app-qr y el servicio (sin sobrescribir)",
+    )
+    secret_parser.add_argument("--output", required=True, help="archivo del secreto")
+
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="servicio local de emisión: pide la contraseña una vez y escucha en 127.0.0.1",
+    )
+    serve_parser.add_argument(
+        "--host", default="127.0.0.1", help="127.0.0.1 o ::1; nunca otra interfaz"
+    )
+    serve_parser.add_argument("--port", required=True, type=int)
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def _service_password(
+    prompt: Callable[[str], str], interactive: bool | None
+) -> str:
+    """La contraseña la escribe el custodio en la terminal al arrancar el servicio.
+
+    Si no hay terminal se acepta `SQRID_PRIVATE_KEY_PASSWORD`, que se retira del
+    entorno del proceso apenas se lee.
+    """
+    if interactive is None:
+        interactive = sys.stdin.isatty()
+    if interactive:
+        return prompt("Contrasena de la clave de emision: ")
+    value = os.environ.pop("SQRID_PRIVATE_KEY_PASSWORD", None)
+    if not value:
+        raise ConfigurationError(
+            "Arranca el servicio en una terminal o define SQRID_PRIVATE_KEY_PASSWORD."
+        )
+    return value
+
+
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    prompt: Callable[[str], str] = getpass.getpass,
+    interactive: bool | None = None,
+) -> int:
     args = _build_parser().parse_args(argv)
     try:
         if args.command == "generate-cid":
             print(create_credential_id())
+            return 0
+
+        if args.command == "generate-secret":
+            generate_secret_file(args.output)
+            print(f"Secreto creado en {args.output}")
+            return 0
+
+        if args.command == "serve":
+            host = require_loopback(args.host)
+            secret = SharedSecret.from_file(
+                _required_environment("SQRID_ISSUER_SECRET_FILE")
+            )
+            private_key_path = _required_environment("SQRID_PRIVATE_KEY_PATH")
+            ttl = _token_ttl()
+            issuer = Issuer(
+                private_key_path=private_key_path,
+                password=_service_password(prompt, interactive),
+                token_ttl_seconds=ttl,
+            )
+            serve(issuer, secret, host, args.port)
             return 0
 
         password = _required_environment("SQRID_PRIVATE_KEY_PASSWORD")
