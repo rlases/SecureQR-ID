@@ -39,8 +39,8 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
   - los P2 de Codex sobre la caché entre sesiones (#103 y #105);
   - el `cid` en `cambios_configuracion` (#106);
   - el NUL en el chequeo SQL del `cid` (#108);
-  - **el P1 de #102.** La cadena `asignaciones_cid` pasa a HMAC-SHA256 con `ASIGNACIONES_KEY` fuera de la base. Queda registrado como enmienda de 2026-10-25 a ADR-0016, propuesta hasta que Duverney apruebe #115, y en `THREAT-MODEL.md` con su riesgo residual.
-- **Clave nueva:**
+  - **el P1 de #102.** La cadena `asignaciones_cid` pasa a HMAC-SHA256 con `ASIGNACIONES_KEY` fuera de la base. Queda registrado como enmienda de 2026-10-25 a ADR-0016, **aceptada** con la aprobación de Duverney sobre #115 (ba11759), y en `THREAT-MODEL.md` con su riesgo residual.
+- **Clave nueva.** Su respaldo entra en el procedimiento de custodia del piloto, junto a las demás claves: si se pierde, toda consulta cid → persona responde 503 por integridad.
   - Electron la genera en `server-secrets.json`;
   - fuera de Electron va en `.env`;
   - el servidor no arranca sin ella.
@@ -72,7 +72,7 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 
 **Le toca a Duverney:**
 
-1. **Fusionar la pila en orden:** #102 → #103 → … → #108 → #115. Al fusionar cada PR, reorientar el siguiente a `main`. A #115 aún le falta su revisión: atención especial a la enmienda HMAC del ADR-0016.
+1. **Fusionar la pila en orden:** #102 → #103 → … → #108 → #115. #102 ya está fusionado y #115 aprobado. Tras cada squash, la rama siguiente necesita una fusión de `main`. Al fusionar cada PR, reorientar el siguiente a `main`. A #115 aún le falta su revisión: atención especial a la enmienda HMAC del ADR-0016.
 2. **Volver a aprobar y fusionar #114.** El push que registró el acuerdo descartó su aprobación.
 3. #120 y los pendientes propios de abajo: #82, #93, #94, y #85/#109 cuando entre la pila.
 
