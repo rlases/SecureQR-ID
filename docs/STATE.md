@@ -18,6 +18,61 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ## Estado vigente — 2026-10-24
 
+### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
+
+Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Integrado hoy en `main`:** #74 (ADR-0013 a 0015), #77 (ADR-0017, aceptada), #112
+(`baseline-o3` fijada) y #110 (este handoff), además de #113 (arreglo Unicode de
+`verifier_id` en `anchor/`). Todos con squash, CI verde y aprobación cruzada.
+
+**Abiertos y a quién le toca (revisión cruzada: Jhunier revisa los de Duverney):**
+
+| PR | Autor | Estado | Falta |
+|---|---|---|---|
+| #99 evidence-log: tabla `anclajes` y lotes | Duverney | Aprobado por Jhunier, rama al día | Que Jhunier lo fusione (si se descartó su aprobación por actualizar la rama, volver a aprobar) |
+| #98 CLAUDE.md, ARCHITECTURE.md, THREAT-MODEL.md tras ADR-0016/0017 | Duverney | Aprobado, fuera de borrador | Ídem |
+| #100 anchor: `FabricLedgerClient` | Duverney | 10/10 chequeos del CI | Que Jhunier levante su solicitud de cambios |
+| #111 enmienda de ADR-0016 (altas en revisión, #109) | Duverney | Fuera de borrador, base `main`, conflicto resuelto | Aprobación de Jhunier; con ella queda aceptado el código provisional de 72 h |
+| #116 sellado en OpenTimestamps (#94) | Duverney | Apilado sobre #99 (base `modulo/92-tabla-anclajes`) | Reorientar a `main` cuando se fusione #99; revisión de Jhunier |
+| #114 acuerdo de diseño (#55) | Jhunier | Revisión de Duverney publicada (COMMENT) con cinco propuestas y hallazgo de contraste | Que Jhunier confirme o discuta cada fila; #55 cierra cuando ambos las registren |
+| #115 correcciones sobre #108 (borrador) | Jhunier | Borrador | Distribuir a #103, #105, #106 y #108 (ver sección de cierre de Jhunier) |
+| #102–#108 mi-app-qr (ADR-0016) | Jhunier | Borradores o en corrección | Corregir #104, #105, #108; después revisión de Duverney |
+
+**Pendiente propio de Duverney:**
+- **#82 y #93 (red Fabric 2.5 en Docker, contrato en Go, CI de integración): hay que hacerlos
+  en la máquina de Duverney, con Docker y acceso a módulos de Go.** El entorno en la nube
+  donde se trabajó bloquea `proxy.golang.org`.
+- **#94:** la parte de Python está en #116. Falta el comando de `anchor/` que consulta
+  `GetChainInfo` de `qscc` (depende de #100), la verificación manual de un sello real con
+  un nodo de Bitcoin podado y comprobar desde el servidor del CCAV que los calendarios
+  públicos responden. #116 no debe cerrar #94 por sí solo.
+- **#85 y #109:** bloqueados hasta que se fusionen #79, #83 y #89 (pila de Jhunier) y
+  #111 sea aceptado. #109 se implementa conforme a la enmienda de ADR-0016 (rechazar =
+  anonimizar; reemplazar = titular `reemplazado`, credencial por motivo, dispositivo
+  `revocado`, titular nuevo con código provisional visible una vez, entrega presencial,
+  72 h regenerable; auditoría en `cambios_configuracion` con lista cerrada de motivos).
+- Revisión cruzada de #102–#108 cuando Jhunier distribuya #115.
+- Reparto de trabajo nuevo: partes iguales entre los dos (`CLAUDE.md`); el desbalance
+  acumulado solo desempata lo indivisible.
+
+**Para retomar desde Claude Code en la máquina local:**
+- Abrir el repositorio con `CLAUDE.md` y leer este archivo; no hace falta nada más.
+- `gh` local sí permite GraphQL; en la sesión en la nube estaba bloqueado y se usó REST
+  (`gh api repos/rlases/secureqr-id/...`).
+- Al actualizar la rama de un PR con `main` GitHub descarta las aprobaciones (regla de
+  rama): avisar al revisor antes de hacerlo, o reaprobar enseguida.
+- Los squash merges dejan conflictos en ramas apiladas (`DECISIONS.md`, `STATE.md`):
+  fusionar `main` en la rama apilada y conservar ambos lados; no se hace force-push.
+- Laboratorio local para probar el verificador completo (claves, lista de revocación,
+  emisión de QR, portal en :5174): `laboratorio.py` (`preparar`, `iniciar`, `emitir`,
+  `revocar`). Contiene claves privadas: **no va a Git**. Con TTL de 120 s el QR vence
+  pronto; subir `_TTL_SEGUNDOS` en `laboratorio/entorno.json` para pruebas manuales.
+  Conviene reemplazarlo por la CLI de #96 y #97 (revocación firmada y servicio local del
+  emisor), ya fusionadas, y documentarlo en `docs/DEPLOY.md` (issue por abrir).
+- Instalación: cada módulo Python tiene su propio entorno virtual (ver `CLAUDE.md`);
+  `verifier-service` compone los demás para el arranque real.
+
 ### Cierre solicitado por el usuario: pendientes para retomar
 
 **No integrar #102–#108 todavía:** las nuevas revisiones automáticas detectaron
