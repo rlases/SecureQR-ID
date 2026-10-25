@@ -36,6 +36,7 @@ eso, en el servidor del CCAV:
 | Arrancar la red existente | `arrancar-red.sh` |
 | Respaldar (con la red detenida) | `respaldar-red.sh <destino>` |
 | Comprobar que el ledger sobrevive a un reinicio | `probar-persistencia.sh` |
+| Integración real: anclar un lote y verificar la prueba de inclusión | `integracion.sh <carpeta>` |
 
 **Nunca** `network.sh down` ni `network.sh up` sobre la red del piloto.
 
@@ -65,3 +66,16 @@ imagen `fabric-ccenv:2.5.16`, que compila el contrato dentro del *peer*, trae Go
 ```bash
 cd anchor/chaincode && go test ./...
 ```
+
+## Integración con la red real (issue #93)
+
+`integracion.sh <carpeta>` crea una bitácora con eventos sintéticos, ejecuta el ciclo real
+`evidence-log cycle` → `anchor anclar` → Fabric → recibo, lee la raíz desde la red y
+verifica contra ella una prueba de inclusión (`anchor verificar`), y comprueba que
+reintentar el anclaje da el mismo recibo. En la carpeta quedan `lote.json`, `recibo.json`,
+`estado.json` y `verificacion.json` (transacción, bloque, raíz y prueba): la evidencia del
+anexo del documento de grado. Lo ejecuta el flujo
+[`fabric-integracion.yml`](../../.github/workflows/fabric-integracion.yml) a mano, cada
+noche y en los PR que tocan la red, el contrato, `anchor/` o `evidence-log/`, y guarda la
+carpeta como artefacto.
+

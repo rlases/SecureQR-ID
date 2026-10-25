@@ -1,0 +1,75 @@
+name: Integración con Fabric
+
+# Prueba de integración contra la red Fabric real (ADR-0017 punto 8, issue #93). Aparte
+# del CI de cada PR porque tarda varios minutos: se ejecuta a mano, cada noche y en los PR
+# que tocan la red, el contrato o anchor/. La evidencia (lote, recibo, estado y
+# verificación de la prueba de inclusión) queda como artefacto para el anexo del documento
+# de grado. La red y su material criptográfico son efímeros: se crean y se descartan con
+# el runner.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 7 * * *' # 02:17 en Colombia
+  pull_request:
+    paths:
+      - 'infra/fabric/**'
+      - 'anchor/**'
+      - 'evidence-log/**'
+      - '.github/workflows/fabric-integracion.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fabric-integracion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integracion:
+    name: Fabric 2.5 — anclar y verificar
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SQRID_FABRIC_HOME: ${{ runner.temp }}/fabric
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: anchor/chaincode/go.mod
+          cache-dependency-path: anchor/chaincode/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: anchor/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Instalar evidence-log y compilar anchor
+        run: |
+          python -m pip install -e evidence-log
+          cd anchor && npm ci && npm run build
+
+      - name: Crear la red y desplegar el contrato
+        run: infra/fabric/crear-red.sh
+
+      - name: El ledger sobrevive a un reinicio de la red
+        run: infra/fabric/probar-persistencia.sh
+
+      - name: Anclar un lote real y verificar la prueba de inclusión
+        env:
+          PYTHON: python
+        run: infra/fabric/integracion.sh "${{ runner.temp }}/evidencia"
+
+      - name: Guardar la evidencia
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-fabric-${{ github.run_id }}
+          path: ${{ runner.temp }}/evidencia
+          if-no-files-found: warn
+          retention-days: 90
