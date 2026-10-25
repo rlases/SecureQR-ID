@@ -50,7 +50,7 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 **#114 (acuerdo de diseño de #55):**
 
 - Jhunier confirmó por escrito las cinco propuestas de Duverney, incluido el criterio de contraste.
-- La tabla de `DESIGN-SYSTEM.md` quedó con los enlaces; `main` fue fusionado en la rama.
+- La tabla de `DESIGN-SYSTEM.md` quedó con los enlaces. #114 está fusionado en `main`, así que #55 queda acordado.
 - La adopción en cada app es trabajo nuevo, y se reparte en partes iguales: tokens `--success`/`--warning`, `.primary-button` sobre `--teal-700`, pesos tipográficos y retirar `darkMode`.
 
 **Observaciones de Duverney sobre #103**, corregidas en #115:
@@ -70,10 +70,9 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 
 **Le toca a Duverney:**
 
-1. **Volver a aprobar y fusionar #114.** El push que registró el acuerdo descartó su aprobación, y la rama necesita una fusión de `main`.
-2. #120.
-3. Los pendientes propios de abajo: #82, #93 y #94.
-4. **#85 y #109:** se desbloquean ahora que la pila está en `main`.
+1. #120.
+2. Los pendientes propios de abajo: #82, #93 y #94.
+3. **#85 y #109:** se desbloquean ahora que la pila está en `main`.
 
 **Le toca a Jhunier:**
 
