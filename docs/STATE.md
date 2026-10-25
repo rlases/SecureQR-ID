@@ -115,6 +115,13 @@ antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
   (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
   No declarar terminado #9 por tener pruebas con un cliente en memoria.
 
+### Cierre administrativo de la guía de contenido — 2026-10-24
+
+Se cerró #56 como completado tras verificar que el PR #63 está integrado y que
+la guía actual declara el acuerdo explícito de Duverney. Ya no es un pendiente de
+Jhunier. El inventario resultante es de **9 issues abiertos de rlases y 8 de
+Duverney24**; los recuentos de diez incluidos en la revisión inicial son históricos.
+
 ### Línea base fijada y CI de la cadena verificado — 2026-10-24
 
 **`baseline-o3` ya existe** y apunta exactamente a
@@ -200,7 +207,7 @@ motivos de `cambios_configuracion`, que siguen conservados y no deben incluir
 datos personales.
 
 **Lo siguiente para Jhunier:** obtener revisión cruzada de estos arreglos,
-completar la revisión documental de #78, acordar #55, cerrar administrativamente #56 y revalidar los
+completar la revisión documental de #78, acordar #55 y revalidar los
 arreglos de Duverney. La integración conserva sus dependencias (#77 y línea
 base); el CI de PR con base distinta de main quedó corregido y verificado más arriba.
 
