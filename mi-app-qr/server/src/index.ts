@@ -30,7 +30,12 @@ async function main(): Promise<void> {
   // sesión se marca `secure`. Sin esas variables (dev/pruebas sin Electron) se
   // sigue sirviendo por HTTP plano, sin romper `npm run dev`.
   const tls = loadTlsOptionsFromEnv();
-  const app = createApp({ db, sessionSecret, secureCookies: tls !== null });
+  const app = createApp({
+    db,
+    sessionSecret,
+    secureCookies: tls !== null,
+    certificate: tls?.cert,
+  });
 
   if (tls) {
     https.createServer(tls, app).listen(port, () => {
