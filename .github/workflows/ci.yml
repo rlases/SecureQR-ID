@@ -209,3 +209,23 @@ jobs:
       - run: npm install
       - run: npm run build
       - run: npm test
+
+  chaincode-test:
+    name: anchor/chaincode — go test
+    # Contrato en Go que corre en la red Fabric (ADR-0017, issue #82).
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: anchor/chaincode
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: anchor/chaincode/go.mod
+          cache-dependency-path: anchor/chaincode/go.sum
+
+      - run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - run: go test ./...
+
