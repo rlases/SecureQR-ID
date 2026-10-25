@@ -19,6 +19,8 @@ import type {
   InfoAltaPortal,
   RecuperarRequest,
   RecuperarResponse,
+  ConsultaRegistrada,
+  ResultadoConsultaCid,
 } from '@mi-app-qr/shared';
 
 export class ApiError extends Error {
@@ -221,4 +223,20 @@ export function recuperarTelefono(data: RecuperarRequest): Promise<RecuperarResp
 
 export function getEstadoPortal(): Promise<EstadoPortal> {
   return request<EstadoPortal>('/api/portal/yo');
+}
+
+// --- Consulta auditada cid → persona (solo admin; cada consulta queda registrada) -------
+
+export function consultarCids(
+  cids: string[],
+  motivo?: string
+): Promise<{ resultados: ResultadoConsultaCid[] }> {
+  return request<{ resultados: ResultadoConsultaCid[] }>('/api/titulares/consultas', {
+    method: 'POST',
+    body: JSON.stringify({ cids, motivo }),
+  });
+}
+
+export function listConsultasCid(): Promise<{ consultas: ConsultaRegistrada[] }> {
+  return request<{ consultas: ConsultaRegistrada[] }>('/api/titulares/consultas');
 }
