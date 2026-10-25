@@ -10,6 +10,7 @@ import { createUsersRouter } from './users/routes.js';
 import { createEstamentosRouter } from './estamentos/routes.js';
 import { createPortalRouter, huellaDeCertificado } from './portal/routes.js';
 import { createTitularesRouter } from './titulares/routes.js';
+import type { ClienteEmisor } from './emision/clienteEmisor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIST_PATH = path.resolve(__dirname, '../../client/dist');
@@ -23,6 +24,12 @@ export interface AppDependencies {
   certificate?: Buffer;
   // Archivo donde se exportan, sin firmar, los cid revocados (ADR-0016, punto 9).
   revocadosExportPath?: string;
+  // Cliente del servicio local de emisión de issuer/ (#85). Sin él, el portal no da QR.
+  emisor?: ClienteEmisor;
+  // Zona horaria de la sede (SITE_TIME_ZONE), la misma del reseteo trimestral.
+  timeZone?: string;
+  // Tokens por minuto que puede pedir un mismo teléfono.
+  maxTokensPorMinuto?: number;
 }
 
 declare module 'express-session' {
@@ -51,6 +58,9 @@ export function createApp(deps: AppDependencies): Express {
     createPortalRouter({
       secureCookies: deps.secureCookies ?? false,
       huella: huellaDeCertificado(deps.certificate),
+      emisor: deps.emisor,
+      timeZone: deps.timeZone,
+      maxTokensPorMinuto: deps.maxTokensPorMinuto,
     })
   );
 
