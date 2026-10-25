@@ -73,3 +73,15 @@ La sesión del titular es la cookie `sqrid_dispositivo` (llave de 256 bits, `Htt
 `SameSite=Strict`, `Secure` con HTTPS, solo para `/api/portal`). No usa la sesión del
 personal: ninguna ruta del personal la acepta y el portal no acepta la del personal. Del
 lado del servidor solo se guardan el SHA-256 de la llave y el bcrypt del código.
+
+## Revocación (ADR-0016, punto 9)
+
+- `POST /api/titulares/:id/revocar` (solo `admin`, con motivo): revoca la credencial
+  vigente y suspende al titular. Desde ese momento `puedeEmitir` no autoriza tokens.
+- `POST /api/titulares/:id/desvincular`: corta el vínculo del teléfono.
+- `POST /api/titulares/:id/reactivar`: credencial nueva para un titular suspendido.
+- `GET /api/titulares/revocados.txt`: los `cid` revocados, sin firmar, un `cid` por línea,
+  en el formato de `secureqr-revocation sign`.
+- Con `REVOCADOS_EXPORT_PATH`, el servidor escribe ese archivo al arrancar y cada 24
+  horas, con reemplazo atómico; `POST /api/titulares/revocados/exportar` lo escribe en el
+  momento («exportar ahora»).

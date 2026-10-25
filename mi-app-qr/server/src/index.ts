@@ -4,6 +4,9 @@ import { openDatabase } from './db/connection.js';
 import { runMigrations } from './db/migrate.js';
 import { seedAdminUser } from './db/seed.js';
 import { loadTlsOptionsFromEnv } from './tls.js';
+import { exportarRevocados } from './titulares/gestion.js';
+
+const UN_DIA_MS = 24 * 60 * 60 * 1000;
 
 async function main(): Promise<void> {
   const sessionSecret = process.env.SESSION_SECRET;
@@ -35,7 +38,25 @@ async function main(): Promise<void> {
     sessionSecret,
     secureCookies: tls !== null,
     certificate: tls?.cert,
+    revocadosExportPath: process.env.REVOCADOS_EXPORT_PATH,
   });
+
+  // Exportación diaria de cid revocados para el refirmado del custodio (ADR-0015 y
+  // ADR-0016, punto 9). Se exporta al arrancar y luego cada 24 horas; el panel tiene
+  // además «exportar ahora».
+  const revocadosPath = process.env.REVOCADOS_EXPORT_PATH;
+  if (revocadosPath) {
+    const exportar = () => {
+      try {
+        const cantidad = exportarRevocados(db, revocadosPath, new Date());
+        console.log(`Revocados exportados: ${cantidad}`);
+      } catch (error) {
+        console.error('No se pudo exportar la lista de revocados:', error);
+      }
+    };
+    exportar();
+    setInterval(exportar, UN_DIA_MS).unref();
+  }
 
   if (tls) {
     https.createServer(tls, app).listen(port, () => {

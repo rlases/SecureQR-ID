@@ -21,6 +21,8 @@ import type {
   RecuperarResponse,
   ConsultaRegistrada,
   ResultadoConsultaCid,
+  EstadoTitular,
+  TitularAdmin,
 } from '@mi-app-qr/shared';
 
 export class ApiError extends Error {
@@ -240,3 +242,41 @@ export function consultarCids(
 export function listConsultasCid(): Promise<{ consultas: ConsultaRegistrada[] }> {
   return request<{ consultas: ConsultaRegistrada[] }>('/api/titulares/consultas');
 }
+
+// --- Gestión de titulares (solo admin; ADR-0016, punto 9) -------------------------------
+
+export type AccionTitular = 'revocar' | 'desvincular' | 'reactivar';
+
+export function listTitulares(estado?: EstadoTitular): Promise<{ titulares: TitularAdmin[] }> {
+  const query = estado ? `?estado=${encodeURIComponent(estado)}` : '';
+  return request<{ titulares: TitularAdmin[] }>(`/api/titulares${query}`);
+}
+
+export function accionTitular(
+  id: number,
+  accion: AccionTitular,
+  motivo: string
+): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/api/titulares/${id}/${accion}`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo }),
+  });
+}
+
+export function confirmarEstamentoTitular(
+  id: number,
+  estamentoId: number
+): Promise<{ estamentoId: number; estamentoConfirmado: boolean }> {
+  return request(`/api/estamentos/titulares/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ estamentoId }),
+  });
+}
+
+export function exportarRevocadosAhora(): Promise<{ cantidad: number; ruta: string }> {
+  return request<{ cantidad: number; ruta: string }>('/api/titulares/revocados/exportar', {
+    method: 'POST',
+  });
+}
+
+export const URL_REVOCADOS = '/api/titulares/revocados.txt';

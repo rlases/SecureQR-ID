@@ -10,6 +10,7 @@ import RegistrosPage from './pages/RegistrosPage';
 import UsuariosPage from './pages/UsuariosPage';
 import EstamentosPage from './pages/EstamentosPage';
 import ConsultaCidPage from './pages/ConsultaCidPage';
+import TitularesPage from './pages/TitularesPage';
 import PortalPage from './pages/portal/PortalPage';
 import AltaPage from './pages/portal/AltaPage';
 import RecuperarPage from './pages/portal/RecuperarPage';
@@ -93,6 +94,16 @@ function App() {
                 <RequireAuth>
                   <AppLayout>
                     <ConsultaCidPage />
+                  </AppLayout>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/titulares"
+              element={
+                <RequireAuth>
+                  <AppLayout>
+                    <TitularesPage />
                   </AppLayout>
                 </RequireAuth>
               }

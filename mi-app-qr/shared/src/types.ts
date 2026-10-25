@@ -217,3 +217,18 @@ export interface ConsultaRegistrada {
   motivo: string | null;
   en: string;
 }
+
+// --- Gestión de titulares por el admin (ADR-0016, punto 9) ------------------------------
+
+export interface TitularAdmin {
+  id: number;
+  nombre: string;
+  documento: string;
+  correo: string;
+  estado: EstadoTitular;
+  estamentoId: number;
+  estamento: string;
+  estamentoConfirmado: boolean;
+  dispositivoActivo: boolean;
+  creadoEn: string;
+}
