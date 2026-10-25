@@ -40,6 +40,26 @@ describe('lote exportado por evidence-log/', () => {
     );
   });
 
+  // Python len()/str.isprintable(): fixtures del contrato usado al exportar el lote.
+  it.each(['ccav pitalito', 'portería:sur', '😀'.repeat(65), '😀'.repeat(128)])(
+    'acepta el identificador imprimible de Python: %j',
+    (id) => {
+      const batchId = `${id}:seq-000101-000103`;
+      expect(batchIdFor(id, 101, 103)).toBe(batchId);
+      expect(parseBatch(valid({ batch_id: batchId })).batchId).toBe(batchId);
+    },
+  );
+
+  it.each(['😀'.repeat(129), 'ccav\u00a0sur', 'ccav\u2007sur', 'ccav\u3000sur', 'ccav\u0000sur'])(
+    'rechaza el identificador no permitido por Python: %j',
+    (id) => {
+      expect(() => batchIdFor(id, 101, 103)).toThrow(BatchFormatError);
+      expect(() => parseBatch(valid({ batch_id: `${id}:seq-000101-000103` }))).toThrow(
+        BatchFormatError,
+      );
+    },
+  );
+
   it.each(['', ' ccav', 'ccav ', 'ccav\nuno', 'x'.repeat(129)])(
     'rechaza un verifier_id inválido: %j',
     (id) => {

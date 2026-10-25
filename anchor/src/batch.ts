@@ -19,15 +19,15 @@ export class BatchFormatError extends Error {}
 const MAX_VERIFIER_ID_LENGTH = 128;
 // Texto imprimible sin espacios en los extremos, igual que `verifier-service/` y
 // `evidence-log/`. Sin \p{C} (control, formato, sin asignar) ni separadores, salvo el
-// espacio entre palabras.
-const NON_PRINTABLE = /[\p{C}\p{Zl}\p{Zp}]/u;
+// espacio ASCII entre palabras (la única excepción de str.isprintable() en Python).
+const NON_PRINTABLE = /(?!\u0020)[\p{C}\p{Z}]/u;
 const BATCH_ID = /^(.+):seq-\d+-\d+$/su;
 
 export function isValidVerifierId(value: unknown): value is string {
   return (
     typeof value === 'string' &&
     value.length > 0 &&
-    value.length <= MAX_VERIFIER_ID_LENGTH &&
+    Array.from(value).length <= MAX_VERIFIER_ID_LENGTH &&
     value === value.trim() &&
     !NON_PRINTABLE.test(value)
   );
