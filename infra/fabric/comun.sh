@@ -63,3 +63,22 @@ esperar_peer() {
   done
   falla "el peer no respondió a tiempo"
 }
+
+# Tras arrancar, el Gateway endosa con el descubrimiento de servicios, que solo ve a los
+# peers de otras organizaciones cuando el gossip converge. Hasta entonces responde «no
+# peer combination can satisfy the endorsement policy»: se espera a que vea los dos.
+esperar_descubrimiento() {
+  local org="$RED_DIR/organizations/peerOrganizations/org1.example.com"
+  local msp="$org/users/User1@org1.example.com/msp"
+  for _ in $(seq 1 90); do
+    if discover --peerTLSCA "$org/peers/peer0.org1.example.com/tls/ca.crt" \
+        --userKey "$(ls "$msp"/keystore/* | head -1)" --userCert "$(ls "$msp"/signcerts/*.pem | head -1)" \
+        --MSP Org1MSP peers --channel "$CANAL" --server localhost:7051 2>/dev/null \
+      | grep -c "\"$CONTRATO\"" | grep -qx 2; then
+      return 0
+    fi
+    sleep 2
+  done
+  falla "el descubrimiento de servicios no ve los dos peers con el contrato"
+}
+
