@@ -7,6 +7,9 @@ import { createSessionMiddleware } from './auth/session.js';
 import { createAuthRouter } from './auth/routes.js';
 import { createRegistrosRouter } from './registros/routes.js';
 import { createUsersRouter } from './users/routes.js';
+import { createEstamentosRouter } from './estamentos/routes.js';
+import { createPortalRouter, huellaDeCertificado } from './portal/routes.js';
+import { createTitularesRouter } from './titulares/routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIST_PATH = path.resolve(__dirname, '../../client/dist');
@@ -15,6 +18,11 @@ export interface AppDependencies {
   db: Database.Database;
   sessionSecret: string;
   secureCookies?: boolean;
+  // Certificado TLS del servidor (ADR-0008): su huella se muestra en el portal del
+  // titular para que la compare con la que muestra el navegador (ADR-0016).
+  certificate?: Buffer;
+  // Archivo donde se exportan, sin firmar, los cid revocados (ADR-0016, punto 9).
+  revocadosExportPath?: string;
 }
 
 declare module 'express-session' {
@@ -36,6 +44,15 @@ export function createApp(deps: AppDependencies): Express {
   app.use('/api/auth', createAuthRouter());
   app.use('/api/registros', createRegistrosRouter());
   app.use('/api/users', createUsersRouter());
+  app.use('/api/estamentos', createEstamentosRouter());
+  app.use('/api/titulares', createTitularesRouter({ revocadosPath: deps.revocadosExportPath }));
+  app.use(
+    '/api/portal',
+    createPortalRouter({
+      secureCookies: deps.secureCookies ?? false,
+      huella: huellaDeCertificado(deps.certificate),
+    })
+  );
 
   // 404 explícito para cualquier ruta de /api que no exista — debe ir ANTES del
   // fallback estático, o el fallback SPA le devolvería HTML a una API rota.

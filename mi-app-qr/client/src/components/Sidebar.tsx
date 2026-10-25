@@ -1,5 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ClipboardList, FileText, LayoutDashboard, LogOut, ShieldCheck, Users } from 'lucide-react';
+import {
+  CalendarClock,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  ScanSearch,
+  ShieldCheck,
+  UserCheck,
+  Users,
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from './ui/button';
 
@@ -7,6 +17,14 @@ const primaryItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/registros', label: 'Registros', icon: ClipboardList },
   { to: '/informes', label: 'Informes', icon: FileText },
+];
+
+// Solo para el permiso admin (ADR-0009).
+const adminItems = [
+  { to: '/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/titulares', label: 'Titulares', icon: UserCheck },
+  { to: '/estamentos', label: 'Estamentos', icon: CalendarClock },
+  { to: '/consultas', label: 'Consulta de cid', icon: ScanSearch },
 ];
 
 export function Sidebar() {
@@ -41,20 +59,22 @@ export function Sidebar() {
               </Link>
             );
           })}
-          {user?.role === 'admin' && (
-            <Link
-              to="/usuarios"
-              aria-current={location.pathname === '/usuarios' ? 'page' : undefined}
-              className={`col-span-3 mt-1 flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:mt-0 lg:justify-start lg:gap-3 ${
-                location.pathname === '/usuarios'
-                  ? 'bg-secondary text-secondary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
-            >
-              <Users className="size-4" aria-hidden="true" />
-              Usuarios
-            </Link>
-          )}
+          {user?.role === 'admin' &&
+            adminItems.map(({ to, label, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                aria-current={location.pathname === to ? 'page' : undefined}
+                className={`col-span-3 mt-1 flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:mt-0 lg:justify-start lg:gap-3 ${
+                  location.pathname === to
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                }`}
+              >
+                <Icon className="size-4" aria-hidden="true" />
+                {label}
+              </Link>
+            ))}
         </nav>
       </div>
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4 lg:block lg:space-y-2">
