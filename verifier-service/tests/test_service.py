@@ -260,6 +260,9 @@ def test_evidence_log_must_be_its_own_file(deployment: Deployment, evidence: str
 def test_broken_evidence_chain_prevents_startup(deployment: Deployment) -> None:
     _verify(_client(deployment), deployment.issue(create_credential_id()))
     log = EvidenceLog(str(deployment.config.evidence_db_path))
+    # Quien edita el archivo puede quitar el disparador de solo agregar (ADR-0017),
+    # pero no recalcular el hash sin que verify_chain() lo detecte.
+    log._conn.execute("DROP TRIGGER events_no_update")
     log._conn.execute("UPDATE events SET verifier_id = 'otro' WHERE seq = 1")
     log.close()
 
