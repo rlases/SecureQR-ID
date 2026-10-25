@@ -73,3 +73,45 @@ export interface CreateUserResponse {
 export interface ListUsersResponse {
   users: User[];
 }
+
+// --- Registro de credenciales y portal del titular (ADR-0016) -------------------------
+// Vocabulario de ADR-0009: «titular», no «estudiante». Los estamentos no vienen
+// predefinidos; los crea el admin de cada instalación.
+
+export interface Estamento {
+  id: number;
+  nombre: string;
+  // Tiene más acceso que el estamento base: mientras un admin no confirme a un
+  // titular en él, ese titular recibe las ventanas del estamento base.
+  requiereConfirmacion: boolean;
+  esBase: boolean;
+}
+
+export type EstadoTitular = 'activo' | 'en_revision' | 'suspendido' | 'anonimizado';
+
+export interface Titular {
+  id: number;
+  // Identificador interno opaco; no deriva de los datos personales.
+  ref: string;
+  nombre: string;
+  documento: string;
+  // Solo contacto: no se verifica, no es único y el sistema no envía mensajes.
+  correo: string;
+  estamentoId: number;
+  estamentoConfirmado: boolean;
+  estado: EstadoTitular;
+  creadoEn: string;
+}
+
+export type EstadoCredencial = 'vigente' | 'reemplazada' | 'revocada';
+
+export interface Credencial {
+  // 128 bits en Base64url sin relleno (docs/SQRID-1.md); opaco.
+  cid: string;
+  titularId: number;
+  estado: EstadoCredencial;
+  vigenteDesde: string;
+  vigenteHasta: string | null;
+}
+
+export type EstadoDispositivo = 'activo' | 'reemplazado' | 'revocado';
