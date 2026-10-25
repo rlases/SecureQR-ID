@@ -4,16 +4,517 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-12
+**Última actualización:** 2026-10-24
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
 unificado en tres (issue #4). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al
 cerrar cada fase — pendiente, decisión conjunta, no depende de código. De los cinco
 módulos de Fase 3 (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`)
-solo falta `anchor/` (issue #9) para completarla.
+sigue pendiente completar el anclaje real de `anchor/` (issue #9). El resumen
+vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ---
+
+## Estado vigente — 2026-10-24
+
+### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
+
+Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Integrado hoy en `main`:** #74 (ADR-0013 a 0015), #77 (ADR-0017, aceptada), #112
+(`baseline-o3` fijada) y #110 (este handoff), además de #113 (arreglo Unicode de
+`verifier_id` en `anchor/`). Todos con squash, CI verde y aprobación cruzada.
+
+**Abiertos y a quién le toca (revisión cruzada: Jhunier revisa los de Duverney):**
+
+| PR | Autor | Estado | Falta |
+|---|---|---|---|
+| #99 evidence-log: tabla `anclajes` y lotes | Duverney | Aprobado por Jhunier, rama al día | Que Jhunier lo fusione (si se descartó su aprobación por actualizar la rama, volver a aprobar) |
+| #98 CLAUDE.md, ARCHITECTURE.md, THREAT-MODEL.md tras ADR-0016/0017 | Duverney | Aprobado, fuera de borrador | Ídem |
+| #100 anchor: `FabricLedgerClient` | Duverney | 10/10 chequeos del CI | Que Jhunier levante su solicitud de cambios |
+| #111 enmienda de ADR-0016 (altas en revisión, #109) | Duverney | Fuera de borrador, base `main`, conflicto resuelto | Aprobación de Jhunier; con ella queda aceptado el código provisional de 72 h |
+| #116 sellado en OpenTimestamps (#94) | Duverney | Apilado sobre #99 (base `modulo/92-tabla-anclajes`) | Reorientar a `main` cuando se fusione #99; revisión de Jhunier |
+| #114 acuerdo de diseño (#55) | Jhunier | Revisión de Duverney publicada (COMMENT) con cinco propuestas y hallazgo de contraste | Que Jhunier confirme o discuta cada fila; #55 cierra cuando ambos las registren |
+| #115 correcciones sobre #108 (borrador) | Jhunier | Borrador | Distribuir a #103, #105, #106 y #108 (ver sección de cierre de Jhunier) |
+| #102–#108 mi-app-qr (ADR-0016) | Jhunier | Borradores o en corrección | Corregir #104, #105, #108; después revisión de Duverney |
+
+**Pendiente propio de Duverney:**
+- **#82 y #93 (red Fabric 2.5 en Docker, contrato en Go, CI de integración): hay que hacerlos
+  en la máquina de Duverney, con Docker y acceso a módulos de Go.** El entorno en la nube
+  donde se trabajó bloquea `proxy.golang.org`.
+- **#94:** la parte de Python está en #116. Falta el comando de `anchor/` que consulta
+  `GetChainInfo` de `qscc` (depende de #100), la verificación manual de un sello real con
+  un nodo de Bitcoin podado y comprobar desde el servidor del CCAV que los calendarios
+  públicos responden. #116 no debe cerrar #94 por sí solo.
+- **#85 y #109:** bloqueados hasta que se fusionen #79, #83 y #89 (pila de Jhunier) y
+  #111 sea aceptado. #109 se implementa conforme a la enmienda de ADR-0016 (rechazar =
+  anonimizar; reemplazar = titular `reemplazado`, credencial por motivo, dispositivo
+  `revocado`, titular nuevo con código provisional visible una vez, entrega presencial,
+  72 h regenerable; auditoría en `cambios_configuracion` con lista cerrada de motivos).
+- Revisión cruzada de #102–#108 cuando Jhunier distribuya #115.
+- Reparto de trabajo nuevo: partes iguales entre los dos (`CLAUDE.md`); el desbalance
+  acumulado solo desempata lo indivisible.
+
+**Para retomar desde Claude Code en la máquina local:**
+- Abrir el repositorio con `CLAUDE.md` y leer este archivo; no hace falta nada más.
+- `gh` local sí permite GraphQL; en la sesión en la nube estaba bloqueado y se usó REST
+  (`gh api repos/rlases/secureqr-id/...`).
+- Al actualizar la rama de un PR con `main` GitHub descarta las aprobaciones (regla de
+  rama): avisar al revisor antes de hacerlo, o reaprobar enseguida.
+- Los squash merges dejan conflictos en ramas apiladas (`DECISIONS.md`, `STATE.md`):
+  fusionar `main` en la rama apilada y conservar ambos lados; no se hace force-push.
+- Laboratorio local para probar el verificador completo (claves, lista de revocación,
+  emisión de QR, portal en :5174): `laboratorio.py` (`preparar`, `iniciar`, `emitir`,
+  `revocar`). Contiene claves privadas: **no va a Git**. Con TTL de 120 s el QR vence
+  pronto; subir `_TTL_SEGUNDOS` en `laboratorio/entorno.json` para pruebas manuales.
+  Conviene reemplazarlo por la CLI de #96 y #97 (revocación firmada y servicio local del
+  emisor), ya fusionadas, y documentarlo en `docs/DEPLOY.md` (issue por abrir).
+- Instalación: cada módulo Python tiene su propio entorno virtual (ver `CLAUDE.md`);
+  `verifier-service` compone los demás para el arranque real.
+
+### Cierre solicitado por el usuario: pendientes para retomar
+
+**No integrar #102–#108 todavía:** las nuevas revisiones automáticas detectaron
+hallazgos adicionales. Las correcciones están guardadas en el borrador
+[#115](https://github.com/rlases/SecureQR-ID/pull/115), rama
+`fix/90-privacidad-sesion-auditoria`, commit
+`367c1fd36d788e6ca13516db8117ecec71653b46`, **sobre #108**. Los PR
+originales siguen sin esos arreglos: marcarse listos para revisión no equivale a
+estar aprobados ni a tener resueltos los nuevos hallazgos.
+
+**Ya guardado y verificado localmente:**
+- Caché de consultas/mutaciones eliminada al iniciar/cerrar sesión, con cancelación
+  de consultas pendientes; rutas admin protegidas por rol antes de montar su contenido.
+  Recorrido real admin → logout → operador → historial probado en estamentos y consultas.
+- Revocación/reactivación no guardan cid en el historial público de configuración.
+  Las filas antiguas se proyectan sin ese campo, sin editar el almacenamiento append-only.
+- El predicado SQL de cid canónico rechaza NUL; cierre y vencimiento limpian el
+  sufijo personal del valor mal formado conservando autor, fecha y atribución.
+- **Cliente: 102/102 y build correcto. Servidor: build correcto y 27/27 en las
+  suites específicas de revocación/anonimización. Suite completa: 185/186.**
+  Falló `test/reseteo.test.ts > trimestre local > usa la fecha de la sede, no la UTC`
+  con «Ya existe un estamento con ese nombre», desde `crearEstamento` en el fixture.
+  No se determinó la causa ni se declara validación global completa.
+- Los fallos de acceso/caché, exposición de cid y NUL se reprodujeron antes de los arreglos.
+
+**Orden concreto para retomar (detenido aquí por solicitud del usuario):**
+1. Investigar el fallo de reseteo/aislamiento de fixtures y completar la suite del
+   servidor; revisar el CI de #115 y de los PR originales tras ready_for_review.
+2. Distribuir #115: AuthContext/RequireAuth, wrappers de pruebas y sesión/estamentos
+   a #103; guardia y prueba de consultas a #105; proyección del historial,
+   revocación/reactivación y guardia de titulares a #106; NUL y sus pruebas a #108.
+3. Propagar las bases corregidas por #104–#108 sin force-push, preservando los
+   cambios particulares de App.tsx en cada rama y los diff por tarea.
+4. Revalidar CI en los heads resultantes y obtener revisión cruzada de Duverney.
+   Resolver los hilos originales solo tras comprobar la corrección en esos PR.
+   Después, cerrar/integrar el borrador #115 según cómo se hayan distribuido sus cambios.
+5. Integrar #77 (ya aprobado), revisar #110/#112/#113/#114 y continuar en orden
+   #102 → #108. #55 conserva el acuerdo explícito pendiente y #111 no está aceptado.
+
+**#55 ya tiene redacción actualizada en #114**, solo documentación, con CI completo
+correcto ([40145927978](https://github.com/rlases/SecureQR-ID/actions/runs/40145927978)).
+Duverney tiene solicitada la revisión explícita. No se cambió la apariencia.
+
+No se reasignaron issues ni se fusionaron PR. Fabric real, instalación Windows,
+piloto, #82/#85/#93/#94/#109 y los acuerdos conjuntos conservan sus pendientes.
+
+
+
+Este resumen sustituye, para planificar el trabajo siguiente, los pendientes del corte
+2026-10-12 que se conservan más abajo como historial. Comprobado contra GitHub al
+retomar la sesión interrumpida de Claude. Las verificaciones y correcciones posteriores
+quedan recogidas en las secciones fechadas de este resumen.
+
+### Integrado en `main` desde el corte anterior
+
+- PR #74: ADR-0013, ADR-0014 y ADR-0015 ya aceptadas en `main`.
+- PR #76: texto de ADR-0016, todavía como **Propuesta** en `main`.
+- PR #75: vinculabilidad del `cid` documentada en el modelo de amenazas.
+- PR #63, #71 y #72: guía de contenido, accesibilidad y catálogo de componentes.
+  #71/#72 ya están fusionados; las referencias antiguas a sus borradores no son
+  pendientes actuales. Aplicar los estándares en las pantallas y verificar los
+  flujos del piloto sigue siendo trabajo distinto.
+- PR #66: corrección del `cid` con guion inicial; PR #101 (issue #80):
+  documentación de `--cid=<cid>`.
+- PR #96 (issue #81): CLI para crear la clave de revocación y firmar listas.
+- PR #97 (issue #83): servicio local de emisión en `127.0.0.1`, autenticado con
+  secreto compartido. No equivale a tener conectado el portal del titular (#85).
+
+### Decisiones y línea base
+
+- **PR #77 abierto:** su commit `4ea53a8` propone pasar ADR-0016 y ADR-0017 a
+  **Aceptada (2026-10-24)**. Eso aún no está integrado en `main`; no dar las ADR
+  por formalmente aceptadas allí. **Duverney aprobó el commit actual el 24-10 a las
+  23:29 UTC**; la aceptación conjunta ya está revisada y falta integrarla. La última ejecución de CI de ese commit terminó
+  correctamente ([ejecución 40137408598](https://github.com/rlases/SecureQR-ID/actions/runs/40137408598)).
+- El ajuste del lote fijo ya está propuesto en #77: registrar el rango en `lotes`
+  antes de exportarlo y reutilizarlo hasta obtener recibo, aunque lleguen eventos
+  nuevos; incluir `verifier_id` en `loteId`.
+- **Issue #78 (Jhunier):** `baseline-o3` ya está fijada en
+  `1b4498af0d2a76ceeadce0a114c40d9d758c7aab`, anterior a los cambios de
+  ADR-0016 en `mi-app-qr/`. Ver el procedimiento y su ejecución en #112 y la nota
+  de verificación de abajo. Falta revisión e integración documental, no crear otra etiqueta.
+
+### Siete PR de `mi-app-qr` guardados, pendientes de revisión
+
+Los siete son de Jhunier (`rlases`), siguen abiertos y **listos para revisión**
+(desde el 24-10, tras verificar el CI de sus commits actuales). Se solicitó la revisión
+cruzada a `Duverney24`. Están encadenados para que cada diff muestre solo su tarea;
+no son siete cambios ya integrados en `main`.
+
+| Orden | Issue | PR | Cambio | Rama base actual |
+|---|---|---|---|---|
+| 1 | #79 | [#102](https://github.com/rlases/SecureQR-ID/pull/102) | Tablas de titulares, credenciales, dispositivos e historial encadenado | `main` |
+| 2 | #89 | [#103](https://github.com/rlases/SecureQR-ID/pull/103) | Estamentos, horarios, excepciones y dominios | `modulo/79-tablas-titulares` |
+| 3 | #84 | [#104](https://github.com/rlases/SecureQR-ID/pull/104) | Autorregistro, vínculo del teléfono y recuperación | `modulo/89-estamentos-horarios` |
+| 4 | #86 | [#105](https://github.com/rlases/SecureQR-ID/pull/105) | Consulta auditada `cid` → persona | `modulo/84-portal-titular` |
+| 5 | #87 | [#106](https://github.com/rlases/SecureQR-ID/pull/106) | Revocación, reactivación, desvinculación y exportación | `modulo/86-consulta-cid` |
+| 6 | #88 | [#107](https://github.com/rlases/SecureQR-ID/pull/107) | Reseteo trimestral del `cid` | `modulo/87-revocacion` |
+| 7 | #90 | [#108](https://github.com/rlases/SecureQR-ID/pull/108) | Anonimización al cierre y conservación configurable | `modulo/88-reseteo-cid` |
+
+**Verificación disponible, con su alcance:**
+
+- #102 tiene CI completo en verde sobre `fcbe422`
+  ([ejecución 40137801080](https://github.com/rlases/SecureQR-ID/actions/runs/40137801080)).
+- El flujo ya valida las bases de los PR encadenados. Los commits actuales de
+  #102–#108 tienen CI completo en verde; la tabla de verificación de abajo contiene
+  los siete commits y sus ejecuciones. Las referencias a ausencia de CI del corte
+  de revisión inicial se conservan solo como historia de ese hallazgo.
+- La descripción de #108 reporta **172 pruebas del servidor, 97 del cliente y build
+  del cliente correcto** sobre la rama final `modulo/90-anonimizacion`
+  (`79fb158`). Eran resultados locales reportados por Claude; la revisión técnica de abajo
+  detalla la ejecución independiente posterior y su limitación de entorno.
+- Límite documentado en #108: los motivos de `cambios_configuracion` se conservan.
+  La interfaz pide no escribir datos personales allí, pero no los elimina si se
+  introducen. Revisar esa limitación antes de afirmar anonimización completa de
+  cualquier dato personal que pudiera haberse escrito en texto libre.
+- No se verificaron en esta reanudación el instalador Windows, el piloto en el CCAV
+  ni el flujo completo con Fabric real.
+
+**Orden para integrar:** cerrar la aceptación de #77; #78 ya tiene etiqueta fijada. Luego revisión
+cruzada de Duverney e integración secuencial #102 → #103 → #104 → #105 → #106 →
+#107 → #108. Tras cada squash, actualizar la base y reconciliar la rama siguiente
+con `main`, conservando lo ya integrado; ejecutar el CI sobre el resultado real
+antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
+
+### Issue faltante y trabajo restante
+
+- [#109](https://github.com/rlases/SecureQR-ID/issues/109), **resolver altas en revisión
+  por documento repetido**, ya fue creado por Claude antes de la interrupción.
+  Está asignado a **Duverney**, con las mismas etiquetas que #84 (`enhancement`,
+  `mi-app-qr`) y milestone 2. No crearlo otra vez ni reasignarlo por conveniencia:
+  es el issue impar que corresponde a quien tiene menos carga acumulada.
+  Falta decidir el rechazo o reemplazo y la entrega del código de recuperación;
+  registrar primero una enmienda si se cambia el diseño, y probar ambas salidas
+  con auditoría e integridad del historial. Depende de #102, #104 y #106.
+- **#85 (Duverney):** conectar el portal con el servicio de emisión y mostrar el QR
+  que se renueva. El servicio #97 ya está integrado, pero los siete PR anteriores no
+  implementan esa página. Debe consumir `puedeEmitir`, respetar los horarios y
+  limitar la emisión por dispositivo.
+- **#98 (Duverney, documentación):** actualización `e6fea06` revisada y aprobada
+  técnicamente. Mantener el borrador hasta integrar #77; CI completo correcto.
+- **#99 (Duverney, bitácora):** correcciones `710b40b` revisadas y aprobadas;
+  72 pruebas y CI completo correcto. Falta integrar después de #77.
+- **#100 (Duverney, cliente Fabric):** los problemas anteriores están resueltos,
+  pero queda el defecto Unicode reproducido en la nueva revisión. El arreglo
+  concreto está en #113 (Jhunier), sobre esta rama, para revisión e integración.
+- El anclaje real y su evidencia de operación siguen pendientes: red y contrato
+  (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
+  No declarar terminado #9 por tener pruebas con un cliente en memoria.
+
+### Trabajo propio: diseño documentado y PR listos para revisión — 2026-10-24
+
+**Issue #55:** redacción actualizada en
+[#114](https://github.com/rlases/SecureQR-ID/pull/114), commit `852800f`,
+sobre main `1b4498a`. Solo cambia `docs/DESIGN-SYSTEM.md`.
+
+Se verificaron 31 archivos del cliente y del verificador. Se corrigieron las
+afirmaciones de que verifier-web no usaba React, ForgottenOutModal estaba muerto
+y no existían sombras o movimiento. Se documentaron todos los tokens CSS declarados,
+radios, tamaños, foco, breakpoints, fuentes y efectos existentes, con sus fuentes.
+Se recalcularon 16 equivalentes HSL/hex y se validaron los 19 enlaces relativos.
+
+La propuesta previa de Vidrio elevado/GSAP se conserva como pendiente. Se retiró
+su justificación incorrecta basada en ausencia de React y la estimación de bundle
+sin medición. Inter está declarada sin un mecanismo de carga localizado. El
+documento incorpora un registro explícito de acuerdos por paleta, estados,
+tipografía, modo oscuro y efectos. **#55 sigue abierto y el documento sigue siendo
+borrador de estándar** hasta que Jhunier y Duverney acuerden su contenido. No se
+modificó la apariencia ni se instalaron dependencias.
+
+**#102–#108 ya no son borradores de PR.** Se verificaron los siete heads y sus CI
+correctos, se marcaron listos para revisión y se solicitó a `Duverney24` la
+revisión cruzada. Esa transición no cambia código ni equivale a aprobación.
+El evento ready_for_review puede crear nuevas ejecuciones de CI sobre los mismos
+commits; consultar su resultado antes de integrar. Se conserva la dependencia de
+#77, ya aprobado por Duverney, y el orden de integración de la tabla.
+
+### Nueva revisión y compatibilidad del anclaje — 2026-10-24
+
+Se revisaron las actualizaciones de Duverney contra sus commits exactos y se
+publicaron las nuevas revisiones:
+
+| PR | Commit revisado | Resultado |
+|---|---|---|
+| #98 | `e6fea06` | Aprobado el contenido documental; integrar después de #77 |
+| #99 | `710b40b` | Aprobado el lado Python: lote fijo, identidad de instalación, raíz y estado resueltos |
+| #100 | `7431958` | Cambios solicitados por incompatibilidad Unicode; arreglo disponible en #113 |
+
+**Verificación independiente:** `evidence-log/` 72/72, `verifier/` y
+`verifier-service/` 131/131 en conjunto; `anchor/` 53/53 y build correcto
+antes del arreglo. La prueba conjunta Python → Node → Python exportó el rango
+1–3, cerró/reabrió la bitácora, agregó 4–5 y reexportó el mismo 1–3. La
+recuperación del recibo en el ledger en memoria fue idéntica; registrar dos veces
+es idempotente, una raíz ajena se rechaza, dos instalaciones no colisionan y
+queda pendiente 4–5. No se usó una red Fabric real.
+
+**Defecto y corrección #113:** Python admite hasta 128 puntos de código en
+`verifier_id`, pero Node contaba unidades UTF-16: 65 caracteres astrales válidos
+se rechazaban y bloqueaban indefinidamente el lote fijado. Node también aceptaba
+separadores interiores Zs que Python considera no imprimibles. El PR
+[#113](https://github.com/rlases/SecureQR-ID/pull/113), commit `1b1f704`, cuenta
+puntos de código y rechaza C/Z salvo el espacio ASCII interior. Añade nueve
+regresiones: **62/62 pruebas y build correctos**; el mismo lote Unicode exportado
+por Python ahora se acepta. Lleva la corrección de CI de bases apiladas ya usada
+en #102–#108, conservando los diez jobs. Su base es #100 y requiere revisión
+cruzada de Duverney; no se fusionó ni se aprobó el PR propio.
+
+- CI de #98: [40143591260](https://github.com/rlases/SecureQR-ID/actions/runs/40143591260), correcto.
+- CI de #99: [40141774932](https://github.com/rlases/SecureQR-ID/actions/runs/40141774932), correcto.
+- CI de #113: [40145404583](https://github.com/rlases/SecureQR-ID/actions/runs/40145404583), **correcto: los diez jobs**.
+- Se compararon además los nueve casos Unicode ejecutando directamente los validadores Python y Node: coinciden en todos.
+
+**#77 ya tiene aprobación vigente de Duverney** sobre `4ea53a8`, con CI
+correcto. Falta su integración por el otro autor conforme a CONTRIBUTING; no una
+nueva aceptación de diseño. `main` permanece en `1b4498a`.
+
+**Pendientes por responsable, comprobados de nuevo en GitHub (9 y 8 issues):**
+
+| Responsable | Trabajo e integración restantes |
+|---|---|
+| Jhunier (`rlases`) | #79, #89, #84, #86, #87, #88 y #90 implementados en #102–#108; revisión cruzada e integración secuencial. #78 etiqueta ya fijada, revisar #112 y constancia #110. #55 tiene redacción verificada en #114 y requiere acuerdo explícito de tokens. Corrección adicional #113 lista para revisar. |
+| Duverney (`Duverney24`) | #95 y #92 aprobados técnicamente en #98/#99, integrar tras #77; #91 integrar/revisar el arreglo #113 y actualizar #100; implementar/completar #82, #85, #93, #94 y #109. Revisar los PR de Jhunier y realizar la integración de #77. |
+| Ambos | Acuerdo pendiente sobre #111 (72 horas sigue siendo propuesta), tokens de #55, instalación Windows/piloto y evidencia de Fabric real. |
+
+Las asignaciones no cambiaron. Las aprobaciones antiguas de #110 quedaron
+obsoletas con sus actualizaciones; el handoff actualizado necesita revisión.
+
+### Cierre administrativo de la guía de contenido — 2026-10-24
+
+Se cerró #56 como completado tras verificar que el PR #63 está integrado y que
+la guía actual declara el acuerdo explícito de Duverney. Ya no es un pendiente de
+Jhunier. El inventario resultante es de **9 issues abiertos de rlases y 8 de
+Duverney24**; los recuentos de diez incluidos en la revisión inicial son históricos.
+
+### Línea base fijada y CI de la cadena verificado — 2026-10-24
+
+**`baseline-o3` ya existe** y apunta exactamente a
+`1b4498af0d2a76ceeadce0a114c40d9d758c7aab`. Es la versión de main anterior al
+registro de titulares de ADR-0016: la ruta
+`mi-app-qr/server/src/titulares` no existe en ese commit. La referencia remota se
+leyó después de crearla para comprobar el destino.
+
+El [PR #112](https://github.com/rlases/SecureQR-ID/pull/112) contiene el procedimiento
+idempotente y sus ocho pruebas. El flujo
+[40144582787](https://github.com/rlases/SecureQR-ID/actions/runs/40144582787) terminó
+correctamente y creó la etiqueta. No sobrescribe una referencia diferente; acepta
+etiquetas anotadas, comprueba la pertenencia del commit a main y se detiene ante una
+carrera con otro destino. El CI completo del PR también pasó
+([40144614643](https://github.com/rlases/SecureQR-ID/actions/runs/40144614643)).
+#78 ya no requiere trabajo de creación de etiqueta: queda la revisión e integración
+de su procedimiento y de esta constancia documental.
+
+**CI corregido en #102 y propagado hasta #108.** Se retiró el filtro que solo admitía
+PR dirigidos a main. Se ejecuta al abrir, actualizar, reabrir o marcar un PR listo,
+con permisos de lectura y cancelación de ejecuciones obsoletas de la misma rama/PR.
+Se conservaron exactamente los diez trabajos existentes y el evento push de main.
+Los siete commits actuales tienen CI completo en verde:
+
+| PR | Commit actual | Ejecución | Resultado |
+|---|---|---|---|
+| #102 | `1eb3e93` | [40144619493](https://github.com/rlases/SecureQR-ID/actions/runs/40144619493) | Correcto |
+| #103 | `bee2420` | [40144621976](https://github.com/rlases/SecureQR-ID/actions/runs/40144621976) | Correcto |
+| #104 | `e926816` | [40144624863](https://github.com/rlases/SecureQR-ID/actions/runs/40144624863) | Correcto |
+| #105 | `13a18d4` | [40144627778](https://github.com/rlases/SecureQR-ID/actions/runs/40144627778) | Correcto |
+| #106 | `a6e6e95` | [40144628713](https://github.com/rlases/SecureQR-ID/actions/runs/40144628713) | Correcto |
+| #107 | `8b1ac70` | [40144632168](https://github.com/rlases/SecureQR-ID/actions/runs/40144632168) | Correcto |
+| #108 | `8c98c2a` | [40144634248](https://github.com/rlases/SecureQR-ID/actions/runs/40144634248) | Correcto |
+
+En la ejecución final de #108 se comprobó también el log del servidor:
+**19 archivos y 183 pruebas aprobadas**. El cliente, el verificador web con E2E y los
+módulos Python/anchor completaron sus trabajos. Esto acredita la ejecución de las
+suites de CI; no sustituye la integración con una red Fabric real, la instalación
+Windows ni el piloto.
+
+**Novedad de Duverney:** abrió #111, enmienda en borrador a ADR-0016 para resolver
+#109. Se revisó y se dejó comentario técnico: concretar la vigencia del código
+provisional (72 horas sigue siendo propuesta), reutilizar el canje atómico y las
+cuotas de #104, rechazar decisiones repetidas, conservar id/ref y claves foráneas
+durante la migración y comprobar la anonimización de reemplazados/rechazados.
+La vigencia requiere acuerdo de los autores; no se formalizó su aceptación.
+
+**Siguiente paso (actualizado):** revisión cruzada de los PR corregidos, #112 y
+#113; integración de #77, ya aprobado por Duverney, y acuerdo de #111.
+#98/#99 ya están aprobados técnicamente; #100 espera el arreglo Unicode de #113.
+Los frentes de Duverney #82, #85, #93, #94 y #109 conservan su asignación. La creación de la línea
+base y la ejecución del CI de los siete PR ya quedaron verificadas.
+
+### Correcciones implementadas — 2026-10-24
+
+Los hallazgos de Jhunier descritos en la revisión inicial de abajo ya tienen
+corrección y pruebas de regresión en sus ramas. Siguen pendientes de revisión
+cruzada; los issues no se dan por cerrados antes de la integración.
+
+| PR | Commit del arreglo | Corrección |
+|---|---|---|
+| #104 | `cd4865f` | Consumo condicional y único del código; reserva atómica de cuota por documento e IP antes de bcrypt |
+| #105 | `a33ff3f` | Consulta desde la asignación comprometida; detección de incoherencias/cadena rota y auditoría del intento sin datos ni atribución |
+| #106 | `7bd8c00` | Hereda las correcciones sin alterar el alcance de revocación |
+| #107 | `b9230e0` | Hereda las correcciones sin alterar el alcance del reseteo |
+| #108 | `d38b75e` | Limpieza de motivos de correcciones y texto de cid inválido, al cierre y por vencimiento, preservando cid canónicos y metadatos |
+
+Las ramas descendientes incorporan a su base corregida como padre adicional; se
+conservó el historial existente y los diff de #105–#108 siguen mostrando su propia
+tarea, sin duplicar las correcciones heredadas.
+
+**Verificación final:** compilación del servidor correcta y **183/183 pruebas**
+en la rama acumulada #108, incluidas once pruebas nuevas. Se comprobó que los
+archivos publicados coinciden, por hash de blob, con los once archivos locales
+verificados. Los fixtures de portal, consultas y anonimización usan directorios
+temporales propios. La prueba de CLI usa el mismo Node con `--import tsx` y
+ejecuta el módulo real sin depender del socket IPC de la CLI de tsx; también pasó.
+
+La anonimización de correcciones conserva un motivo no nulo («Anonimizado») y el
+enlace al registro anterior. En consultas solo se puede reemplazar un cid
+**no canónico** por `anon-<id de consulta>`; autor, fecha, atribución y cid
+canónicos permanecen protegidos. Se mantiene el límite ya documentado de los
+motivos de `cambios_configuracion`, que siguen conservados y no deben incluir
+datos personales.
+
+**Lo siguiente para Jhunier:** obtener revisión cruzada de estos arreglos,
+completar la revisión documental de #78 y acordar #55. Los arreglos de Duverney
+ya se revalidaron; #98/#99 están aprobados y #100 requiere #113. La integración conserva sus dependencias (#77 y línea
+base); el CI de PR con base distinta de main quedó corregido y verificado más arriba.
+
+**Lo siguiente para Duverney:** integrar #77 (su aprobación ya está vigente),
+revisar las ramas corregidas de Jhunier y #112/#113, incorporar #113 a #100 e
+integrar #98/#99 tras #77; continuar #82, #85, #93, #94 y #109. El detalle del reparto
+permanece más abajo. No se alteraron asignaciones ni se incorporaron cambios
+visuales.
+
+### Revisión técnica inicial — 2026-10-24
+
+Se revisaron los once PR de arquitectura, documentación e implementación (#77,
+#98–#100 y #102–#108) contra sus commits actuales, además de corregir este handoff.
+Se publicaron revisiones en GitHub. No se fusionaron PR ni se modificó código de la
+aplicación. Los comentarios publicados desde `rlases` sobre sus propios PR no
+sustituyen la revisión cruzada de Duverney.
+
+| PR | Autor | Resultado y siguiente acción |
+|---|---|---|
+| #77 | Jhunier | Sin hallazgo nuevo de diseño en el diff; Duverney debe revisar la versión actual y formalizar el acuerdo |
+| #98 | Duverney | Cambios solicitados: sellar el bloque del canal, incorporar lote fijo/alerta y reconciliar ADR-0015 ya aceptada |
+| #99 | Duverney | Siguen los cambios solicitados sobre lote fijo e identidad de instalación; hallazgo adicional: acepta recibos con raíz ajena al lote |
+| #100 | Duverney | Sigue el cambio solicitado: aceptar/validar loteId con prefijo de instalación; el formato de ADR-0017 hoy se rechaza |
+| #102 | Jhunier | Sin hallazgo nuevo en el diff; pendiente #77, #78, revisión cruzada e integración |
+| #103 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; pendiente revisión cruzada y CI al integrar |
+| #104 | Jhunier | Corregido en cd4865f; pendiente revisión cruzada |
+| #105 | Jhunier | Corregido en a33ff3f; pendiente revisión cruzada |
+| #106 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; el consumo efectivo de puedeEmitir sigue en #85 |
+| #107 | Jhunier | Sin hallazgo bloqueante nuevo en el diff; pendiente revisión cruzada y CI al integrar |
+| #108 | Jhunier | Corregido en d38b75e; pendiente revisión cruzada |
+
+**Reproducciones confirmadas con datos sintéticos, sin servicios del piloto:**
+
+- #104: dos recuperaciones simultáneas con un mismo código devolvieron 200/200 y
+  códigos nuevos distintos. Ocho fallos simultáneos para un documento superaron el
+  máximo de cinco: ocho 401 y ocho fallos registrados.
+- #105: tras retirar el trigger y cambiar la relación de una credencial de Alfa a
+  Beta, la consulta devolvió Beta mientras `verifyAsignaciones` seguía siendo
+  verdadera. La cadena intacta comprometía a Alfa, pero no se usaba para atribuir.
+- #108: el motivo de una corrección conservó nombre, documento y correo tras el
+  cierre. Una consulta de `alfa@ejemplo.test` como cid inválido también conservó
+  ese texto. Estos campos son adicionales al límite conocido de
+  `cambios_configuracion`.
+- #99: agregar un evento entre exportación y reintento cambió
+  `seq-000001-000001` por `seq-000001-000002`; dos instalaciones produjeron el
+  mismo primer identificador. Un recibo con raíz sintética ajena se aceptó y dejó
+  cero eventos pendientes.
+- #100: el parser rechazó `ccav-portal-1:seq-000001-000001`, formato previsto por
+  ADR-0017.
+
+**Pruebas ejecutadas independientemente:**
+
+| Componente | Resultado |
+|---|---|
+| mi-app-qr/client, rama acumulada #108 | 97/97 y build correcto |
+| mi-app-qr/server, rama acumulada #108 | Build correcto; 171/172 pruebas pasan |
+| anchor, commit de #100 | 45/45 y build correcto |
+| evidence-log, commit de #99 | 43/43 |
+| verifier con evidence-log de #99 | 83/83 |
+| verifier-service con evidence-log de #99 | 48/48 |
+
+La prueba restante del servidor invoca `npx tsx`, cuyo socket IPC
+`/tmp/tsx-*` recibe EPERM en este entorno; no se clasificó como fallo de la
+aplicación. La CLI compilada se comprobó aparte con Node 22 y base sintética:
+sin confirmación devolvió 1 y con la frase devolvió 0 y anonimizó. No se afirma
+172/172 en esta sesión. No se probó la red Fabric real, Windows ni el piloto.
+
+**Pendientes de Jhunier (`rlases`):**
+
+1. Obtener revisión cruzada de las correcciones de #104/#84, #105/#86 y #108/#90,
+   ya implementadas, probadas y propagadas por la cadena de ramas.
+2. Crear `baseline-o3` (#78) sobre el commit apropiado antes de integrar #102.
+3. Cerrar el acuerdo de diseño #55 con Duverney: el archivo de diseño sigue como
+   borrador y no autoriza implementar unilateralmente sus propuestas.
+4. Cerrar administrativamente #56: la guía actual ya dice que está acordada con
+   Duverney y el PR #63 está integrado.
+5. Revalidar los arreglos de Duverney en #98–#100 y completar la integración de los
+   siete PR tras revisión cruzada y CI.
+6. Este handoff (#110) queda como PR de documentación para revisión, sin merge.
+
+**Pendientes de Duverney (`Duverney24`):**
+
+1. Corregir #99/#92 (lote fijo, identidad de instalación, validación de raíz y archivo
+   de estado), #100/#91 (formato compartido) y #98/#95 (documentación final).
+2. Revisar la aceptación de #77 y los siete PR de Jhunier, incluidos sus arreglos.
+3. Desarrollar #82: red Fabric y contrato en Go, con persistencia tras reinicio.
+4. Desarrollar #85: cliente del emisor y QR renovable, usando puedeEmitir y límite por
+   dispositivo; el servicio local #97 ya existe.
+5. Desarrollar #93: integración contra Fabric en CI y evidencia de ejecución real.
+6. Desarrollar #94: sellado del bloque del canal, reintentos/comprobantes y verificación
+   independiente de OpenTimestamps.
+7. Desarrollar #109: resolución auditada de altas duplicadas, con la decisión de
+   rechazo/reemplazo y entrega del código definida antes de implementar.
+8. Acordar con Jhunier los puntos abiertos de #55.
+
+El inventario abierto comprobado es de **10 issues para rlases y 8 para Duverney24**.
+Esto no significa diez y ocho desarrollos sin empezar: incluye siete implementaciones
+de Jhunier en PR, tres entregas de Duverney en PR y el cierre administrativo de #56.
+Se mantienen las asignaciones actuales; los arreglos corresponden al trabajo ya
+asignado, no se creó un lote nuevo.
+
+**Integración y piloto, responsabilidad conjunta:** tras corregir los hallazgos,
+aceptar #77, fijar #78 e integrar secuencialmente #102–#108 con CI sobre cada resultado
+real. Después comprobar el recorrido portal → emisión → verificación → bitácora →
+Fabric → sello y el instalador Windows en el equipo del CCAV. La revisión no acredita
+todavía ese recorrido de extremo a extremo.
+
+### Punto exacto de la reanudación
+
+Claude alcanzó a crear #109 y copiar sus etiquetas; dejó sin publicar la actualización
+de `docs/STATE.md` (el archivo de `main` y el de la rama final #108 tenían el mismo
+blob `64d76e1`, del corte anterior). Esta actualización cierra ese pendiente y deja
+separados el trabajo guardado en PR, la evidencia de pruebas y lo que falta revisar.
+
+---
+
+## Corte anterior conservado — 2026-10-12
+
+Se conserva el contenido previo para no perder decisiones ni notas de sesiones.
+Sus menciones a pendientes, borradores y reparto reflejan ese corte; para continuar,
+usar el estado vigente de arriba.
 
 ## Hecho
 
