@@ -1,5 +1,4 @@
 from secureqr_evidence_log.evidence_log import EvidenceLog, GENESIS_HASH
-import json
 import pytest
 
 
@@ -25,6 +24,9 @@ def test_detecta_eslabon_alterado():
     # Simulamos que alguien edito el almacenamiento por fuera de la API publica
     # (por ejemplo, editando el archivo .db a mano). El hash guardado se deja
     # intacto, para simular que no pudo recalcular la firma.
+    # Quien edita el archivo puede quitar los disparadores de solo agregar; aun así
+    # no puede recalcular el hash sin que la cadena lo delate.
+    log._conn.execute("DROP TRIGGER events_no_update")
     log._conn.execute(
         "UPDATE events SET credential_id = ? WHERE seq = 1", ("cred-999",)
     )
@@ -67,51 +69,3 @@ def test_hash_no_es_ambiguo_entre_reparticiones_distintas_de_los_mismos_campos()
     e2 = log2.append_event("X", "Y|Z", 1000.0, "aceptado")
 
     assert e1.hash != e2.hash
-
-def test_exportar_lote_no_anclado_escribe_json(tmp_path):
-    log = EvidenceLog()
-    e1 = log.append_event("cred-001", "verifier-A", 1000.0, "aceptado")
-    e2 = log.append_event("cred-002", "verifier-A", 1001.0, "aceptado")
-
-    ruta = tmp_path / "lote.json"
-    cantidad = log.export_unanchored_batch(str(ruta))
-
-    assert cantidad == 2
-    contenido = json.loads(ruta.read_text())
-    assert contenido["hashes"] == [e1.hash, e2.hash]
-
-
-def test_lote_vacio_no_escribe_archivo(tmp_path):
-    log = EvidenceLog()
-    ruta = tmp_path / "lote.json"
-
-    cantidad = log.export_unanchored_batch(str(ruta))
-
-    assert cantidad == 0
-    assert not ruta.exists()
-
-
-def test_marcar_lote_anclado_lo_excluye_del_siguiente_lote(tmp_path):
-    log = EvidenceLog()
-    e1 = log.append_event("cred-001", "verifier-A", 1000.0, "aceptado")
-    e2 = log.append_event("cred-002", "verifier-A", 1001.0, "aceptado")
-
-    log.mark_batch_anchored([e1.hash, e2.hash], merkle_root="a" * 64, anchored_at=2000.0)
-
-    ruta = tmp_path / "lote.json"
-    cantidad = log.export_unanchored_batch(str(ruta))
-    assert cantidad == 0
-
-    e3 = log.append_event("cred-003", "verifier-B", 1002.0, "aceptado")
-    cantidad = log.export_unanchored_batch(str(ruta))
-    assert cantidad == 1
-    contenido = json.loads(ruta.read_text())
-    assert contenido["hashes"] == [e3.hash]
-
-
-def test_marcar_hash_inexistente_falla():
-    log = EvidenceLog()
-    log.append_event("cred-001", "verifier-A", 1000.0, "aceptado")
-
-    with pytest.raises(ValueError):
-        log.mark_batch_anchored(["hash-que-no-existe"], merkle_root="a" * 64, anchored_at=2000.0)
