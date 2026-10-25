@@ -5,8 +5,10 @@ import { runMigrations } from './db/migrate.js';
 import { seedAdminUser } from './db/seed.js';
 import { loadTlsOptionsFromEnv } from './tls.js';
 import { exportarRevocados } from './titulares/gestion.js';
+import { aplicarReseteoSiCorresponde } from './titulares/reseteo.js';
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
+const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
 
 async function main(): Promise<void> {
   const sessionSecret = process.env.SESSION_SECRET;
@@ -57,6 +59,20 @@ async function main(): Promise<void> {
     exportar();
     setInterval(exportar, UN_DIA_MS).unref();
   }
+
+  // Reseteo trimestral del cid (ADR-0016, punto 8). Se comprueba al arrancar y cada seis
+  // horas; solo actúa la primera vez en un trimestre nuevo, en la hora local de la sede.
+  const zona = process.env.SITE_TIME_ZONE;
+  const reseteo = () => {
+    try {
+      const r = aplicarReseteoSiCorresponde(db, new Date(), zona);
+      if (r.accion === 'reseteo') console.log(`Reseteo de cid ${r.trimestre}: ${r.cantidad} titulares`);
+    } catch (error) {
+      console.error('No se pudo aplicar el reseteo trimestral del cid:', error);
+    }
+  };
+  reseteo();
+  setInterval(reseteo, SEIS_HORAS_MS).unref();
 
   if (tls) {
     https.createServer(tls, app).listen(port, () => {
