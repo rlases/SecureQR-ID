@@ -87,7 +87,12 @@ export interface Estamento {
   esBase: boolean;
 }
 
-export type EstadoTitular = 'activo' | 'en_revision' | 'suspendido' | 'anonimizado';
+export type EstadoTitular =
+  | 'activo'
+  | 'en_revision'
+  | 'suspendido'
+  | 'reemplazado'
+  | 'anonimizado';
 
 export interface Titular {
   id: number;
@@ -230,5 +235,16 @@ export interface TitularAdmin {
   estamento: string;
   estamentoConfirmado: boolean;
   dispositivoActivo: boolean;
+  // Vencimiento del código provisional de entrega aún sin canjear (issue #109), o null.
+  provisionalVenceEn: string | null;
+  // Para un alta en revisión: el registro vigente con su mismo documento, si lo hay.
+  registroVigenteId: number | null;
   creadoEn: string;
+}
+
+export type MotivoReemplazo = 'misma_persona' | 'registro_anterior_indebido';
+
+export interface CodigoProvisionalResponse {
+  codigoProvisional: string;
+  venceEn: string;
 }
