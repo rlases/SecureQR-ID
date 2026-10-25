@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { openDatabase } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrate.js';
@@ -8,8 +9,11 @@ import {
   isCanonicalCid,
 } from '../src/titulares/identificadores.js';
 import {
+  ClaveAsignacionesError,
   GENESIS_HASH,
   appendAsignacion,
+  claveAsignaciones,
+  hashAsignacion,
   headAsignaciones,
   listAsignaciones,
   titularRefForCid,
@@ -301,6 +305,57 @@ describe('historial encadenado cid → titular', () => {
       cid
     );
     expect(verifyAsignaciones(db)).toBe(false);
+  });
+
+  // Hallazgo P1 de #102: con SHA-256 sin clave, quien tiene el archivo reescribía la fila
+  // y recalculaba todos los eslabones siguientes, y la verificación seguía dando verdadero.
+  function reescribirCadena(
+    cid: string,
+    otraRef: string,
+    sello: (anterior: string, a: { titularRef: string; cid: string; motivo: 'alta' | 'reseteo' | 'reactivacion'; asignadoEn: string }) => string
+  ) {
+    db.exec('DROP TRIGGER asignaciones_cid_no_update');
+    let anterior = GENESIS_HASH;
+    for (const a of listAsignaciones(db)) {
+      const titularRef = a.cid === cid ? otraRef : a.titularRef;
+      const hash = sello(anterior, { ...a, titularRef });
+      db.prepare(
+        'UPDATE asignaciones_cid SET titular_ref = ?, hash_anterior = ?, hash = ? WHERE seq = ?'
+      ).run(titularRef, anterior, hash, a.seq);
+      anterior = hash;
+    }
+  }
+
+  it('detecta una reasignación con la cadena recalculada sin la clave', () => {
+    const { cid } = alta('1000000040');
+    alta('1000000041');
+    reescribirCadena(cid!, generateTitularRef(), (anterior, a) =>
+      crypto
+        .createHash('sha256')
+        .update(JSON.stringify([anterior, a.titularRef, a.cid, a.motivo, a.asignadoEn]), 'utf8')
+        .digest('hex')
+    );
+    expect(verifyAsignaciones(db)).toBe(false);
+  });
+
+  it('detecta una reasignación con la cadena recalculada con otra clave', () => {
+    const { cid } = alta('1000000042');
+    alta('1000000043');
+    const otraClave = crypto.randomBytes(32);
+    reescribirCadena(cid!, generateTitularRef(), (anterior, a) =>
+      hashAsignacion(anterior, a.titularRef, a.cid, a.motivo, a.asignadoEn, otraClave)
+    );
+    expect(verifyAsignaciones(db)).toBe(false);
+    // Control: con la clave correcta la misma reescritura sí pasaría; por eso la clave
+    // vive fuera de la base.
+    expect(verifyAsignaciones(db, otraClave)).toBe(true);
+  });
+
+  it('exige una clave de 32 bytes en hexadecimal', () => {
+    expect(() => claveAsignaciones({})).toThrow(ClaveAsignacionesError);
+    expect(() => claveAsignaciones({ ASIGNACIONES_KEY: 'ab'.repeat(16) })).toThrow(ClaveAsignacionesError);
+    expect(() => claveAsignaciones({ ASIGNACIONES_KEY: 'zz'.repeat(32) })).toThrow(ClaveAsignacionesError);
+    expect(claveAsignaciones({ ASIGNACIONES_KEY: 'ab'.repeat(32) })).toHaveLength(32);
   });
 
   it('detecta un eslabón quitado del medio', () => {

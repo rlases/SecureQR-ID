@@ -1068,6 +1068,54 @@ conocido de `cambios_configuracion`, ver #108).
     motivos y de `cid` inválidos.
   - Pruebas de las tres salidas (rechazar, reemplazar, aprobar) con auditoría.
 
+**Enmienda (2026-10-25) — Autenticación del historial `cid` → titular (hallazgo P1 de
+#102).** `THREAT-MODEL.md` («Vinculabilidad del `cid`») exige que el historial
+`asignaciones_cid` sea a prueba de manipulación y dejó el mecanismo para la
+implementación. La primera versión lo encadenaba con SHA-256 sin clave, y eso no basta:
+quien tiene acceso de escritura al archivo de la base puede quitar los disparadores,
+cambiar el `titular_ref` de una fila y **recalcular** ese eslabón y todos los siguientes
+con la misma función pública. `verifyAsignaciones` vuelve a dar verdadero y un evento
+intacto de la bitácora queda atribuido a otra persona.
+
+**Decisión.** Cada eslabón se autentica con **HMAC-SHA256** (`node:crypto`, ninguna
+primitiva propia) en lugar de SHA-256. La clave tiene 32 bytes aleatorios y **vive fuera
+de la base**:
+
+- En la app de escritorio, Electron la genera una sola vez junto a los demás secretos
+  del servidor (`server-secrets.json`, fuera de `server-data/`) y la pasa como variable
+  de entorno `ASIGNACIONES_KEY` (hexadecimal).
+- Fuera de Electron se define en `.env`.
+- El servidor no arranca sin ella o con un valor de menos de 32 bytes: falla cerrado,
+  igual que con `SESSION_SECRET`.
+
+El formato de la tabla no cambia: la columna `hash` guarda la etiqueta HMAC y el resto
+de la cadena sigue igual (orden, génesis, `hash_anterior`).
+
+**Opciones consideradas.**
+
+- *Registrar cada asignación en `evidence-log/` y anclarla.* Es la sugerencia original
+  de `THREAT-MODEL.md` y da una garantía externa real. Pero obliga a construir hoy un
+  puente de proceso entre `mi-app-qr` (Node) y `evidence-log/` (Python), que todavía no
+  existe, y mezcla con la bitácora de pasos eventos de otra naturaleza.
+- *HMAC con clave fuera de la base* (elegida). Cierra el escenario del hallazgo
+  (acceso al archivo, a una copia o a un respaldo de la base) con un cambio local y sin
+  dependencias nuevas.
+
+**Consecuencias.**
+
+- **Riesgo residual declarado.** Quien controla el equipo servidor completo (la base
+  **y** la clave) todavía puede reescribir el historial. Cerrarlo exige un compromiso
+  externo: publicar periódicamente la cabeza (`headAsignaciones`) en la bitácora
+  anclada. Queda como trabajo posterior y debe sumarse a `THREAT-MODEL.md`.
+- **Custodia de la clave.** Si se pierde, el historial existente ya no se puede
+  verificar (sí se puede leer). Va en el mismo respaldo custodiado que los demás
+  secretos del servidor, **nunca** en el mismo respaldo que la base.
+- **Sin migración de datos.** Ninguna instalación tiene todavía asignaciones: la cadena
+  #102–#108 no se ha fusionado.
+- **Implementación** en #115, con pruebas que recalculan la cadena completa después de
+  manipularla (con SHA-256 sin clave y con una clave distinta) y comprueban que la
+  verificación falla.
+
 ---
 
 ## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps

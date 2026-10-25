@@ -7,6 +7,7 @@ import { loadTlsOptionsFromEnv } from './tls.js';
 import { exportarRevocados } from './titulares/gestion.js';
 import { aplicarReseteoSiCorresponde } from './titulares/reseteo.js';
 import { anonimizarVencidos } from './titulares/anonimizacion.js';
+import { claveAsignaciones } from './titulares/asignaciones.js';
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
@@ -18,6 +19,10 @@ async function main(): Promise<void> {
       'SESSION_SECRET no está definido. Copia .env.example a .env y ponle un valor real.'
     );
   }
+
+  // Clave HMAC del historial cid → titular (enmienda de 2026-10-25 a ADR-0016). Vive
+  // fuera de la base; sin ella el servidor no arranca.
+  claveAsignaciones();
 
   const dbPath = process.env.DB_PATH ?? './data/app.db';
   const port = Number(process.env.PORT ?? 4000);
