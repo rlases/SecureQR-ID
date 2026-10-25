@@ -55,9 +55,10 @@ quedan recogidas en las secciones fechadas de este resumen.
 
 ### Siete PR de `mi-app-qr` guardados, pendientes de revisión
 
-Los siete son de Jhunier (`rlases`), siguen abiertos y en **borrador**. Están
-encadenados para que cada diff muestre solo su tarea; no son siete cambios ya
-integrados en `main`.
+Los siete son de Jhunier (`rlases`), siguen abiertos y **listos para revisión**
+(desde el 24-10, tras verificar el CI de sus commits actuales). Se solicitó la revisión
+cruzada a `Duverney24`. Están encadenados para que cada diff muestre solo su tarea;
+no son siete cambios ya integrados en `main`.
 
 | Orden | Issue | PR | Cambio | Rama base actual |
 |---|---|---|---|---|
@@ -119,6 +120,33 @@ antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
   (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
   No declarar terminado #9 por tener pruebas con un cliente en memoria.
 
+### Trabajo propio: diseño documentado y PR listos para revisión — 2026-10-24
+
+**Issue #55:** redacción actualizada en
+[#114](https://github.com/rlases/SecureQR-ID/pull/114), commit `852800f`,
+sobre main `1b4498a`. Solo cambia `docs/DESIGN-SYSTEM.md`.
+
+Se verificaron 31 archivos del cliente y del verificador. Se corrigieron las
+afirmaciones de que verifier-web no usaba React, ForgottenOutModal estaba muerto
+y no existían sombras o movimiento. Se documentaron todos los tokens CSS declarados,
+radios, tamaños, foco, breakpoints, fuentes y efectos existentes, con sus fuentes.
+Se recalcularon 16 equivalentes HSL/hex y se validaron los 19 enlaces relativos.
+
+La propuesta previa de Vidrio elevado/GSAP se conserva como pendiente. Se retiró
+su justificación incorrecta basada en ausencia de React y la estimación de bundle
+sin medición. Inter está declarada sin un mecanismo de carga localizado. El
+documento incorpora un registro explícito de acuerdos por paleta, estados,
+tipografía, modo oscuro y efectos. **#55 sigue abierto y el documento sigue siendo
+borrador de estándar** hasta que Jhunier y Duverney acuerden su contenido. No se
+modificó la apariencia ni se instalaron dependencias.
+
+**#102–#108 ya no son borradores de PR.** Se verificaron los siete heads y sus CI
+correctos, se marcaron listos para revisión y se solicitó a `Duverney24` la
+revisión cruzada. Esa transición no cambia código ni equivale a aprobación.
+El evento ready_for_review puede crear nuevas ejecuciones de CI sobre los mismos
+commits; consultar su resultado antes de integrar. Se conserva la dependencia de
+#77, ya aprobado por Duverney, y el orden de integración de la tabla.
+
 ### Nueva revisión y compatibilidad del anclaje — 2026-10-24
 
 Se revisaron las actualizaciones de Duverney contra sus commits exactos y se
@@ -162,7 +190,7 @@ nueva aceptación de diseño. `main` permanece en `1b4498a`.
 
 | Responsable | Trabajo e integración restantes |
 |---|---|
-| Jhunier (`rlases`) | #79, #89, #84, #86, #87, #88 y #90 implementados en #102–#108; revisión cruzada e integración secuencial. #78 etiqueta ya fijada, revisar #112 y constancia #110. #55 requiere acuerdo explícito de tokens. Corrección adicional #113 lista para revisar. |
+| Jhunier (`rlases`) | #79, #89, #84, #86, #87, #88 y #90 implementados en #102–#108; revisión cruzada e integración secuencial. #78 etiqueta ya fijada, revisar #112 y constancia #110. #55 tiene redacción verificada en #114 y requiere acuerdo explícito de tokens. Corrección adicional #113 lista para revisar. |
 | Duverney (`Duverney24`) | #95 y #92 aprobados técnicamente en #98/#99, integrar tras #77; #91 integrar/revisar el arreglo #113 y actualizar #100; implementar/completar #82, #85, #93, #94 y #109. Revisar los PR de Jhunier y realizar la integración de #77. |
 | Ambos | Acuerdo pendiente sobre #111 (72 horas sigue siendo propuesta), tokens de #55, instalación Windows/piloto y evidencia de Fabric real. |
 
