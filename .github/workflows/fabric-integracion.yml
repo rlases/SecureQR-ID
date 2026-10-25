@@ -29,10 +29,12 @@ jobs:
     name: Fabric 2.5 — anclar y verificar
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    env:
-      SQRID_FABRIC_HOME: ${{ runner.temp }}/fabric
     steps:
       - uses: actions/checkout@v4
+
+      # El contexto `runner` no existe en el `env` del trabajo: se fija en un paso.
+      - name: Carpeta de la red, fuera del repositorio
+        run: echo "SQRID_FABRIC_HOME=$RUNNER_TEMP/fabric" >> "$GITHUB_ENV"
 
       - uses: actions/setup-go@v5
         with:
@@ -63,7 +65,7 @@ jobs:
       - name: Anclar un lote real y verificar la prueba de inclusión
         env:
           PYTHON: python
-        run: infra/fabric/integracion.sh "${{ runner.temp }}/evidencia"
+        run: infra/fabric/integracion.sh "$RUNNER_TEMP/evidencia"
 
       - name: Guardar la evidencia
         if: always()
