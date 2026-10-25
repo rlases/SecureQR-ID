@@ -23,6 +23,8 @@ export interface AppDependencies {
   certificate?: Buffer;
   // Archivo donde se exportan, sin firmar, los cid revocados (ADR-0016, punto 9).
   revocadosExportPath?: string;
+  // Compromisos anclados de la cabeza de asignaciones que exporta evidence-log/ (#119).
+  compromisosPath?: string;
 }
 
 declare module 'express-session' {
@@ -45,7 +47,10 @@ export function createApp(deps: AppDependencies): Express {
   app.use('/api/registros', createRegistrosRouter());
   app.use('/api/users', createUsersRouter());
   app.use('/api/estamentos', createEstamentosRouter());
-  app.use('/api/titulares', createTitularesRouter({ revocadosPath: deps.revocadosExportPath }));
+  app.use('/api/titulares', createTitularesRouter({
+      revocadosPath: deps.revocadosExportPath,
+      compromisosPath: deps.compromisosPath,
+    }));
   app.use(
     '/api/portal',
     createPortalRouter({

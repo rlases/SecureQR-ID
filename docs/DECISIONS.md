@@ -1116,6 +1116,48 @@ de la cadena sigue igual (orden, génesis, `hash_anterior`).
   manipularla (con SHA-256 sin clave y con una clave distinta) y comprueban que la
   verificación falla.
 
+**Enmienda (2026-10-25, segunda) — Compromiso externo de la cabeza de `asignaciones_cid`
+(issue #119).** La enmienda anterior dejó un riesgo residual: quien controla el servidor
+completo (base **y** clave HMAC) puede reescribir el historial `cid` → titular. Para
+cerrarlo hace falta un compromiso fuera de su alcance, y el sistema ya tiene uno: la
+bitácora anclada en Fabric (ADR-0017).
+
+**Decisión.**
+
+- `mi-app-qr` escribe cada 15 minutos, con reemplazo atómico, la **cabeza** de la cadena
+  en `ASIGNACIONES_CABEZA_PATH`: `{version, fuente: "asignaciones_cid", seq, hash}`. Solo un
+  número y la etiqueta HMAC de 256 bits, que no se puede invertir; nunca `cid`, `ref` ni
+  datos personales.
+- `evidence-log cycle --head-file` registra esa cabeza **antes** de fijar el lote, como un
+  evento con la decisión `compromiso_externo` (nunca la de un paso por el punto de
+  control) y `credential_id = asignaciones_cid:<seq>:<hash>`. Así entra en la misma raíz de
+  Merkle que se ancla en esa corrida, sin cambiar el formato del lote ni el contrato de
+  `anchor/`. Una cabeza repetida no se vuelve a registrar; una que **retrocede** o que
+  cambia el hash de una `seq` ya comprometida es una **alerta** (código 3), porque eso solo
+  pasa si alguien reescribió o truncó el historial.
+- `evidence-log export-commitments` (o `cycle --commitments-file`) devuelve los
+  compromisos y si cada uno ya está anclado. Solo cuenta como anclado si la cadena local
+  verifica y la raíz de su lote se recalcula igual a la registrada.
+- `mi-app-qr` compara cada hora su historial con los compromisos anclados: la fila de
+  cada `seq` comprometida debe existir y tener el mismo hash. Si no, registra una alerta y
+  el `admin` la ve en `GET /api/titulares/integridad`.
+
+**Opciones consideradas.** Una tabla aparte en `evidence-log/` para compromisos externos
+no se anclaría sin cambiar el lote ni `anchor/`. Anclar la cabeza directamente desde
+`mi-app-qr` exigiría que Node hable con Fabric, duplicando `anchor/`. Registrarla como
+evento reutiliza todo el camino de anclaje ya probado; el costo es que estos eventos
+cuentan en los lotes, y se distinguen por su decisión.
+
+**Consecuencias.**
+
+- Una reescritura o un truncamiento **anterior** al último compromiso anclado se detecta,
+  aunque el atacante tenga la clave HMAC.
+- Riesgo residual: lo asignado después del último compromiso anclado (hasta unos 15
+  minutos más el ciclo de anclaje) solo lo protege el HMAC. La comparación usa la copia
+  local de la bitácora, que se confirma contra la raíz anclada en Fabric al consultarla
+  (#93).
+- Sigue el límite de proceso por archivos (ADR-0005): ni Python importa Node ni al revés.
+
 ---
 
 ## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps

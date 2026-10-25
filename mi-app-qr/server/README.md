@@ -119,3 +119,13 @@ criterio se aplica a las filas vencidas al configurar un plazo de conservación.
 - Cada ejecución queda en `anonimizaciones`.
 - Límite: los motivos escritos en el registro de cambios no se anonimizan; el formulario
   pide no escribir datos personales en ellos.
+
+## Compromiso externo del historial cid → titular (issue #119)
+
+Con `ASIGNACIONES_CABEZA_PATH`, el servidor escribe cada 15 minutos la cabeza de
+`asignaciones_cid` (seq y etiqueta HMAC, sin datos personales) para que
+`evidence-log cycle --head-file` la registre y la ancle. Con
+`ASIGNACIONES_COMPROMISOS_PATH` (el archivo de `--commitments-file`), compara cada hora el
+historial con los compromisos anclados y registra una alerta si una asignación
+comprometida falta o cambió, aunque la cadena verifique con la clave HMAC.
+`GET /api/titulares/integridad` (solo `admin`) muestra la cabeza y el resultado.

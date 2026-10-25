@@ -74,7 +74,9 @@ python -m secureqr_evidence_log record-receipt --db evidence.sqlite3 --receipt r
 python -m secureqr_evidence_log status         --db evidence.sqlite3
 python -m secureqr_evidence_log cycle --db evidence.sqlite3 --verifier-id ccav-portal-1 \
   --workdir /var/lib/secureqr-id/anclaje --status-file /var/lib/secureqr-id/anclaje/estado.json \
-  --anchor-command "node /opt/secureqr-id/anchor/dist/cli.js anclar"
+  --anchor-command "node /opt/secureqr-id/anchor/dist/cli.js anclar" \
+  --head-file /var/lib/secureqr-id/anclaje/cabeza-asignaciones.json \
+  --commitments-file /var/lib/secureqr-id/anclaje/compromisos.json
 ```
 
 (`secureqr-evidence-log` es el mismo comando instalado.)
@@ -99,6 +101,17 @@ Con `--status-file`, `cycle` escribe ese mismo JSON (más `written_at`) al termi
 corrida, también cuando falla, con reemplazo atómico. El servidor de `mi-app-qr` solo lo
 lee y alerta si `stale` es verdadero **o** si el archivo tiene más de 2 horas, lo que
 también detecta que la tarea programada dejó de correr.
+
+### Compromiso de la cabeza de `asignaciones_cid` (issue #119)
+
+`mi-app-qr` escribe la cabeza de su historial `cid` → titular (seq y etiqueta HMAC, nunca
+datos personales). Con `cycle --head-file cabeza.json`, la bitácora la registra como
+evento `compromiso_externo` antes de fijar el lote, así que se ancla en la misma corrida;
+con `--commitments-file compromisos.json` deja, al terminar, la lista de compromisos y si
+ya están anclados, para que `mi-app-qr` compare su historial. Una cabeza que retrocede o
+cambia el hash de una `seq` ya comprometida es una alerta (código 3). También están los
+comandos sueltos `commit-head` y `export-commitments`. Formatos en
+`src/secureqr_evidence_log/compromisos.py`.
 
 ### Formato de los archivos (contrato con `anchor/`)
 

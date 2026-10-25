@@ -177,8 +177,16 @@ decisión sobre el registro `cid` → persona en el servidor de `mi-app-qr`):
   con HMAC-SHA256 y una clave que vive fuera de la base. Quien solo tiene el archivo de
   la base, una copia o un respaldo no puede recalcular la cadena sin que
   `verifyAsignaciones` lo detecte. **Riesgo residual:** quien controla el equipo
-  servidor completo (la base y la clave) todavía puede reescribirla. Cerrarlo exige
-  publicar la cabeza de la cadena en la bitácora anclada, trabajo posterior.
+  servidor completo (la base y la clave) todavía puede reescribirla.
+- Compromiso externo (segunda enmienda de 2026-10-25 a ADR-0016, #119): `mi-app-qr`
+  escribe la cabeza de la cadena (seq y etiqueta HMAC) cada 15 minutos; el ciclo de
+  `evidence-log/` la registra como evento y la ancla en Fabric con el siguiente lote, y
+  `mi-app-qr` compara cada hora su historial con los compromisos anclados. Desde que un
+  compromiso queda anclado, reescribir o truncar el historial **anterior** a ese punto se
+  detecta aunque se tenga la clave. **Riesgo residual:** lo que se asignó después del
+  último compromiso anclado (hasta unos 15 minutos más el ciclo de anclaje) solo lo
+  protege el HMAC; y la comparación usa la copia local de la bitácora, que a su vez solo
+  se confirma contra Fabric al consultar la raíz anclada (#93).
 
 **Límite que se acepta.** Dentro de un trimestre la vinculabilidad persiste. Eliminarla
 del todo exigiría un identificador distinto en cada token, lo que obliga a rediseñar la

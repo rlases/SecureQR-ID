@@ -6,7 +6,15 @@
     python -m secureqr_evidence_log seal           --seals-dir DIR --block-hash HEX
     python -m secureqr_evidence_log seal-upgrade   --seals-dir DIR
     python -m secureqr_evidence_log cycle          --db BITACORA --verifier-id ID --workdir DIR \\
-        --anchor-command "..." [--status-file estado.json]
+        --anchor-command "..." [--status-file estado.json] \\
+        [--head-file cabeza.json --commitments-file compromisos.json]
+    python -m secureqr_evidence_log commit-head        --db BITACORA --verifier-id ID --head cabeza.json
+    python -m secureqr_evidence_log export-commitments --db BITACORA --output compromisos.json
+
+`commit-head` registra la cabeza del historial `cid` → titular que escribe `mi-app-qr`, y
+`export-commitments` le devuelve cuáles ya quedaron anclados (enmienda de 2026-10-25 a
+ADR-0016, #119). Con `--head-file`, `cycle` registra la cabeza antes de fijar el lote, para
+que se ancle en la misma corrida; con `--commitments-file`, exporta los compromisos al final.
 
 `cycle` es lo que ejecuta la tarea programada cada 15 minutos: fija y exporta el lote,
 llama a `anchor/` como un proceso aparte (Python y Node no se importan, ADR-0005) y
@@ -36,6 +44,7 @@ import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from .compromisos import CommitmentError, commit_head, export_commitments, load_head
 from .sealing import SealingError, seal_block_hash, upgrade_pending
 from .evidence_log import (
     DEFAULT_MAX_BATCH_EVENTS,
@@ -201,6 +210,21 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     cycle.add_argument("--max-events", type=_positive_int, default=DEFAULT_MAX_BATCH_EVENTS)
     cycle.add_argument("--timeout-seconds", type=_positive_int, default=300)
+    cycle.add_argument("--head-file", help="cabeza del historial cid → titular de mi-app-qr")
+    cycle.add_argument("--commitments-file", help="dónde dejar los compromisos para mi-app-qr")
+
+    head = commands.add_parser(
+        "commit-head", help="registra la cabeza del historial cid → titular de mi-app-qr"
+    )
+    head.add_argument("--db", required=True)
+    head.add_argument("--verifier-id", required=True, type=_verifier_id)
+    head.add_argument("--head", required=True)
+
+    exported = commands.add_parser(
+        "export-commitments", help="escribe los compromisos registrados y si están anclados"
+    )
+    exported.add_argument("--db", required=True)
+    exported.add_argument("--output", required=True)
 
     seal = commands.add_parser(
         "seal", help="sella en OpenTimestamps el hash del último bloque (tarea diaria)"
@@ -282,6 +306,18 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
             status = log.anchoring_status(clock(), args.stale_after_seconds)
             print(json.dumps(status.to_json()))
             return EXIT_OK
+        if args.command == "commit-head":
+            try:
+                head = load_head(Path(args.head))
+                registrado = commit_head(log, head, args.verifier_id, clock())
+            except CommitmentError as exc:
+                print(f"ALERTA: {exc}", file=sys.stderr)
+                return EXIT_ALERT
+            print(f"cabeza {head.seq} {'registrada' if registrado else 'ya registrada'}")
+            return EXIT_OK
+        if args.command == "export-commitments":
+            print(f"compromisos={export_commitments(log, args.output)}")
+            return EXIT_OK
         try:
             anchor_command = shlex.split(args.anchor_command, posix=os.name != "nt")
         except ValueError:
@@ -289,6 +325,18 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
         if not anchor_command:
             print("Error: --anchor-command está vacío o mal formado.", file=sys.stderr)
             return EXIT_USAGE
+        if args.head_file:
+            # Antes de fijar el lote, para que la cabeza se ancle en esta misma corrida. Un
+            # archivo ausente no detiene el anclaje de los pasos; una cabeza inválida o que
+            # retrocede es una alerta.
+            try:
+                commit_head(log, load_head(Path(args.head_file)), args.verifier_id, clock())
+            except CommitmentError as exc:
+                if not Path(args.head_file).exists():
+                    print(f"sin cabeza de asignaciones: {exc}", file=sys.stderr)
+                else:
+                    print(f"ALERTA en la cabeza de asignaciones: {exc}", file=sys.stderr)
+                    return EXIT_ALERT
         try:
             return run_cycle(
                 log,
@@ -302,6 +350,8 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
         finally:
             if args.status_file:
                 _write_status_file(log, Path(args.status_file), clock())
+            if args.commitments_file:
+                export_commitments(log, args.commitments_file)
     finally:
         log.close()
 

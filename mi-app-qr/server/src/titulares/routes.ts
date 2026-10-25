@@ -13,6 +13,7 @@ import {
   revocarCredencial,
 } from './gestion.js';
 import { getPlazoConservacion, setPlazoConservacion } from './anonimizacion.js';
+import { cabezaAsignaciones, verificarContraCompromisos } from './compromiso.js';
 
 // Rutas de admin sobre el registro de titulares. Ninguna está disponible para el
 // operador: traducir un cid a una persona es solo del admin (ADR-0016, punto 7).
@@ -26,7 +27,9 @@ const id = z.coerce.number().int().positive();
 const motivoSchema = z.object({ motivo: z.string().trim().min(3).max(200) });
 const estadoSchema = z.enum(['activo', 'en_revision', 'suspendido']).optional();
 
-export function createTitularesRouter(opciones: { revocadosPath?: string } = {}): Router {
+export function createTitularesRouter(
+  opciones: { revocadosPath?: string; compromisosPath?: string } = {}
+): Router {
   const router = Router();
   router.use(requireAdmin);
 
@@ -63,6 +66,17 @@ export function createTitularesRouter(opciones: { revocadosPath?: string } = {})
       }
     });
   }
+
+  // Integridad del historial cid → titular contra los compromisos anclados (#119).
+  router.get('/integridad', (req, res) => {
+    const db = req.app.locals.db as Database.Database;
+    const cabeza = cabezaAsignaciones(db);
+    res.set('Cache-Control', 'no-store');
+    if (!opciones.compromisosPath) {
+      return res.json({ cabeza, verificacion: { estado: 'sin_compromisos' } });
+    }
+    return res.json({ cabeza, verificacion: verificarContraCompromisos(db, opciones.compromisosPath) });
+  });
 
   // Plazo de conservación de registros y consultas para un uso institucional posterior
   // (ADR-0016, punto 10). null = se conservan hasta el cierre del piloto.
