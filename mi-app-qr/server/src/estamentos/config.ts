@@ -520,8 +520,20 @@ export function listCambios(db: Database.Database, limite = 200): CambioConfigur
     entidad: r.entidad,
     entidadId: r.entidad_id,
     accion: r.accion,
-    valorAnterior: r.valor_anterior === null ? null : JSON.parse(r.valor_anterior),
-    valorNuevo: r.valor_nuevo === null ? null : JSON.parse(r.valor_nuevo),
+    valorAnterior: valorPublico(r.valor_anterior),
+    valorNuevo: valorPublico(r.valor_nuevo),
     en: r.en,
   }));
+}
+
+// Las filas antiguas pueden contener cid junto al id del titular. El registro de
+// configuración no es una consulta auditada cid → persona: quitar ese campo de
+// la respuesta sin modificar las filas históricas de solo agregar.
+function valorPublico(serializado: string | null): unknown {
+  const valor: unknown = serializado === null ? null : JSON.parse(serializado);
+  if (valor !== null && typeof valor === 'object' && !Array.isArray(valor)) {
+    const { cid: _cid, ...publico } = valor as Record<string, unknown>;
+    return publico;
+  }
+  return valor;
 }

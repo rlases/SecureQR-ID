@@ -1,11 +1,17 @@
+import type { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render as renderUI, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import LoginPage from '../src/pages/LoginPage';
 import { AuthProvider } from '../src/auth/AuthContext';
 import * as apiClient from '../src/lib/apiClient';
 
+function render(ui: ReactNode) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderUI(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 vi.mock('../src/lib/apiClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/lib/apiClient')>();
   return {

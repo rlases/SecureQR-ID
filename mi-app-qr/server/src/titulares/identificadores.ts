@@ -37,6 +37,7 @@ export function isCanonicalCid(value: string): boolean {
  * columna; el último carácter de 16 bytes en Base64url es A, Q, g o w. */
 export function canonicalCidSql(column: 'cid' | 'OLD.cid' = 'cid'): string {
   return `(length(${column}) = 22
+    AND instr(${column}, char(0)) = 0
     AND ${column} NOT GLOB '*[^A-Za-z0-9_-]*'
     AND substr(${column}, 22, 1) IN ('A', 'Q', 'g', 'w'))`;
 }

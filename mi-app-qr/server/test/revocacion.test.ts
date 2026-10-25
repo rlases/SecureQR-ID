@@ -155,9 +155,30 @@ describe('revocación inmediata', () => {
       entidad: 'credencial',
       entidadId: titular.id,
       accion: 'revocar',
-      valorAnterior: { cid, estado: 'vigente' },
-      valorNuevo: { cid, estado: 'revocada', motivo: 'Robo' },
+      valorAnterior: { estado: 'vigente' },
+      valorNuevo: { estado: 'revocada', motivo: 'Robo' },
     });
+  });
+
+  it('el historial público no permite atribuir cid nuevos ni históricos sin consulta auditada', async () => {
+    const { titular, cid } = alta('6000000098');
+    await admin.post(`/api/titulares/${titular.id}/revocar`).send({ motivo: 'Robo' });
+    await admin.post(`/api/titulares/${titular.id}/reactivar`).send({ motivo: 'Resuelto' });
+    const nuevo = db.prepare("SELECT cid FROM credenciales WHERE titular_id = ? AND estado = 'vigente'").get(titular.id) as { cid: string };
+    const originales = JSON.stringify(db.prepare("SELECT * FROM cambios_configuracion WHERE accion IN ('revocar', 'reactivar')").all());
+    expect(originales).not.toContain(cid);
+    expect(originales).not.toContain(nuevo.cid);
+    // Simula filas de versiones anteriores: se conservan append-only, pero se proyectan sin cid.
+    db.prepare(`INSERT INTO cambios_configuracion (usuario_id, entidad, entidad_id, accion, valor_anterior, valor_nuevo, en)
+      VALUES (?, 'credencial', ?, 'revocar', ?, ?, ?)`).run(adminId, titular.id,
+      JSON.stringify({ cid, estado: 'vigente' }), JSON.stringify({ cid, estado: 'revocada', motivo: 'Histórico' }), new Date().toISOString());
+    const almacenado = db.prepare('SELECT * FROM cambios_configuracion ORDER BY id DESC LIMIT 1').get();
+    const historial = await admin.get('/api/estamentos/cambios');
+    expect(historial.status).toBe(200);
+    expect(JSON.stringify(historial.body)).not.toContain(cid);
+    expect(JSON.stringify(historial.body)).not.toContain(nuevo.cid);
+    expect(historial.body.cambios[0]).toMatchObject({ entidadId: titular.id, valorNuevo: { estado: 'revocada', motivo: 'Histórico' } });
+    expect(db.prepare('SELECT * FROM cambios_configuracion ORDER BY id DESC LIMIT 1').get()).toEqual(almacenado);
   });
 
   it('un operador no puede revocar ni exportar', async () => {

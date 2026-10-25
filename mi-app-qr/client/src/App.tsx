@@ -71,7 +71,7 @@ function App() {
             <Route
               path="/usuarios"
               element={
-                <RequireAuth>
+                <RequireAuth role="admin">
                   <AppLayout>
                     <UsuariosPage />
                   </AppLayout>
@@ -81,7 +81,7 @@ function App() {
             <Route
               path="/estamentos"
               element={
-                <RequireAuth>
+                <RequireAuth role="admin">
                   <AppLayout>
                     <EstamentosPage />
                   </AppLayout>
@@ -91,7 +91,7 @@ function App() {
             <Route
               path="/consultas"
               element={
-                <RequireAuth>
+                <RequireAuth role="admin">
                   <AppLayout>
                     <ConsultaCidPage />
                   </AppLayout>
@@ -101,7 +101,7 @@ function App() {
             <Route
               path="/titulares"
               element={
-                <RequireAuth>
+                <RequireAuth role="admin">
                   <AppLayout>
                     <TitularesPage />
                   </AppLayout>
