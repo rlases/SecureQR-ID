@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-24
+**Última actualización:** 2026-10-25
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -16,11 +16,55 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ---
 
-## Estado vigente — 2026-10-24
+## Estado vigente — 2026-10-25
 
-### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
+### Cierre de la sesión de Jhunier — 2026-10-25
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Integrado en `main` (PR de Duverney revisados y fusionados por Jhunier):**
+
+- #99 (tabla `anclajes`);
+- #98 (docs tras ADR-0016/0017);
+- #100 (`FabricLedgerClient`);
+- #111 (enmienda de ADR-0016, aceptada con el código provisional de 72 h);
+- #116 (sellado en OpenTimestamps; #94 sigue abierto);
+- #117.
+
+**Pila de Jhunier (#102–#108 y #115):**
+
+- **`main` propagado** por toda la cadena con merges, sin force-push ni conflictos. Los ocho PR tienen el CI en verde (10/10).
+- **#115 sale de borrador.** Se fusiona **justo después de #108**, como último eslabón. Se decidió no repartirlo en los PR de origen.
+- **Qué reúne #115:**
+  - los P2 de Codex sobre la caché entre sesiones (#103 y #105);
+  - el `cid` en `cambios_configuracion` (#106);
+  - el NUL en el chequeo SQL del `cid` (#108);
+  - **el P1 de #102.** La cadena `asignaciones_cid` pasa a HMAC-SHA256 con `ASIGNACIONES_KEY` fuera de la base. Queda registrado como enmienda de 2026-10-25 a ADR-0016, propuesta hasta que Duverney apruebe #115, y en `THREAT-MODEL.md` con su riesgo residual.
+- **Clave nueva:**
+  - Electron la genera en `server-secrets.json`;
+  - fuera de Electron va en `.env`;
+  - el servidor no arranca sin ella.
+- **Falla intermitente de `reseteo.test.ts`:** venía de una BD de prueba residual. Corregida con un directorio temporal por prueba. Servidor 189/189 y cliente 102/102.
+- **Hilos de Codex** de #102, #103, #105, #106 y #108: respondidos y resueltos.
+
+**#114 (acuerdo de diseño de #55):**
+
+- Jhunier confirmó por escrito las cinco propuestas de Duverney, incluido el criterio de contraste.
+- La tabla de `DESIGN-SYSTEM.md` quedó con los enlaces; `main` fue fusionado en la rama.
+- La adopción en cada app es trabajo nuevo, y se reparte en partes iguales: tokens `--success`/`--warning`, `.primary-button` sobre `--teal-700`, pesos tipográficos y retirar `darkMode`.
+
+**Le toca a Duverney:**
+
+1. **Revisión cruzada de #102 → #108 → #115, en ese orden.** Atención especial a la enmienda HMAC del ADR-0016. Al fusionar cada PR, reorientar el siguiente a `main`.
+2. **Fusionar #114.** Es de Jhunier y ya tiene la aprobación de Duverney; si la descartó el push nuevo, volver a aprobar.
+3. Los pendientes propios de abajo: #82, #93, #94, y #85/#109 cuando entre la pila.
+
+**Le toca a Jhunier:**
+
+- Atender lo que salga de la revisión de la pila.
+- Trabajo posterior anotado en ADR-0016: publicar la cabeza de `asignaciones_cid` en la bitácora anclada.
+
+### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
 
 **Integrado hoy en `main`:** #74 (ADR-0013 a 0015), #77 (ADR-0017, aceptada), #112
 (`baseline-o3` fijada) y #110 (este handoff), además de #113 (arreglo Unicode de
