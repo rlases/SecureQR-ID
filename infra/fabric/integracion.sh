@@ -43,13 +43,24 @@ eval "$("$INFRA_DIR/entorno-anchor.sh")"
 anclar="node $REPO_DIR/anchor/dist/cli.js anclar"
 
 info "ciclo real: evidence-log → anchor → Fabric → recibo"
-if ! "$PYTHON" -m secureqr_evidence_log cycle --db "$db" --verifier-id "$verifier_id" \
-  --workdir "$trabajo/anclaje" --status-file "$salida/estado.json" --anchor-command "$anclar"; then
+# Justo después de (re)arrancar la red, el orderer puede seguir eligiendo líder. En
+# producción el ciclo programado reintenta cada 15 minutos; aquí, hasta 6 veces. Cada
+# reintento reexporta exactamente el mismo lote fijado (ADR-0017, punto 5).
+anclado=no
+for intento in 1 2 3 4 5 6; do
+  codigo=0
+  "$PYTHON" -m secureqr_evidence_log cycle --db "$db" --verifier-id "$verifier_id" \
+    --workdir "$trabajo/anclaje" --status-file "$salida/estado.json" --anchor-command "$anclar" || codigo=$?
+  if [ "$codigo" -eq 0 ]; then anclado=si; break; fi
+  [ "$codigo" -eq 1 ] || falla "el ciclo terminó con código $codigo (alerta o error de uso)"
   # `cycle` solo informa el código de salida: se repite el anclaje para ver el error de anchor/.
   node "$REPO_DIR/anchor/dist/cli.js" anclar --batch "$trabajo/anclaje/lote.json" \
-    --receipt "$trabajo/recibo-diagnostico.json" || true
-  falla "el ciclo de anclaje falló"
-fi
+    --receipt "$trabajo/recibo-diagnostico.json" >/dev/null || true
+  rm -f "$trabajo/recibo-diagnostico.json"
+  echo "intento $intento sin anclar; se reintenta en 10 s"
+  sleep 10
+done
+[ "$anclado" = si ] || falla "el ciclo de anclaje falló tras 6 intentos"
 cp "$trabajo/anclaje/lote.json" "$trabajo/anclaje/recibo.json" "$salida/"
 
 info "la raíz desde la red y una prueba de inclusión contra ella"
