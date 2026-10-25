@@ -118,6 +118,13 @@ para `anchor`.
 
 **Actualizado en consecuencia:** `CLAUDE.md` (sección "Comandos" y "Trampas conocidas").
 
+**Enmienda (ADR-0017).** `fabric-network` dejó de publicar versiones estables y la
+documentación de Fabric remite a la Fabric Gateway client API; `anchor/` se conecta con
+`@hyperledger/fabric-gateway`, que sigue siendo Node. La decisión de lenguaje para
+`anchor/` no cambia. Se suma **Go** solo para el contrato que corre dentro de la red
+Fabric, porque el soporte de contratos en Node lleva casi dos años sin versiones. Detalle
+en ADR-0017.
+
 ---
 
 ## ADR-0006 — Forma canónica: CCAV Pitalito
@@ -696,7 +703,7 @@ sola persona guarda la clave, para no tenerla en dos equipos. Parámetros:
 
 ## ADR-0016 — Registro de credenciales en `mi-app-qr` y portal del titular
 
-**Estado:** Propuesta
+**Estado:** Aceptada (2026-10-24)
 
 **Contexto.** El `cid` es opaco (`docs/SQRID-1.md`): el token no lleva datos personales y
 `verifier/` decide sin saber de quién es la credencial. La relación `cid` → persona tiene
@@ -967,3 +974,161 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   comprobar que la red del CCAV resuelva ese nombre hacia una IP privada. Si se adopta,
   también habilitaría las llaves de acceso del teléfono (opción e). Mientras no se
   decida, rige la mitigación de la huella publicada.
+
+---
+
+## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps
+
+**Estado:** Aceptada (2026-10-24)
+
+**Contexto.** `anchor/` construye el árbol de Merkle, genera y verifica pruebas de
+inclusión y publica la raíz a través de la interfaz `LedgerClient`, pero la única
+implementación es `InMemoryLedgerClient`: no hay red Fabric, ni contrato en la red, ni
+quien ejecute el ciclo exportar → anclar → registrar. Por eso el anclaje en blockchain
+(objetivo específico 2) no está cumplido. Además, `EvidenceLog.mark_batch_anchored`
+hace `UPDATE` sobre la tabla de eventos: no rompe la cadena de hashes, pero es una
+edición sobre una bitácora que debe ser de solo agregar. Por último, el proyecto no debe
+depender de servicios de la universidad (ADR-0016).
+
+**Vigencia de las tecnologías (consultado el 2026-10-13 en Docker Hub, npm, PyPI y el
+proxy de módulos de Go).**
+
+| Pieza | Última versión | Fecha |
+|---|---|---|
+| Nodos de Fabric, línea 3.1 | 3.1.5 | junio de 2026 |
+| Nodos de Fabric, línea 2.5 (LTS) | 2.5.16 | junio de 2026 |
+| `@hyperledger/fabric-gateway` (cliente Node) | 1.13.0 | octubre de 2026 |
+| `fabric-contract-api-go` v2 (contratos en Go) | 2.2.4 | octubre de 2026 |
+| `fabric-contract-api` (contratos en Node) | 2.5.8 | diciembre de 2024 |
+| `fabric-network` (SDK antiguo) | 2.2.20, sin versión estable posterior | — |
+| `opentimestamps-client` (Python, referencia) | 0.7.2 | diciembre de 2024 |
+| `opentimestamps` para JavaScript | 0.4.9 | enero de 2021 |
+
+**Decisión.**
+
+1. **Red propia, Fabric 2.5 LTS, en Docker en el servidor del CCAV.** Se usa la
+   `test-network` oficial de `fabric-samples` (un *orderer* y dos organizaciones con un
+   *peer* cada una), con versiones fijadas en los scripts de `infra/fabric/`, nunca «la
+   última». La operan los autores del proyecto: como reconoce ADR-0007, eso no protege
+   contra quien opera la red, y para eso existe el sellado en Bitcoin (punto 7). Requiere
+   Docker y unos 4 GB de RAM libres.
+   - **Persistencia.** La `test-network` está pensada para pruebas: `./network.sh down`
+     borra contenedores, volúmenes y material criptográfico, y `up` crea una red nueva con
+     el ledger vacío. Para que el ledger dure todo el piloto, `infra/fabric/` tiene
+     scripts propios sobre la `test-network`: se crea una sola vez y después solo se
+     detienen y arrancan los contenedores existentes, nunca `down`/`up`. Los contenedores
+     usan la política de reinicio `unless-stopped`, para volver solos tras un reinicio del
+     servidor.
+   - **Respaldo.** Se respaldan los volúmenes de los *peers* y del *orderer* y el material
+     criptográfico generado (que `.gitignore` excluye y nunca entra al repositorio), con
+     la red detenida, en un medio externo cifrado que guarda el custodio. Se respalda al
+     crear la red y una vez por semana.
+   - Una prueba de #82 comprueba que el ledger sobrevive a un reinicio de la red.
+2. **Contrato en Go** (`fabric-contract-api-go` v2), con dos operaciones:
+   `registrarRaiz(loteId, raiz, cantidad, primerEvento, ultimoEvento)`, que rechaza un
+   `loteId` ya registrado para que nadie pueda sobrescribir un lote, y
+   `consultarRaiz(loteId)`. El `loteId` es **determinista**: se forma con el
+   `verifier_id` de la instalación (ADR-0013) y el primer y el último número de secuencia
+   del lote en su bitácora (por ejemplo `ccav-portal-1:seq-000101-000600`). Así el mismo
+   rango nunca se ancla dos veces con identificadores distintos, y dos instalaciones,
+   cuyas bitácoras empiezan cada una en 1, no chocan en la misma red. Para que un
+   reintento produzca el mismo `loteId`, el rango se fija antes de publicar (punto 5). Junto con la raíz,
+   el contrato guarda el identificador de la transacción y su marca de tiempo
+   (`GetTxID`, `GetTxTimestamp`), y `consultarRaiz` los devuelve; el número de bloque se
+   recupera con la consulta del sistema `qscc` (`GetBlockByTxID`). Solo guarda hashes,
+   identificadores de instalación y números de evento, nunca datos personales. Vive en `anchor/chaincode/` con sus propias pruebas (`go test`).
+3. **Cliente en `anchor/` con la Fabric Gateway API.** `FabricLedgerClient` implementa
+   `LedgerClient` con `@hyperledger/fabric-gateway`. `publishRoot` pasa a devolver un
+   **recibo** (identificador de transacción y número de bloque). `InMemoryLedgerClient`
+   se conserva para las pruebas unitarias. Un comando `anclar` lee el lote exportado,
+   construye el árbol, publica la raíz y escribe el recibo en un archivo.
+4. **Ciclo programado cada 15 minutos, con lotes de máximo 500 eventos.** Una tarea del
+   sistema (cron o Programador de tareas) ejecuta: `evidence-log` fija y exporta el lote →
+   `anchor` lo ancla y escribe el recibo → `evidence-log` registra el recibo. Python y
+   Node se comunican por archivos, sin importarse (ADR-0005). Un disparador por cantidad
+   de eventos exigiría un proceso vigilando todo el tiempo; el tope de 500 por lote
+   cumple el mismo fin.
+5. **Lotes fijados y recibos, en dos tablas de solo agregar.**
+   - **`lotes`.** Antes de exportar, `evidence-log` registra el lote que va a publicar
+     (`loteId`, primer y último evento, raíz y fecha). Mientras ese lote no tenga recibo,
+     cada corrida vuelve a exportar **exactamente ese rango**, aunque hayan llegado
+     eventos nuevos; solo cuando el recibo queda registrado se fija el lote siguiente,
+     que empieza en el evento posterior. Sin esto, si la raíz entra a Fabric y el recibo
+     se pierde, la siguiente corrida armaría un lote más grande con otro `loteId`, se
+     anclaría un rango solapado y la raíz anterior quedaría huérfana, sin recibo.
+   - **`anclajes`.** Guarda lote, raíz, primer y último evento, transacción, bloque y
+     fecha. Reemplaza el `UPDATE` de `mark_batch_anchored`: un evento está anclado si cae
+     dentro del rango de algún anclaje registrado. Un recibo solo se acepta para el lote
+     fijado pendiente.
+
+   Así la bitácora no tiene ninguna operación de edición: fijar un lote y registrar su
+   recibo son dos inserciones.
+6. **Falla de la red.** Si Fabric no responde, el lote no se registra como anclado y se
+   reintenta en la siguiente corrida. Puede pasar también que la raíz entre a Fabric y el
+   recibo no alcance a registrarse en `anclajes` (corte de energía, error al escribir el
+   archivo). Como el `loteId` es determinista, la siguiente corrida recibe «ya
+   registrado»; entonces consulta la raíz con `consultarRaiz` y la compara con la del lote
+   local:
+   - si coinciden, reconstruye el recibo original (transacción y marca de tiempo desde
+     `consultarRaiz`, bloque desde `qscc`), lo registra y sigue: la operación es
+     idempotente y el recibo es el de la transacción que realmente ancló el lote, no el
+     del reintento rechazado;
+   - si no coinciden, no registra nada, se detiene y alerta, porque significa que el lote
+     local cambió después de anclarse.
+
+   En ninguno de estos casos la validación en el punto de control se entera (ADR-0003).
+   - **Alerta de 2 horas.** Al terminar cada corrida, el ciclo escribe un archivo de
+     estado en JSON (eventos pendientes, el más antiguo, último anclaje, `stale`) con
+     reemplazo atómico, en una ruta configurada. El servidor de `mi-app-qr` solo lee ese
+     archivo; no abre el SQLite de `evidence-log/` ni importa su código (ADR-0005). El
+     panel muestra la alerta si `stale` es verdadero **o** si el archivo tiene más de
+     2 horas, lo que también detecta que la tarea programada dejó de correr.
+7. **Sellado diario en OpenTimestamps** (ADR-0007) con el cliente oficial en Python
+   (`ots stamp`, luego `ots upgrade` y `ots verify`), no con la librería de JavaScript,
+   que está abandonada. Se sella el **hash del último bloque** del canal de Fabric
+   (consulta `GetChainInfo` de `qscc`), no la última raíz: cada bloque compromete a todos
+   los anteriores, así el sello cubre los lotes de todas las instalaciones de ese día y no
+   solo los de una. Solo envía un hash, sin cuenta ni pago, a varios servidores públicos a
+   la vez; necesita salida a internet. Si no la hay o los servidores fallan, el sello queda
+   pendiente y Fabric sigue siendo el anclaje principal. La confirmación en Bitcoin tarda
+   horas.
+   - **Verificación.** Crear el sello y completarlo (`ots stamp`, `ots upgrade`) no
+     necesita un nodo de Bitcoin, pero verificarlo de forma independiente (`ots verify`)
+     sí, según la documentación del cliente. No se instala un nodo en el servidor del CCAV:
+     la verificación se hace periódicamente, y para la evidencia del documento de grado,
+     desde un equipo con un nodo de Bitcoin Core podado, dejando constancia del resultado.
+     El comprobante `.ots` permite que cualquiera lo verifique después con sus propios
+     medios.
+8. **Estrategia de pruebas.**
+   - Objetivo 2, demostrar que funciona: pruebas unitarias con el doble en memoria;
+     pruebas del contrato con `go test` en cada PR; y una prueba de integración que
+     levanta la red en Docker, ancla un lote real, lee la raíz desde la red y verifica una
+     prueba de inclusión contra ella. Esta última corre en un flujo de CI aparte, manual y
+     nocturno, porque tarda varios minutos. Su ejecución exitosa se anexa al documento de
+     grado como evidencia.
+   - Objetivo 3, medir: detección de eventos alterados después del anclaje (se espera el
+     100 %), tiempo desde el registro hasta el anclaje y comportamiento con la red caída.
+
+**Consecuencias.**
+
+- El repositorio suma Go, solo para el contrato. `CLAUDE.md` debe listar sus comandos y
+  `.github/workflows/ci.yml` un trabajo nuevo.
+- `evidence-log/` cambia su contrato de anclaje (`anclajes` en lugar de `UPDATE`); sus
+  pruebas actuales sobre `mark_batch_anchored` se reescriben.
+- El servidor del CCAV necesita Docker y recursos para la red; hay que confirmarlo con
+  el equipo real antes del piloto. Si el equipo es Windows, hay que verificar que la
+  licencia de Docker Desktop permita usarlo en un equipo de la universidad; la
+  alternativa sin esa licencia es Docker Engine dentro de WSL2 o un equipo con Linux.
+- `ARCHITECTURE.md` y `THREAT-MODEL.md` se actualizan: la red la opera el propio
+  proyecto, y los servidores de OpenTimestamps los mantienen voluntarios.
+- **Riesgos residuales que se declaran** en `THREAT-MODEL.md` y en el documento de grado:
+  - *Ventana sin sello externo.* Entre un sellado diario y su confirmación en Bitcoin
+    pasan un día o más; en ese lapso, quien opera la red podría reconstruir el ledger
+    sin que nadie de fuera lo detecte. Fabric aporta registro inmutable frente a
+    terceros, no frente a sus propios operadores.
+  - *Sin descentralización real.* La `test-network` tiene un solo *orderer* y dos
+    organizaciones operadas por las mismas personas. El documento de grado no debe
+    presentarla como red descentralizada; la garantía externa la da el sello en
+    Bitcoin.
+- El documento de grado podrá decir que el anclaje está cumplido solo cuando la prueba de
+  integración pase contra la red real.
