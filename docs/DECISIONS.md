@@ -975,6 +975,99 @@ solución tiene que funcionar solo con lo que el propio proyecto opera.
   también habilitaría las llaves de acceso del teléfono (opción e). Mientras no se
   decida, rige la mitigación de la huella publicada.
 
+**Enmienda (2026-10-24) — Resolución de las altas en revisión (issue #109).** La
+decisión 2 detiene el alta cuando el documento ya existe, pero ningún punto dice cómo la
+resuelve el `admin`; sin eso, el alta queda bloqueada para siempre. Ese bloqueo tiene
+dos causas distintas y cada una exige una salida:
+
+- **Alguien usó el documento de otra persona.** El alta en revisión es la impostora, o
+  la impostora ya es el registro `activo` y la persona real quedó en revisión.
+- **La misma persona se registró de nuevo**, por ejemplo porque cambió de teléfono sin
+  guardar su código de recuperación.
+
+**Decisión.** Solo un `admin` resuelve (la ruta usa `requireAdmin`; un `operador` no).
+La página «Titulares» ofrece dos acciones sobre un alta en `en_revision`:
+
+1. **Rechazar.** El alta pasa a `anonimizado` de inmediato: se borran nombre, documento y
+   correo, y no se crea un estado nuevo. Esos datos no tienen finalidad una vez
+   rechazada el alta (Ley 1581 de 2012) y el alta nunca tuvo credencial, vínculo ni
+   código, así que no hay nada que revocar.
+2. **Reemplazar** el registro anterior por el nuevo. En una sola transacción:
+   - El titular anterior pasa al estado final **`reemplazado`**, que sale de
+     `titulares_documento_unico` (el índice solo cubre `activo` y `suspendido`) y
+     conserva sus datos hasta el cierre del piloto, cuando rige la anonimización de
+     ADR-0016. Es el único estado nuevo; se añade a la restricción de `titulares.estado`.
+   - Su credencial vigente pasa a `reemplazada` o `revocada` **según el motivo que elige
+     el `admin`**: «misma persona» → `reemplazada`; «el registro anterior era indebido»
+     → `revocada`, que entra en la lista de revocación y mata los tokens ya emitidos en
+     cuanto los puntos de control la reciban. El `cid` anterior nunca se borra: sigue
+     resolviendo en la consulta auditada (#86) y su historial en `asignaciones_cid`
+     verifica.
+   - Su dispositivo vinculado pasa a `revocado`, en ambos motivos.
+   - El titular nuevo pasa a `activo` y recibe credencial vigente, con su entrada `alta`
+     en `asignaciones_cid`, y un código de recuperación nuevo.
+   - Si el documento ya no tiene registro anterior vigente (por ejemplo, ya se
+     anonimizó), no hay nada que reemplazar: el `admin` solo **aprueba** el alta, con los
+     mismos efectos sobre el titular nuevo.
+
+**Entrega del código al titular nuevo.** El alta que quedó en revisión no le mostró
+ningún código. Al reemplazar, el servidor genera uno nuevo (CSPRNG, 80 bits o más,
+guardado como hash bcrypt, igual que el de la decisión 4) y lo muestra **una sola vez al
+`admin`**, que se lo entrega al titular **en persona, después de verificar su identidad**
+(la decisión 2 declara que el sistema no la comprueba; esta es la comprobación). El
+titular lo usa en el flujo de recuperación que ya existe (documento + código): eso
+vincula su teléfono y genera un código propio, con lo cual el que conoció el `admin` deja
+de servir. Hay límite de intentos por documento y por IP, como en la decisión 4. No se
+añade correo, enlace ni ningún canal nuevo: el correo sigue siendo solo un dato de
+contacto y el caso entra en el único caso manual que ya reconoce la decisión 4.
+
+**Auditoría.** Cada decisión (rechazar, reemplazar o aprobar) se registra en
+`cambios_configuracion` con el `admin`, la fecha y un motivo de una lista cerrada
+(`documento_de_otra_persona`, `misma_persona`, `registro_anterior_indebido`,
+`sin_registro_anterior`). La nota libre es opcional, corta, y la interfaz avisa que no
+debe contener datos personales: el texto libre no se puede depurar después (límite
+conocido de `cambios_configuracion`, ver #108).
+
+**Consecuencias.**
+
+- **Riesgo residual declarado.** La calidad de la resolución depende de la verificación
+  presencial del `admin`: un `admin` descuidado o malintencionado puede reemplazar un
+  registro legítimo. Queda registrado en `cambios_configuracion`, pero el sistema no lo
+  impide. Debe sumarse a `THREAT-MODEL.md`. El `admin` conoce el código de entrega hasta
+  que el titular lo usa: ese intervalo es la única ventana en que alguien distinto del
+  titular podría vincular el teléfono, por lo que se recomienda entregarlo y usarlo en
+  el mismo acto.
+- **Suplantación por registro previo (*document squatting*).** Quien se registra primero
+  con el documento ajeno obtiene un registro `activo`. La persona real queda en
+  revisión y el `admin` lo resuelve con «reemplazar» y motivo `registro_anterior_indebido`.
+  Sin esta salida, el documento quedaría ocupado indefinidamente.
+- **Código provisional de entrega, con vigencia de 72 horas** (propuesto; queda acordado
+  cuando los dos autores aprueben este PR). El plazo afecta **solo** al código
+  provisional que el `admin` ve al resolver, y no cambia la decisión 4: el código de
+  recuperación propio del titular no caduca por tiempo.
+  - Corre desde el momento en que el servidor lo genera.
+  - Vencido, el canje se rechaza con la misma respuesta genérica que un código
+    incorrecto, y el `admin` puede **regenerarlo**, lo que invalida el anterior.
+  - Al canjearlo, el titular recibe su código propio y el provisional deja de existir:
+    pierde su carácter provisional y su fecha de vencimiento.
+- **Implementación.** Va sobre el PR #106 y sus anteriores (#102, #104). Requisitos:
+  - **Canje atómico.** Reutilizar el consumo condicional y atómico del hash y la reserva
+    de cuota de intentos de #104: dos canjes simultáneos del mismo código producen un
+    solo éxito. La respuesta que contiene el código lleva `Cache-Control: no-store` y el
+    código no se escribe en registros ni en el almacenamiento persistente del cliente.
+  - **Resolver una sola vez.** Dentro de la transacción solo se resuelve un alta que siga
+    en `en_revision`; una decisión repetida, o una aprobación sobre un estado ya
+    resuelto, falla sin crear otra credencial ni otro código.
+  - **Reconstruir `titulares` sin perder nada.** Para ampliar la restricción de estados
+    se conservan el `id` y la `ref` de cada fila, todas las claves foráneas y todos los
+    triggers, incluido `titulares_referencia_fija` (#105). Se prueba la migración sobre
+    una base existente, `foreign_key_check`, el rollback de un reemplazo fallido y,
+    después, la cadena `asignaciones_cid` y la atribución de la consulta auditada.
+  - **Anonimización.** Las pruebas de #108 cubren también a los titulares `reemplazado`
+    (al cierre del piloto) y a los rechazados (de inmediato), y conservan la limpieza de
+    motivos y de `cid` inválidos.
+  - Pruebas de las tres salidas (rechazar, reemplazar, aprobar) con auditoría.
+
 ---
 
 ## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps
