@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import type {
   Estamento,
   EstamentoDetalle,
@@ -11,6 +11,11 @@ import type {
 // Configuración de estamentos desde el panel de admin (ADR-0016, punto 5; issue #89).
 // Todo cambio queda en `cambios_configuracion` con quién, cuándo, el valor anterior y el
 // nuevo, en la misma transacción que el cambio.
+
+/** Solo la violación de unicidad se traduce a «ya existe»; cualquier otro error sube tal cual. */
+function esRepetido(error: unknown): boolean {
+  return error instanceof Database.SqliteError && error.code === 'SQLITE_CONSTRAINT_UNIQUE';
+}
 
 export class ConfigError extends Error {
   constructor(
@@ -139,7 +144,8 @@ export function crearEstamento(
           )
           .run(nombre, datos.requiereConfirmacion ? 1 : 0, ahora.toISOString()).lastInsertRowid
       );
-    } catch {
+    } catch (error) {
+      if (!esRepetido(error)) throw error;
       throw new ConfigError('Ya existe un estamento con ese nombre.', 409);
     }
     const estamento = toEstamento(getEstamentoRow(db, id));
@@ -169,7 +175,8 @@ export function actualizarEstamento(
         requiere ? 1 : 0,
         id
       );
-    } catch {
+    } catch (error) {
+      if (!esRepetido(error)) throw error;
       throw new ConfigError('Ya existe un estamento con ese nombre.', 409);
     }
     const nuevo = toEstamento(getEstamentoRow(db, id));
@@ -228,6 +235,21 @@ export function borrarEstamento(
       throw new ConfigError('Hay titulares en este estamento: cámbialos antes de borrarlo.', 409);
     }
     const detalle = { ...anterior, ventanas: ventanasDe(db, id) };
+    // El borrado arrastra en cascada las excepciones y los dominios del estamento: cada uno
+    // se registra antes como borrado propio, para que ningún cambio quede sin constancia.
+    const excepciones = db
+      .prepare('SELECT * FROM excepciones_calendario WHERE estamento_id = ? ORDER BY id')
+      .all(id) as ExcepcionRow[];
+    for (const row of excepciones) {
+      registrarCambio(db, usuarioId, 'excepcion', row.id, 'borrar', toExcepcion(db, row), undefined, ahora);
+    }
+    const dominios = db
+      .prepare('SELECT id, dominio FROM dominios_correo WHERE estamento_id = ? ORDER BY id')
+      .all(id) as { id: number; dominio: string }[];
+    for (const row of dominios) {
+      const regla = { id: row.id, dominio: row.dominio, estamentoId: id };
+      registrarCambio(db, usuarioId, 'dominio', row.id, 'borrar', regla, undefined, ahora);
+    }
     db.prepare('DELETE FROM estamentos WHERE id = ?').run(id);
     registrarCambio(db, usuarioId, 'estamento', id, 'borrar', detalle, undefined, ahora);
   })();
@@ -393,7 +415,8 @@ export function crearDominio(
           .prepare('INSERT INTO dominios_correo (dominio, estamento_id) VALUES (?, ?)')
           .run(dominio, datos.estamentoId).lastInsertRowid
       );
-    } catch {
+    } catch (error) {
+      if (!esRepetido(error)) throw error;
       throw new ConfigError('Ese dominio ya tiene una regla.', 409);
     }
     const regla = { id, dominio, estamentoId: datos.estamentoId };
