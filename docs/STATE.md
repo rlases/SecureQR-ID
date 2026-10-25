@@ -18,6 +18,54 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ## Estado vigente — 2026-10-24
 
+### Cierre solicitado por el usuario: pendientes para retomar
+
+**No integrar #102–#108 todavía:** las nuevas revisiones automáticas detectaron
+hallazgos adicionales. Las correcciones están guardadas en el borrador
+[#115](https://github.com/rlases/SecureQR-ID/pull/115), rama
+`fix/90-privacidad-sesion-auditoria`, commit
+`367c1fd36d788e6ca13516db8117ecec71653b46`, **sobre #108**. Los PR
+originales siguen sin esos arreglos: marcarse listos para revisión no equivale a
+estar aprobados ni a tener resueltos los nuevos hallazgos.
+
+**Ya guardado y verificado localmente:**
+- Caché de consultas/mutaciones eliminada al iniciar/cerrar sesión, con cancelación
+  de consultas pendientes; rutas admin protegidas por rol antes de montar su contenido.
+  Recorrido real admin → logout → operador → historial probado en estamentos y consultas.
+- Revocación/reactivación no guardan cid en el historial público de configuración.
+  Las filas antiguas se proyectan sin ese campo, sin editar el almacenamiento append-only.
+- El predicado SQL de cid canónico rechaza NUL; cierre y vencimiento limpian el
+  sufijo personal del valor mal formado conservando autor, fecha y atribución.
+- **Cliente: 102/102 y build correcto. Servidor: build correcto y 27/27 en las
+  suites específicas de revocación/anonimización. Suite completa: 185/186.**
+  Falló `test/reseteo.test.ts > trimestre local > usa la fecha de la sede, no la UTC`
+  con «Ya existe un estamento con ese nombre», desde `crearEstamento` en el fixture.
+  No se determinó la causa ni se declara validación global completa.
+- Los fallos de acceso/caché, exposición de cid y NUL se reprodujeron antes de los arreglos.
+
+**Orden concreto para retomar (detenido aquí por solicitud del usuario):**
+1. Investigar el fallo de reseteo/aislamiento de fixtures y completar la suite del
+   servidor; revisar el CI de #115 y de los PR originales tras ready_for_review.
+2. Distribuir #115: AuthContext/RequireAuth, wrappers de pruebas y sesión/estamentos
+   a #103; guardia y prueba de consultas a #105; proyección del historial,
+   revocación/reactivación y guardia de titulares a #106; NUL y sus pruebas a #108.
+3. Propagar las bases corregidas por #104–#108 sin force-push, preservando los
+   cambios particulares de App.tsx en cada rama y los diff por tarea.
+4. Revalidar CI en los heads resultantes y obtener revisión cruzada de Duverney.
+   Resolver los hilos originales solo tras comprobar la corrección en esos PR.
+   Después, cerrar/integrar el borrador #115 según cómo se hayan distribuido sus cambios.
+5. Integrar #77 (ya aprobado), revisar #110/#112/#113/#114 y continuar en orden
+   #102 → #108. #55 conserva el acuerdo explícito pendiente y #111 no está aceptado.
+
+**#55 ya tiene redacción actualizada en #114**, solo documentación, con CI completo
+correcto ([40145927978](https://github.com/rlases/SecureQR-ID/actions/runs/40145927978)).
+Duverney tiene solicitada la revisión explícita. No se cambió la apariencia.
+
+No se reasignaron issues ni se fusionaron PR. Fabric real, instalación Windows,
+piloto, #82/#85/#93/#94/#109 y los acuerdos conjuntos conservan sus pendientes.
+
+
+
 Este resumen sustituye, para planificar el trabajo siguiente, los pendientes del corte
 2026-10-12 que se conservan más abajo como historial. Comprobado contra GitHub al
 retomar la sesión interrumpida de Claude. Las verificaciones y correcciones posteriores
