@@ -31,20 +31,20 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 - #116 (sellado en OpenTimestamps; #94 sigue abierto);
 - #117.
 
-**Pila de Jhunier (#102–#108 y #115):**
+**Pila de Jhunier (#102–#108 y #115): integrada en `main`.**
 
-- **`main` propagado** por toda la cadena con merges, sin force-push ni conflictos. Los ocho PR tienen el CI en verde (10/10).
-- **#115 sale de borrador.** Se fusiona **justo después de #108**, como último eslabón. Se decidió no repartirlo en los PR de origen.
-- **Qué reúne #115:**
-  - los P2 de Codex sobre la caché entre sesiones (#103 y #105);
+- **Qué entró:** el registro de credenciales de ADR-0016 completo, es decir, titulares, estamentos y horario, portal del titular, consulta auditada del `cid`, revocación, reseteo trimestral y anonimización.
+- **Cómo:** Duverney la revisó y la fusionó en orden con squash. Tras cada squash fusionó `main` en la rama siguiente. Todo con el CI en verde.
+- **Qué aportó #115, el último eslabón:**
+  - las correcciones de Codex por caché entre sesiones (#103 y #105);
   - el `cid` en `cambios_configuracion` (#106);
   - el NUL en el chequeo SQL del `cid` (#108);
-  - **el P1 de #102.** La cadena `asignaciones_cid` pasa a HMAC-SHA256 con `ASIGNACIONES_KEY` fuera de la base. Queda registrado como enmienda de 2026-10-25 a ADR-0016, **aceptada** con la aprobación de Duverney sobre #115 (ba11759), y en `THREAT-MODEL.md` con su riesgo residual.
-- **Clave nueva.** Su respaldo entra en el procedimiento de custodia del piloto, junto a las demás claves: si se pierde, toda consulta cid → persona responde 503 por integridad.
+  - **el P1 de #102.** La cadena `asignaciones_cid` pasa a HMAC-SHA256 con `ASIGNACIONES_KEY` fuera de la base. Es la enmienda de 2026-10-25 a ADR-0016, **aceptada** por Duverney, y queda en `THREAT-MODEL.md` con su riesgo residual.
+**Clave nueva.** Su respaldo entra en el procedimiento de custodia del piloto, junto a las demás claves: si se pierde, toda consulta cid → persona responde 503 por integridad.
   - Electron la genera en `server-secrets.json`;
   - fuera de Electron va en `.env`;
   - el servidor no arranca sin ella.
-- **Falla intermitente de `reseteo.test.ts`:** venía de una BD de prueba residual. Corregida con un directorio temporal por prueba. Servidor 189/189 y cliente 102/102.
+- **Falla intermitente de `reseteo.test.ts`:** venía de una BD de prueba residual. Corregida con un directorio temporal por prueba. Servidor 191/191 y cliente 102/102.
 - **Hilos de Codex** de #102, #103, #105, #106 y #108: respondidos y resueltos.
 
 **#114 (acuerdo de diseño de #55):**
@@ -53,12 +53,10 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 - La tabla de `DESIGN-SYSTEM.md` quedó con los enlaces; `main` fue fusionado en la rama.
 - La adopción en cada app es trabajo nuevo, y se reparte en partes iguales: tokens `--success`/`--warning`, `.primary-button` sobre `--teal-700`, pesos tipográficos y retirar `darkMode`.
 
-**Revisión de Duverney sobre la pila.**
+**Observaciones de Duverney sobre #103**, corregidas en #115:
 
-- Duverney ya aprobó **#102–#108 sobre sus cabezas actuales**. Las aprobaciones de #103, #105, #106 y #108 están condicionadas a fusionar #115 con ellos.
-- Sus observaciones no bloqueantes de #103 están corregidas en #115 (ba11759):
-  - solo `SQLITE_CONSTRAINT_UNIQUE` se traduce a «ya existe»;
-  - `borrarEstamento` registra las excepciones y los dominios que arrastra en cascada.
+- solo `SQLITE_CONSTRAINT_UNIQUE` se traduce a «ya existe»;
+- `borrarEstamento` registra las excepciones y los dominios que arrastra en cascada.
 
 **Issues nuevos**, salidos de esas observaciones. Son dos piezas, una para cada uno:
 
@@ -72,14 +70,15 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 
 **Le toca a Duverney:**
 
-1. **Fusionar la pila en orden:** #102 → #103 → … → #108 → #115. #102 ya está fusionado y #115 aprobado. Tras cada squash, la rama siguiente necesita una fusión de `main`. Al fusionar cada PR, reorientar el siguiente a `main`. A #115 aún le falta su revisión: atención especial a la enmienda HMAC del ADR-0016.
-2. **Volver a aprobar y fusionar #114.** El push que registró el acuerdo descartó su aprobación.
-3. #120 y los pendientes propios de abajo: #82, #93, #94, y #85/#109 cuando entre la pila.
+1. **Volver a aprobar y fusionar #114.** El push que registró el acuerdo descartó su aprobación, y la rama necesita una fusión de `main`.
+2. #120.
+3. Los pendientes propios de abajo: #82, #93 y #94.
+4. **#85 y #109:** se desbloquean ahora que la pila está en `main`.
 
 **Le toca a Jhunier:**
 
-- Atender lo que salga de la revisión de #115.
 - #119.
+- Su parte de la adopción del acuerdo de diseño (#55), cuando se reparta.
 
 ### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
 
