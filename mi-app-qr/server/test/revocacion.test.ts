@@ -14,9 +14,9 @@ import { isCanonicalCid } from '../src/titulares/identificadores.js';
 import { cidsRevocados, exportarRevocados, puedeEmitir } from '../src/titulares/gestion.js';
 import { titularRefForCid, verifyAsignaciones } from '../src/titulares/asignaciones.js';
 
-const TEST_DB_PATH = './data/test-revocacion.sqlite';
 // Lunes 2026-10-26 a las 10:00 en Bogotá: dentro de la ventana de prueba.
 const EN_HORARIO = new Date('2026-10-26T10:00:00-05:00');
+let testDirectory: string;
 let db: Database.Database;
 let app: ReturnType<typeof createApp>;
 let admin: ReturnType<typeof request.agent>;
@@ -33,7 +33,9 @@ function alta(documento: string) {
 }
 
 beforeEach(async () => {
-  db = openDatabase(TEST_DB_PATH);
+  // Directorio propio por prueba: una corrida interrumpida no deja una BD que contamine la siguiente.
+  testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'secureqr-revocacion-'));
+  db = openDatabase(path.join(testDirectory, 'test.sqlite'));
   runMigrations(db);
   await seedAdminUser(db, { username: 'admin', password: 'clave-correcta-123' });
   exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'revocados-'));
@@ -59,9 +61,7 @@ beforeEach(async () => {
 afterEach(() => {
   db.close();
   fs.rmSync(exportDir, { recursive: true, force: true });
-  for (const sufijo of ['', '-wal', '-shm']) {
-    if (fs.existsSync(TEST_DB_PATH + sufijo)) fs.unlinkSync(TEST_DB_PATH + sufijo);
-  }
+  fs.rmSync(testDirectory, { recursive: true, force: true });
 });
 
 describe('puerta de emisión', () => {

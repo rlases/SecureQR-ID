@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import request from 'supertest';
 import type Database from 'better-sqlite3';
 import { createApp } from '../src/app.js';
@@ -12,9 +14,9 @@ import { titularRefForCid, verifyAsignaciones, listAsignaciones } from '../src/t
 import { historialCredenciales } from '../src/titulares/repository.js';
 import { aplicarReseteoSiCorresponde, resetearCids, trimestreDe } from '../src/titulares/reseteo.js';
 
-const TEST_DB_PATH = './data/test-reseteo.sqlite';
 const EN_HORARIO = new Date('2026-10-26T10:00:00-05:00'); // lunes, 4.º trimestre
 const ENERO = new Date('2027-01-04T10:00:00-05:00'); // lunes, 1.er trimestre siguiente
+let testDirectory: string;
 let db: Database.Database;
 let app: ReturnType<typeof createApp>;
 let adminId: number;
@@ -37,7 +39,9 @@ async function altaConTelefono(documento: string) {
 }
 
 beforeEach(async () => {
-  db = openDatabase(TEST_DB_PATH);
+  // Directorio propio por prueba: una corrida interrumpida no deja una BD que contamine la siguiente.
+  testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'secureqr-reseteo-'));
+  db = openDatabase(path.join(testDirectory, 'test.sqlite'));
   runMigrations(db);
   await seedAdminUser(db, { username: 'admin', password: 'clave-correcta-123' });
   app = createApp({ db, sessionSecret: 'test-secret' });
@@ -55,9 +59,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   db.close();
-  for (const sufijo of ['', '-wal', '-shm']) {
-    if (fs.existsSync(TEST_DB_PATH + sufijo)) fs.unlinkSync(TEST_DB_PATH + sufijo);
-  }
+  fs.rmSync(testDirectory, { recursive: true, force: true });
 });
 
 describe('trimestre local', () => {
