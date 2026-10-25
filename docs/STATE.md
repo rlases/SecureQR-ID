@@ -53,16 +53,33 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 - La tabla de `DESIGN-SYSTEM.md` quedó con los enlaces; `main` fue fusionado en la rama.
 - La adopción en cada app es trabajo nuevo, y se reparte en partes iguales: tokens `--success`/`--warning`, `.primary-button` sobre `--teal-700`, pesos tipográficos y retirar `darkMode`.
 
+**Revisión de Duverney sobre la pila.**
+
+- Duverney ya aprobó **#102–#108 sobre sus cabezas actuales**. Las aprobaciones de #103, #105, #106 y #108 están condicionadas a fusionar #115 con ellos.
+- Sus observaciones no bloqueantes de #103 están corregidas en #115 (ba11759):
+  - solo `SQLITE_CONSTRAINT_UNIQUE` se traduce a «ya existe»;
+  - `borrarEstamento` registra las excepciones y los dominios que arrastra en cascada.
+
+**Issues nuevos**, salidos de esas observaciones. Son dos piezas, una para cada uno:
+
+- **#119**, comprometer la cabeza de `asignaciones_cid` en la bitácora anclada: Jhunier, porque es su módulo y su enmienda.
+- **#120**, límite por IP en el alta del portal: Duverney.
+
+**Quedan anotadas:**
+
+- La zona horaria de `puedeEmitir`/`dentroDeHorario` debe ser la misma `SITE_TIME_ZONE` del reseteo. Duverney la pasa en #85.
+- Antes del cierre del piloto hay que decidir si se limpia el texto libre de `cambios_configuracion.motivo` o si se mantiene el aviso en la interfaz.
+
 **Le toca a Duverney:**
 
-1. **Revisión cruzada de #102 → #108 → #115, en ese orden.** Atención especial a la enmienda HMAC del ADR-0016. Al fusionar cada PR, reorientar el siguiente a `main`.
-2. **Fusionar #114.** Es de Jhunier y ya tiene la aprobación de Duverney; si la descartó el push nuevo, volver a aprobar.
-3. Los pendientes propios de abajo: #82, #93, #94, y #85/#109 cuando entre la pila.
+1. **Fusionar la pila en orden:** #102 → #103 → … → #108 → #115. Al fusionar cada PR, reorientar el siguiente a `main`. A #115 aún le falta su revisión: atención especial a la enmienda HMAC del ADR-0016.
+2. **Volver a aprobar y fusionar #114.** El push que registró el acuerdo descartó su aprobación.
+3. #120 y los pendientes propios de abajo: #82, #93, #94, y #85/#109 cuando entre la pila.
 
 **Le toca a Jhunier:**
 
-- Atender lo que salga de la revisión de la pila.
-- Trabajo posterior anotado en ADR-0016: publicar la cabeza de `asignaciones_cid` en la bitácora anclada.
+- Atender lo que salga de la revisión de #115.
+- #119.
 
 ### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
 
