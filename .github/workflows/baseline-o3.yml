@@ -1,0 +1,40 @@
+name: Congelar baseline-o3
+
+on:
+  push:
+    branches: [fix/78-baseline-o3]
+    paths:
+      - .github/workflows/baseline-o3.yml
+      - .github/scripts/freeze-baseline-o3.cjs
+      - .github/scripts/freeze-baseline-o3.test.cjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: baseline-o3
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    if: github.repository == 'rlases/SecureQR-ID' && (github.ref == 'refs/heads/fix/78-baseline-o3' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probar que la etiqueta nunca se sobrescribe
+        run: node --test .github/scripts/freeze-baseline-o3.test.cjs
+      - name: Fijar la línea base anterior a ADR-0016
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const freeze = require('./.github/scripts/freeze-baseline-o3.cjs');
+            const result = await freeze({github, context, core});
+            core.setOutput('baseline_commit', result.commit);
