@@ -18,9 +18,49 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ## Estado vigente — 2026-10-25
 
-### Cierre de la sesión de Jhunier — 2026-10-25
+### Sesión de Duverney — 2026-10-25 (noche, hora de Colombia)
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Cerrados:** #55 (acuerdo registrado en #114) y #94 (implementado en #116, que no tenía
+la palabra de cierre).
+
+**Seis PR nuevos, todos con CI en verde y la revisión de Jhunier solicitada.** La
+protección de `main` exige una aprobación de alguien distinto del autor, así que **no se
+pueden fusionar hasta que Jhunier los apruebe**:
+
+| PR | Issue | Qué hace |
+|---|---|---|
+| [#121](https://github.com/rlases/SecureQR-ID/pull/121) | #120 | Límite de altas por IP en el portal (`ALTA_MAX_POR_IP`, 10/hora), reservado en `IMMEDIATE` antes de bcrypt |
+| [#122](https://github.com/rlases/SecureQR-ID/pull/122) | #109 | Rechazar, reemplazar o aprobar altas en revisión según la enmienda #111; código provisional de 72 h; `titulares` reconstruida con el estado `reemplazado` |
+| [#123](https://github.com/rlases/SecureQR-ID/pull/123) | #85 | Cliente del servicio de emisión, `POST /api/portal/qr` con `puedeEmitir` y `SITE_TIME_ZONE`, límite por teléfono y página del QR que se renueva; trabajo de CI `emision-e2e` contra `secureqr-issuer serve` real |
+| [#124](https://github.com/rlases/SecureQR-ID/pull/124) | #119 | Cabeza de `asignaciones_cid` registrada y anclada por `evidence-log cycle --head-file`; `mi-app-qr` la compara con los compromisos anclados. Segunda enmienda de 2026-10-25 a ADR-0016 |
+| [#125](https://github.com/rlases/SecureQR-ID/pull/125) | #82 | `infra/fabric/` (Fabric 2.5.16, CA 1.5.22, commit fijo de `fabric-samples`; crear una vez, detener, arrancar, respaldar) y contrato en Go con `go test` en CI |
+| [#126](https://github.com/rlases/SecureQR-ID/pull/126) | #93 | `anchor verificar`, `infra/fabric/integracion.sh` y flujo `fabric-integracion.yml` con la evidencia como artefacto. **Va encima de #125** |
+
+**Verificado contra la red Fabric real** (Docker en el entorno de la sesión, no en el
+servidor del CCAV):
+- `crear-red.sh` levantó la red;
+- `probar-persistencia.sh` comprobó que el ledger sobrevive a un reinicio y que un `loteId` repetido se rechaza;
+- `integracion.sh` ancló un lote de 25 eventos por el ciclo real (bloque 7), verificó la prueba de inclusión contra la raíz leída de la red y obtuvo el mismo recibo al reintentar.
+
+El servidor del CCAV sigue sin verificar.
+
+**Orden para fusionar:** #121, #122, #123 y #124 son independientes entre sí. Pueden
+chocar en `docs/THREAT-MODEL.md` y en `mi-app-qr/server` (`app.ts`, `index.ts`,
+`titulares/routes.ts`, `.env.example`); tras cada squash, fusionar `main` en el siguiente.
+#125 antes que #126; luego cambiar la base de #126 a `main`.
+
+**Carga:** #119 era de Jhunier y lo resolvió Duverney porque así lo pidió en esta sesión.
+Queda como contexto del reparto acumulado, no como cambio del reparto.
+
+**Pendiente:**
+- adopción del acuerdo de diseño (#55), por repartir en partes iguales;
+- decidir antes del cierre del piloto qué hacer con el texto libre de `cambios_configuracion.motivo`;
+- instalación en el servidor del CCAV (Docker, Fabric, emisor) y piloto.
+
+### Cierre de la sesión de Jhunier — 2026-10-25
+
 
 **Integrado en `main` (PR de Duverney revisados y fusionados por Jhunier):**
 
@@ -28,7 +68,7 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 - #98 (docs tras ADR-0016/0017);
 - #100 (`FabricLedgerClient`);
 - #111 (enmienda de ADR-0016, aceptada con el código provisional de 72 h);
-- #116 (sellado en OpenTimestamps; #94 sigue abierto);
+- #116 (sellado en OpenTimestamps; #94 ya cerrado);
 - #117.
 
 **Pila de Jhunier (#102–#108 y #115): integrada en `main`.**
