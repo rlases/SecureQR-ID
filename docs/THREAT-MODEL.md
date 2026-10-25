@@ -171,10 +171,14 @@ decisión sobre el registro `cid` → persona en el servidor de `mi-app-qr`):
   con acceso a la base de datos cambia una fila del historial, atribuye un evento intacto
   a otra persona sin que `verify_chain()` lo detecte. Por eso el historial debe ser **a
   prueba de manipulación**: de solo agregar (una asignación nueva nunca reescribe la
-  anterior) y con un compromiso verificable de cada asignación `cid` → titular, por
-  ejemplo registrándola en la bitácora encadenada con el identificador interno opaco del
-  titular, nunca con datos personales. El mecanismo concreto queda pendiente para la
-  implementación de ADR-0016 (#79 y #88).
+  anterior) y con un compromiso verificable de cada asignación `cid` → titular, hecho
+  con el identificador interno opaco del titular y nunca con datos personales.
+- Mecanismo adoptado (enmienda de 2026-10-25 a ADR-0016): `asignaciones_cid` se encadena
+  con HMAC-SHA256 y una clave que vive fuera de la base. Quien solo tiene el archivo de
+  la base, una copia o un respaldo no puede recalcular la cadena sin que
+  `verifyAsignaciones` lo detecte. **Riesgo residual:** quien controla el equipo
+  servidor completo (la base y la clave) todavía puede reescribirla. Cerrarlo exige
+  publicar la cabeza de la cadena en la bitácora anclada, trabajo posterior.
 
 **Límite que se acepta.** Dentro de un trimestre la vinculabilidad persiste. Eliminarla
 del todo exigiría un identificador distinto en cada token, lo que obliga a rediseñar la

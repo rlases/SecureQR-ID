@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import request from 'supertest';
 import type Database from 'better-sqlite3';
 import { createApp } from '../src/app.js';
@@ -9,7 +11,7 @@ import { seedAdminUser } from '../src/db/seed.js';
 import { estamentoSugerido } from '../src/estamentos/config.js';
 import { registrarTitular } from '../src/titulares/repository.js';
 
-const TEST_DB_PATH = './data/test-estamentos.sqlite';
+let testDirectory: string;
 let db: Database.Database;
 let app: ReturnType<typeof createApp>;
 let agent: ReturnType<typeof request.agent>;
@@ -21,7 +23,9 @@ async function crear(nombre: string, requiereConfirmacion = false) {
 }
 
 beforeEach(async () => {
-  db = openDatabase(TEST_DB_PATH);
+  // Directorio propio por prueba: una corrida interrumpida no deja una BD que contamine la siguiente.
+  testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'secureqr-estamentos-'));
+  db = openDatabase(path.join(testDirectory, 'test.sqlite'));
   runMigrations(db);
   await seedAdminUser(db, { username: 'admin', password: 'clave-correcta-123' });
   app = createApp({ db, sessionSecret: 'test-secret' });
@@ -31,9 +35,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   db.close();
-  for (const sufijo of ['', '-wal', '-shm']) {
-    if (fs.existsSync(TEST_DB_PATH + sufijo)) fs.unlinkSync(TEST_DB_PATH + sufijo);
-  }
+  fs.rmSync(testDirectory, { recursive: true, force: true });
 });
 
 describe('autorización', () => {

@@ -6,6 +6,8 @@ import { registrarTitular } from '../src/titulares/repository.js';
 import { dentroDeHorario, momentoLocal } from '../src/estamentos/horario.js';
 import {
   ConfigError,
+  borrarEstamento,
+  crearDominio,
   crearEstamento,
   crearExcepcion,
   elegirBase,
@@ -258,5 +260,49 @@ describe('estado del titular', () => {
     expect(repetido.estado).toBe('en_revision');
     expect(decide(repetido.id, local(LUNES, '10:00')).motivo).toBe('titular_no_activo');
     expect(decide(9999, local(LUNES, '10:00')).motivo).toBe('titular_no_activo');
+  });
+});
+
+// Observaciones de la revisión cruzada de #103.
+describe('registro de cambios de estamentos', () => {
+  it('un nombre repetido da 409, pero otro error de la base no se disfraza de repetido', () => {
+    const ahora = new Date();
+    expect(() =>
+      crearEstamento(db, admin, { nombre: 'Estudiante', requiereConfirmacion: false }, ahora)
+    ).toThrow(/Ya existe/);
+    db.pragma('query_only = ON');
+    let error: unknown;
+    try {
+      crearEstamento(db, admin, { nombre: 'Visitante', requiereConfirmacion: false }, ahora);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).not.toBeInstanceOf(ConfigError);
+    expect(String(error)).toMatch(/readonly/i);
+  });
+
+  it('borrar un estamento registra también sus excepciones y dominios arrastrados', () => {
+    const ahora = new Date();
+    const visitante = crearEstamento(db, admin, { nombre: 'Visitante', requiereConfirmacion: true }, ahora).id;
+    const excepcion = crearExcepcion(
+      db,
+      admin,
+      { fechaDesde: LUNES, fechaHasta: LUNES, tipo: 'cierre', estamentoId: visitante, descripcion: 'Cierre', ventanas: [] },
+      ahora
+    );
+    const dominio = crearDominio(db, admin, { dominio: 'visitantes.ejemplo.test', estamentoId: visitante }, ahora);
+    borrarEstamento(db, admin, visitante, ahora);
+    const borrados = db
+      .prepare(
+        "SELECT entidad, entidad_id AS id FROM cambios_configuracion WHERE accion = 'borrar' ORDER BY rowid"
+      )
+      .all() as { entidad: string; id: number }[];
+    expect(borrados).toEqual([
+      { entidad: 'excepcion', id: excepcion.id },
+      { entidad: 'dominio', id: dominio.id },
+      { entidad: 'estamento', id: visitante },
+    ]);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM excepciones_calendario').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM dominios_correo').get()).toEqual({ n: 0 });
   });
 });

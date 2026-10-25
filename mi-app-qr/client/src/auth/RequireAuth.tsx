@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
+import type { User } from '@mi-app-qr/shared';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
-export default function RequireAuth({ children }: { children: ReactNode }) {
+export default function RequireAuth({ children, role }: { children: ReactNode; role?: User['role'] }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -11,6 +12,10 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (role && user.role !== role) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

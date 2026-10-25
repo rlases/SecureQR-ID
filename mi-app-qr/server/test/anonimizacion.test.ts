@@ -80,6 +80,7 @@ describe('cierre del piloto', () => {
     const muestras = [
       ...Array.from({ length: 32 }, () => generateCid()),
       '', 'ana@ejemplo.test', '8000000001', 'anon-1',
+      'AAAAAAAAAAAAAAAAAAAAAA\0ana@ejemplo.test', '\0',
       'AAAAAAAAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAB',
       'AAAAAAAAAAAAAAAAAAAAAQ', 'AAAAAAAAAAAAAAAAAAAAAg',
       'AAAAAAAAAAAAAAAAAAAAAw', 'AAAAAAAAAAAAAAAAAAAAA=',
@@ -87,6 +88,21 @@ describe('cierre del piloto', () => {
     for (const cid of muestras) {
       expect(Boolean((sql.get(cid) as { valido: number }).valido), cid).toBe(isCanonicalCid(cid));
     }
+  });
+
+  it.each(['cierre', 'vencimiento'])('elimina el sufijo personal tras NUL en %s', (modo) => {
+    poblar();
+    const malformado = 'AAAAAAAAAAAAAAAAAAAAAA\0ana@ejemplo.test';
+    consultarCids(db, adminId, [malformado], null, new Date('2024-01-01T00:00:00Z'));
+    const antes = db.prepare('SELECT id, usuario_id, titular_id, en FROM consultas_cid WHERE id = 3').get();
+    if (modo === 'cierre') anonimizarCierre(db, FRASE_CIERRE, 'prueba', new Date());
+    else {
+      setPlazoConservacion(db, 365, adminId, new Date());
+      anonimizarVencidos(db, new Date());
+    }
+    expect(db.prepare('SELECT cid FROM consultas_cid WHERE id = 3').get()).toEqual({ cid: 'anon-3' });
+    expect(db.prepare('SELECT id, usuario_id, titular_id, en FROM consultas_cid WHERE id = 3').get()).toEqual(antes);
+    expect(verifyAsignaciones(db)).toBe(true);
   });
 
   it('después, ningún cid puede atribuirse a una persona', () => {

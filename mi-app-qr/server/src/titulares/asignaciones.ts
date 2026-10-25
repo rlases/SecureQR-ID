@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 
-// Historial cid → titular encadenado por hash (THREAT-MODEL.md, «Vinculabilidad del
-// cid»). Cada asignación compromete a todas las anteriores: reescribir o quitar una
-// rompe la cadena y `verifyAsignaciones` lo detecta, aunque alguien quite los
-// disparadores de solo agregar con acceso directo al archivo.
+// Historial cid → titular encadenado por HMAC (THREAT-MODEL.md, «Vinculabilidad del
+// cid», y enmienda de 2026-10-25 a ADR-0016). Cada asignación compromete a todas las
+// anteriores: reescribir o quitar una rompe la cadena y `verifyAsignaciones` lo detecta,
+// aunque alguien quite los disparadores de solo agregar con acceso directo al archivo.
+// La clave vive fuera de la base (`ASIGNACIONES_KEY`), así que con solo el archivo no se
+// puede recalcular la cadena después de alterarla.
 //
 // Solo usa el identificador opaco del titular (`titulares.ref`), nunca sus datos
 // personales, así que la cadena sobrevive a la anonimización del cierre del piloto.
@@ -33,16 +35,35 @@ interface AsignacionRow {
   hash: string;
 }
 
+const LONGITUD_MINIMA_CLAVE = 32;
+
+export class ClaveAsignacionesError extends Error {}
+
+/**
+ * Lee la clave HMAC del historial desde `ASIGNACIONES_KEY` (hexadecimal, 32 bytes o más).
+ * Falla cerrado: sin clave válida no se agrega ni se verifica ninguna asignación.
+ */
+export function claveAsignaciones(env: NodeJS.ProcessEnv = process.env): Buffer {
+  const hex = env.ASIGNACIONES_KEY ?? '';
+  if (!/^(?:[0-9a-fA-F]{2})+$/.test(hex) || hex.length / 2 < LONGITUD_MINIMA_CLAVE) {
+    throw new ClaveAsignacionesError(
+      'ASIGNACIONES_KEY no está definida o no tiene 32 bytes en hexadecimal.'
+    );
+  }
+  return Buffer.from(hex, 'hex');
+}
+
 export function hashAsignacion(
   hashAnterior: string,
   titularRef: string,
   cid: string,
   motivo: MotivoAsignacion,
-  asignadoEn: string
+  asignadoEn: string,
+  clave: Buffer = claveAsignaciones()
 ): string {
   // Arreglo JSON con orden fijo: sin ambigüedad entre campos.
   const contenido = JSON.stringify([hashAnterior, titularRef, cid, motivo, asignadoEn]);
-  return crypto.createHash('sha256').update(contenido, 'utf8').digest('hex');
+  return crypto.createHmac('sha256', clave).update(contenido, 'utf8').digest('hex');
 }
 
 function toAsignacion(row: AsignacionRow): Asignacion {
@@ -95,11 +116,19 @@ export function listAsignaciones(db: Database.Database): Asignacion[] {
 }
 
 /** Recalcula toda la cadena. Falso si algún eslabón fue alterado, quitado o reordenado. */
-export function verifyAsignaciones(db: Database.Database): boolean {
+export function verifyAsignaciones(
+  db: Database.Database,
+  clave: Buffer = claveAsignaciones()
+): boolean {
   let anterior = GENESIS_HASH;
   for (const a of listAsignaciones(db)) {
     if (a.hashAnterior !== anterior) return false;
-    if (hashAsignacion(anterior, a.titularRef, a.cid, a.motivo, a.asignadoEn) !== a.hash) {
+    const esperado = Buffer.from(
+      hashAsignacion(anterior, a.titularRef, a.cid, a.motivo, a.asignadoEn, clave),
+      'hex'
+    );
+    const guardado = Buffer.from(a.hash, 'hex');
+    if (guardado.length !== esperado.length || !crypto.timingSafeEqual(guardado, esperado)) {
       return false;
     }
     anterior = a.hash;

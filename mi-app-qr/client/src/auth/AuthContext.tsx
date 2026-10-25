@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { LoginRequest, User } from '@mi-app-qr/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import * as apiClient from '../lib/apiClient';
 
 interface AuthContextValue {
@@ -12,6 +13,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -25,11 +27,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(credentials: LoginRequest) {
     const res = await apiClient.login(credentials);
+    // Incluye consultas, resultados de mutaciones y peticiones aún en vuelo.
+    // Nunca reutilizar datos del personal anterior con otra sesión.
+    queryClient.clear();
     setUser(res.user);
   }
 
   async function logout() {
     await apiClient.logout();
+    queryClient.clear();
     setUser(null);
   }
 

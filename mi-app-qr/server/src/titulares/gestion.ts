@@ -125,8 +125,8 @@ export function revocarCredencial(
       'credencial',
       titularId,
       'revocar',
-      { cid: credencial.cid, estado: 'vigente', titular: 'activo' },
-      { cid: credencial.cid, estado: 'revocada', titular: 'suspendido', motivo },
+      { estado: 'vigente', titular: 'activo' },
+      { estado: 'revocada', titular: 'suspendido', motivo },
       ahora
     );
   })();
@@ -185,7 +185,7 @@ export function reactivarTitular(
       titularId,
       'reactivar',
       { estado: 'suspendido' },
-      { estado: 'activo', cid, motivo },
+      { estado: 'activo', motivo },
       ahora
     );
     return cid;

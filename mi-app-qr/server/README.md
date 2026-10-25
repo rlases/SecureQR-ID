@@ -35,6 +35,8 @@ npm test
 - Las contraseñas se hashean con bcryptjs (12 rounds) — nunca en texto plano.
 - Una cuenta se bloquea 15 minutos tras 5 intentos fallidos consecutivos.
 - `SESSION_SECRET` es obligatorio; el servidor no arranca sin él (falla cerrado).
+- `ASIGNACIONES_KEY` (32 bytes en hexadecimal) también es obligatoria: autentica con HMAC
+  el historial `cid` → titular. Va en un respaldo distinto del de la base.
 - La autorización se verifica siempre en el servidor (`requireAuth`), nunca solo en el cliente.
 
 ## Registro de credenciales (ADR-0016)
