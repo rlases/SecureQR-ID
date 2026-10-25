@@ -136,3 +136,26 @@ schtasks /Create /SC MINUTE /MO 15 /TN "SecureQR-ID anclaje" /RU secureqr `
 Si una corrida se superpone con la anterior (Fabric lento), ambas exportan el mismo
 `loteId`; el contrato rechaza el segundo registro y el recibo se registra una sola vez.
 
+
+## Sellado diario en OpenTimestamps (issue #94, ADR-0017 punto 7)
+
+Una vez al día se sella el **hash del último bloque** del canal de Fabric (consulta
+`GetChainInfo` de `qscc`); un solo sello cubre los lotes de todas las instalaciones.
+Se usa el cliente oficial en Python (`pip install opentimestamps-client`, comando `ots`)
+como proceso aparte; este paquete no añade dependencias.
+
+```bash
+python -m secureqr_evidence_log seal         --seals-dir sellos --block-hash <64 hex>
+python -m secureqr_evidence_log seal-upgrade --seals-dir sellos
+```
+
+Por cada bloque quedan `bloque-<hash>.txt` (lo que se sella) y `bloque-<hash>.txt.ots`
+(el comprobante), juntos. Sin internet o con los calendarios caídos el sello queda
+pendiente y se reintenta en la siguiente corrida; salida `0` si hay comprobante (aunque
+falte completarlo), `1` si ni siquiera se pudo crear, `2` por entrada inválida. Un sello
+pendiente nunca bloquea la validación ni el anclaje. Un comprobante se considera completo
+cuando `ots upgrade` lo actualizó (deja el original en `.bak`).
+
+**No se ejecuta `ots verify` aquí:** necesita un nodo de Bitcoin y no se instala en el
+servidor del CCAV. La verificación independiente se hace aparte, desde un equipo con
+Bitcoin Core podado, y se documenta como evidencia de la tesis.
