@@ -8,6 +8,11 @@ import type {
   CreateUserResponse,
   ListUsersResponse,
   CorregirRegistroRequest,
+  Estamento,
+  EstamentoDetalle,
+  ExcepcionCalendario,
+  ReglaDominio,
+  VentanaHorario,
 } from '@mi-app-qr/shared';
 
 export class ApiError extends Error {
@@ -30,7 +35,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
   });
 
-  const body = await res.json();
+  // 204 (borrados) no trae cuerpo.
+  const body = res.status === 204 ? {} : await res.json();
 
   if (!res.ok) {
     throw new ApiError(body.error ?? 'Error desconocido', res.status);
@@ -92,4 +98,90 @@ export function correctRegistro(
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// --- Estamentos y horarios (ADR-0016, punto 5; solo admin) ----------------------------
+
+export interface ConfiguracionEstamentos {
+  estamentos: EstamentoDetalle[];
+  excepciones: ExcepcionCalendario[];
+  dominios: ReglaDominio[];
+}
+
+export interface CambioConfiguracion {
+  id: number;
+  usuario: string;
+  entidad: string;
+  entidadId: number | null;
+  accion: string;
+  valorAnterior: unknown;
+  valorNuevo: unknown;
+  en: string;
+}
+
+export function getConfiguracionEstamentos(): Promise<ConfiguracionEstamentos> {
+  return request<ConfiguracionEstamentos>('/api/estamentos');
+}
+
+export function createEstamento(data: {
+  nombre: string;
+  requiereConfirmacion: boolean;
+}): Promise<Estamento> {
+  return request<Estamento>('/api/estamentos', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function updateEstamento(
+  id: number,
+  data: { nombre?: string; requiereConfirmacion?: boolean }
+): Promise<Estamento> {
+  return request<Estamento>(`/api/estamentos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function setEstamentoBase(id: number): Promise<Estamento> {
+  return request<Estamento>(`/api/estamentos/${id}/base`, { method: 'POST' });
+}
+
+export function deleteEstamento(id: number): Promise<void> {
+  return request<void>(`/api/estamentos/${id}`, { method: 'DELETE' });
+}
+
+export function replaceVentanas(
+  id: number,
+  ventanas: VentanaHorario[]
+): Promise<{ ventanas: VentanaHorario[] }> {
+  return request<{ ventanas: VentanaHorario[] }>(`/api/estamentos/${id}/ventanas`, {
+    method: 'PUT',
+    body: JSON.stringify({ ventanas }),
+  });
+}
+
+export function createExcepcion(
+  data: Omit<ExcepcionCalendario, 'id'>
+): Promise<ExcepcionCalendario> {
+  return request<ExcepcionCalendario>('/api/estamentos/excepciones', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteExcepcion(id: number): Promise<void> {
+  return request<void>(`/api/estamentos/excepciones/${id}`, { method: 'DELETE' });
+}
+
+export function createDominio(data: { dominio: string; estamentoId: number }): Promise<ReglaDominio> {
+  return request<ReglaDominio>('/api/estamentos/dominios', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteDominio(id: number): Promise<void> {
+  return request<void>(`/api/estamentos/dominios/${id}`, { method: 'DELETE' });
+}
+
+export function listCambiosConfiguracion(): Promise<{ cambios: CambioConfiguracion[] }> {
+  return request<{ cambios: CambioConfiguracion[] }>('/api/estamentos/cambios');
 }

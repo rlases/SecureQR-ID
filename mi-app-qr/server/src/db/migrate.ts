@@ -148,4 +148,68 @@ function runCredentialMigrations(db: Database.Database): void {
     CREATE TRIGGER IF NOT EXISTS titulares_no_delete BEFORE DELETE ON titulares
     BEGIN SELECT RAISE(ABORT, 'un titular se anonimiza, no se borra'); END;
   `);
+  runScheduleMigrations(db);
+}
+
+// Estamentos, ventanas de ingreso, excepciones de calendario y reglas por dominio
+// (ADR-0016, punto 5; issue #89). Las horas se guardan en minutos desde la medianoche,
+// en la hora local de la sede; una ventana no cruza la medianoche (fin hasta 1440).
+function runScheduleMigrations(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reglas_horario (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      estamento_id INTEGER NOT NULL REFERENCES estamentos(id) ON DELETE CASCADE,
+      -- ISO 8601: 1 = lunes … 7 = domingo.
+      dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 1 AND 7),
+      inicio_min INTEGER NOT NULL CHECK (inicio_min BETWEEN 0 AND 1439),
+      fin_min INTEGER NOT NULL CHECK (fin_min BETWEEN 1 AND 1440),
+      CHECK (inicio_min < fin_min)
+    );
+
+    CREATE TABLE IF NOT EXISTS excepciones_calendario (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      -- Fechas locales de la sede, AAAA-MM-DD, ambas inclusive.
+      fecha_desde TEXT NOT NULL CHECK (fecha_desde GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+      fecha_hasta TEXT NOT NULL CHECK (fecha_hasta GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+      -- cierre: nadie entra · reemplazo: valen solo las ventanas de la excepción.
+      tipo TEXT NOT NULL CHECK (tipo IN ('cierre', 'reemplazo')),
+      -- NULL = todos los estamentos.
+      estamento_id INTEGER REFERENCES estamentos(id) ON DELETE CASCADE,
+      descripcion TEXT NOT NULL CHECK (length(trim(descripcion)) > 0),
+      CHECK (fecha_desde <= fecha_hasta)
+    );
+
+    CREATE TABLE IF NOT EXISTS excepcion_ventanas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      excepcion_id INTEGER NOT NULL REFERENCES excepciones_calendario(id) ON DELETE CASCADE,
+      inicio_min INTEGER NOT NULL CHECK (inicio_min BETWEEN 0 AND 1439),
+      fin_min INTEGER NOT NULL CHECK (fin_min BETWEEN 1 AND 1440),
+      CHECK (inicio_min < fin_min)
+    );
+
+    CREATE TABLE IF NOT EXISTS dominios_correo (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      dominio TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      estamento_id INTEGER NOT NULL REFERENCES estamentos(id) ON DELETE CASCADE
+    );
+
+    -- Todo cambio de estamento, ventana, excepción o dominio, y todo cambio de estamento
+    -- de un titular: quién, cuándo, qué valor tenía antes y cuál quedó (ADR-0016).
+    CREATE TABLE IF NOT EXISTS cambios_configuracion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL REFERENCES users(id),
+      entidad TEXT NOT NULL,
+      entidad_id INTEGER,
+      accion TEXT NOT NULL,
+      valor_anterior TEXT,
+      valor_nuevo TEXT,
+      en TEXT NOT NULL
+    );
+    CREATE TRIGGER IF NOT EXISTS cambios_configuracion_no_update
+    BEFORE UPDATE ON cambios_configuracion
+    BEGIN SELECT RAISE(ABORT, 'el registro de cambios es de solo agregar'); END;
+    CREATE TRIGGER IF NOT EXISTS cambios_configuracion_no_delete
+    BEFORE DELETE ON cambios_configuracion
+    BEGIN SELECT RAISE(ABORT, 'el registro de cambios es de solo agregar'); END;
+  `);
 }

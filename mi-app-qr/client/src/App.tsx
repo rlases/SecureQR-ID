@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 import InformesPage from './pages/InformesPage';
 import RegistrosPage from './pages/RegistrosPage';
 import UsuariosPage from './pages/UsuariosPage';
+import EstamentosPage from './pages/EstamentosPage';
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,16 @@ function App() {
                 <RequireAuth>
                   <AppLayout>
                     <UsuariosPage />
+                  </AppLayout>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/estamentos"
+              element={
+                <RequireAuth>
+                  <AppLayout>
+                    <EstamentosPage />
                   </AppLayout>
                 </RequireAuth>
               }
