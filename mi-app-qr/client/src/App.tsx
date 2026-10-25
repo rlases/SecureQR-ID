@@ -8,6 +8,12 @@ import DashboardPage from './pages/DashboardPage';
 import InformesPage from './pages/InformesPage';
 import RegistrosPage from './pages/RegistrosPage';
 import UsuariosPage from './pages/UsuariosPage';
+import EstamentosPage from './pages/EstamentosPage';
+import ConsultaCidPage from './pages/ConsultaCidPage';
+import TitularesPage from './pages/TitularesPage';
+import PortalPage from './pages/portal/PortalPage';
+import AltaPage from './pages/portal/AltaPage';
+import RecuperarPage from './pages/portal/RecuperarPage';
 
 const queryClient = new QueryClient();
 
@@ -27,6 +33,11 @@ function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            {/* Portal del titular (ADR-0016): sin sesión del personal, con la cookie del
+                dispositivo. */}
+            <Route path="/portal" element={<PortalPage />} />
+            <Route path="/portal/alta" element={<AltaPage />} />
+            <Route path="/portal/recuperar" element={<RecuperarPage />} />
             <Route
               path="/"
               element={
@@ -60,9 +71,39 @@ function App() {
             <Route
               path="/usuarios"
               element={
-                <RequireAuth>
+                <RequireAuth role="admin">
                   <AppLayout>
                     <UsuariosPage />
+                  </AppLayout>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/estamentos"
+              element={
+                <RequireAuth role="admin">
+                  <AppLayout>
+                    <EstamentosPage />
+                  </AppLayout>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/consultas"
+              element={
+                <RequireAuth role="admin">
+                  <AppLayout>
+                    <ConsultaCidPage />
+                  </AppLayout>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/titulares"
+              element={
+                <RequireAuth role="admin">
+                  <AppLayout>
+                    <TitularesPage />
                   </AppLayout>
                 </RequireAuth>
               }

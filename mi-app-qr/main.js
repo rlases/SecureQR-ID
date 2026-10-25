@@ -111,18 +111,26 @@ let serverProcess = null;
 let trustedServerCertPem = null;
 
 async function loadOrCreateServerSecrets() {
+    let secrets;
     try {
         const raw = await fs.readFile(serverSecretsPath, 'utf-8');
-        return JSON.parse(raw);
+        secrets = JSON.parse(raw);
     } catch (error) {
-        const secrets = {
+        secrets = {
             sessionSecret: crypto.randomBytes(32).toString('hex'),
             adminUsername: 'admin',
             adminPassword: crypto.randomBytes(9).toString('base64url'),
         };
         await fs.writeFile(serverSecretsPath, JSON.stringify(secrets, null, 2), 'utf-8');
-        return secrets;
     }
+    // Clave HMAC del historial cid → titular (enmienda de 2026-10-25 a ADR-0016). Vive
+    // aquí, fuera de server-data/, para que una copia de la base no baste para reescribir
+    // el historial. Las instalaciones anteriores la reciben una sola vez.
+    if (!secrets.asignacionesKey) {
+        secrets.asignacionesKey = crypto.randomBytes(32).toString('hex');
+        await fs.writeFile(serverSecretsPath, JSON.stringify(secrets, null, 2), 'utf-8');
+    }
+    return secrets;
 }
 
 function waitForServerHealth(port, timeoutMs, cert) {
@@ -188,6 +196,7 @@ async function startServer() {
             ...extraEnv,
             PORT: String(SERVER_PORT),
             SESSION_SECRET: secrets.sessionSecret,
+            ASIGNACIONES_KEY: secrets.asignacionesKey,
             DB_PATH: path.join(userDataPath, 'server-data', 'app.db'),
             SEED_ADMIN_USERNAME: secrets.adminUsername,
             SEED_ADMIN_PASSWORD: secrets.adminPassword,

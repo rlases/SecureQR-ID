@@ -1,9 +1,16 @@
+import type { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render as renderUI, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
 import * as apiClient from '../src/lib/apiClient';
 
+let queryClient: QueryClient;
+function render(ui: ReactNode) {
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderUI(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 vi.mock('../src/lib/apiClient');
 
 function TestConsumer() {
@@ -87,5 +94,35 @@ describe('AuthContext', () => {
     await userEvent.click(screen.getByText('Salir'));
 
     await waitFor(() => expect(screen.getByText('Sin sesión')).toBeInTheDocument());
+  });
+
+  it('logout descarta datos privados y una respuesta tardía no repuebla la caché', async () => {
+    vi.mocked(apiClient.getMe).mockResolvedValue({ user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '' } });
+    vi.mocked(apiClient.logout).mockResolvedValue({ ok: true });
+    render(<AuthProvider><TestConsumer /></AuthProvider>);
+    await screen.findByText('Sesión: admin');
+    queryClient.setQueryData(['consultas-cid'], { motivo: 'Dato privado sintético' });
+    let resolver!: (value: string) => void;
+    const pendiente = queryClient.fetchQuery({
+      queryKey: ['consulta-pendiente'],
+      queryFn: () => new Promise<string>((resolve) => { resolver = resolve; }),
+    }).catch(() => undefined);
+    await userEvent.click(screen.getByText('Salir'));
+    await screen.findByText('Sin sesión');
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+    resolver('Respuesta privada tardía');
+    await pendiente;
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+
+  it('login con otro usuario no reutiliza consultas de una sesión anterior', async () => {
+    vi.mocked(apiClient.getMe).mockResolvedValue({ user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '' } });
+    vi.mocked(apiClient.login).mockResolvedValue({ user: { id: 2, username: 'operador', role: 'operador', cargo: null, createdAt: '' } });
+    render(<AuthProvider><TestConsumer /></AuthProvider>);
+    await screen.findByText('Sesión: admin');
+    queryClient.setQueryData(['consultas-cid'], { motivo: 'Dato privado sintético' });
+    await userEvent.click(screen.getByText('Entrar'));
+    await screen.findByText('Sesión: operador');
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
 });

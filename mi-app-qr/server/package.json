@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node --env-file=.env dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "anonimizar": "node --env-file=.env dist/cli/anonimizar.js"
   },
   "dependencies": {
     "@mi-app-qr/shared": "file:../shared",
