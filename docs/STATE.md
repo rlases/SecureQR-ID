@@ -20,10 +20,12 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 Este resumen sustituye, para planificar el trabajo siguiente, los pendientes del corte
 2026-10-12 que se conservan más abajo como historial. Comprobado contra GitHub al
-retomar la sesión interrumpida de Claude; no se modificó código ni diseño.
+retomar la sesión interrumpida de Claude. Las verificaciones y correcciones posteriores
+quedan recogidas en las secciones fechadas de este resumen.
 
 ### Integrado en `main` desde el corte anterior
 
+- PR #74: ADR-0013, ADR-0014 y ADR-0015 ya aceptadas en `main`.
 - PR #76: texto de ADR-0016, todavía como **Propuesta** en `main`.
 - PR #75: vinculabilidad del `cid` documentada en el modelo de amenazas.
 - PR #63, #71 y #72: guía de contenido, accesibilidad y catálogo de componentes.
@@ -40,7 +42,8 @@ retomar la sesión interrumpida de Claude; no se modificó código ni diseño.
 
 - **PR #77 abierto:** su commit `4ea53a8` propone pasar ADR-0016 y ADR-0017 a
   **Aceptada (2026-10-24)**. Eso aún no está integrado en `main`; no dar las ADR
-  por formalmente aceptadas allí. La última ejecución de CI de ese commit terminó
+  por formalmente aceptadas allí. **Duverney aprobó el commit actual el 24-10 a las
+  23:29 UTC**; la aceptación conjunta ya está revisada y falta integrarla. La última ejecución de CI de ese commit terminó
   correctamente ([ejecución 40137408598](https://github.com/rlases/SecureQR-ID/actions/runs/40137408598)).
 - El ajuste del lote fijo ya está propuesto en #77: registrar el rango en `lotes`
   antes de exportarlo y reutilizarlo hasta obtener recibo, aunque lleguen eventos
@@ -105,15 +108,66 @@ antes de fusionar. Un CI correcto del primer PR no valida los seis siguientes.
   que se renueva. El servicio #97 ya está integrado, pero los siete PR anteriores no
   implementan esa página. Debe consumir `puedeEmitir`, respetar los horarios y
   limitar la emisión por dispositivo.
-- **#98 (Duverney, documentación):** abierto en borrador; actualizarlo contra el
-  texto final de #77, incluidos los riesgos residuales y el lote fijo, antes de dar
-  por actualizados `CLAUDE.md`, `ARCHITECTURE.md` y `THREAT-MODEL.md`.
-- **#99 y #100 (Duverney):** abiertos; la comprobación actual de GitHub ya no los
-  marca con conflictos con `main`. Siguen pendientes los cambios solicitados de
-  `lotes`, `loteId`, recibos y estado de anclaje descritos en la revisión de abajo.
+- **#98 (Duverney, documentación):** actualización `e6fea06` revisada y aprobada
+  técnicamente. Mantener el borrador hasta integrar #77; CI completo correcto.
+- **#99 (Duverney, bitácora):** correcciones `710b40b` revisadas y aprobadas;
+  72 pruebas y CI completo correcto. Falta integrar después de #77.
+- **#100 (Duverney, cliente Fabric):** los problemas anteriores están resueltos,
+  pero queda el defecto Unicode reproducido en la nueva revisión. El arreglo
+  concreto está en #113 (Jhunier), sobre esta rama, para revisión e integración.
 - El anclaje real y su evidencia de operación siguen pendientes: red y contrato
   (#82), integración de CI contra Fabric (#93) y sellado OpenTimestamps (#94).
   No declarar terminado #9 por tener pruebas con un cliente en memoria.
+
+### Nueva revisión y compatibilidad del anclaje — 2026-10-24
+
+Se revisaron las actualizaciones de Duverney contra sus commits exactos y se
+publicaron las nuevas revisiones:
+
+| PR | Commit revisado | Resultado |
+|---|---|---|
+| #98 | `e6fea06` | Aprobado el contenido documental; integrar después de #77 |
+| #99 | `710b40b` | Aprobado el lado Python: lote fijo, identidad de instalación, raíz y estado resueltos |
+| #100 | `7431958` | Cambios solicitados por incompatibilidad Unicode; arreglo disponible en #113 |
+
+**Verificación independiente:** `evidence-log/` 72/72, `verifier/` y
+`verifier-service/` 131/131 en conjunto; `anchor/` 53/53 y build correcto
+antes del arreglo. La prueba conjunta Python → Node → Python exportó el rango
+1–3, cerró/reabrió la bitácora, agregó 4–5 y reexportó el mismo 1–3. La
+recuperación del recibo en el ledger en memoria fue idéntica; registrar dos veces
+es idempotente, una raíz ajena se rechaza, dos instalaciones no colisionan y
+queda pendiente 4–5. No se usó una red Fabric real.
+
+**Defecto y corrección #113:** Python admite hasta 128 puntos de código en
+`verifier_id`, pero Node contaba unidades UTF-16: 65 caracteres astrales válidos
+se rechazaban y bloqueaban indefinidamente el lote fijado. Node también aceptaba
+separadores interiores Zs que Python considera no imprimibles. El PR
+[#113](https://github.com/rlases/SecureQR-ID/pull/113), commit `1b1f704`, cuenta
+puntos de código y rechaza C/Z salvo el espacio ASCII interior. Añade nueve
+regresiones: **62/62 pruebas y build correctos**; el mismo lote Unicode exportado
+por Python ahora se acepta. Lleva la corrección de CI de bases apiladas ya usada
+en #102–#108, conservando los diez jobs. Su base es #100 y requiere revisión
+cruzada de Duverney; no se fusionó ni se aprobó el PR propio.
+
+- CI de #98: [40143591260](https://github.com/rlases/SecureQR-ID/actions/runs/40143591260), correcto.
+- CI de #99: [40141774932](https://github.com/rlases/SecureQR-ID/actions/runs/40141774932), correcto.
+- CI de #113: [40145404583](https://github.com/rlases/SecureQR-ID/actions/runs/40145404583), **correcto: los diez jobs**.
+- Se compararon además los nueve casos Unicode ejecutando directamente los validadores Python y Node: coinciden en todos.
+
+**#77 ya tiene aprobación vigente de Duverney** sobre `4ea53a8`, con CI
+correcto. Falta su integración por el otro autor conforme a CONTRIBUTING; no una
+nueva aceptación de diseño. `main` permanece en `1b4498a`.
+
+**Pendientes por responsable, comprobados de nuevo en GitHub (9 y 8 issues):**
+
+| Responsable | Trabajo e integración restantes |
+|---|---|
+| Jhunier (`rlases`) | #79, #89, #84, #86, #87, #88 y #90 implementados en #102–#108; revisión cruzada e integración secuencial. #78 etiqueta ya fijada, revisar #112 y constancia #110. #55 requiere acuerdo explícito de tokens. Corrección adicional #113 lista para revisar. |
+| Duverney (`Duverney24`) | #95 y #92 aprobados técnicamente en #98/#99, integrar tras #77; #91 integrar/revisar el arreglo #113 y actualizar #100; implementar/completar #82, #85, #93, #94 y #109. Revisar los PR de Jhunier y realizar la integración de #77. |
+| Ambos | Acuerdo pendiente sobre #111 (72 horas sigue siendo propuesta), tokens de #55, instalación Windows/piloto y evidencia de Fabric real. |
+
+Las asignaciones no cambiaron. Las aprobaciones antiguas de #110 quedaron
+obsoletas con sus actualizaciones; el handoff actualizado necesita revisión.
 
 ### Cierre administrativo de la guía de contenido — 2026-10-24
 
@@ -169,9 +223,10 @@ cuotas de #104, rechazar decisiones repetidas, conservar id/ref y claves foráne
 durante la migración y comprobar la anonimización de reemplazados/rechazados.
 La vigencia requiere acuerdo de los autores; no se formalizó su aceptación.
 
-**Siguiente paso:** revisión cruzada de los PR corregidos y de #112, aceptación de
-#77 y acuerdo de #111. Las correcciones pendientes de Duverney en #98–#100 y sus
-frentes #82, #85, #93, #94 y #109 conservan su asignación. La creación de la línea
+**Siguiente paso (actualizado):** revisión cruzada de los PR corregidos, #112 y
+#113; integración de #77, ya aprobado por Duverney, y acuerdo de #111.
+#98/#99 ya están aprobados técnicamente; #100 espera el arreglo Unicode de #113.
+Los frentes de Duverney #82, #85, #93, #94 y #109 conservan su asignación. La creación de la línea
 base y la ejecución del CI de los siete PR ya quedaron verificadas.
 
 ### Correcciones implementadas — 2026-10-24
@@ -207,12 +262,13 @@ motivos de `cambios_configuracion`, que siguen conservados y no deben incluir
 datos personales.
 
 **Lo siguiente para Jhunier:** obtener revisión cruzada de estos arreglos,
-completar la revisión documental de #78, acordar #55 y revalidar los
-arreglos de Duverney. La integración conserva sus dependencias (#77 y línea
+completar la revisión documental de #78 y acordar #55. Los arreglos de Duverney
+ya se revalidaron; #98/#99 están aprobados y #100 requiere #113. La integración conserva sus dependencias (#77 y línea
 base); el CI de PR con base distinta de main quedó corregido y verificado más arriba.
 
-**Lo siguiente para Duverney:** revisar #77 y las ramas corregidas de Jhunier,
-resolver #98–#100 y continuar #82, #85, #93, #94 y #109. El detalle del reparto
+**Lo siguiente para Duverney:** integrar #77 (su aprobación ya está vigente),
+revisar las ramas corregidas de Jhunier y #112/#113, incorporar #113 a #100 e
+integrar #98/#99 tras #77; continuar #82, #85, #93, #94 y #109. El detalle del reparto
 permanece más abajo. No se alteraron asignaciones ni se incorporaron cambios
 visuales.
 
