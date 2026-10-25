@@ -385,11 +385,11 @@ inferencia ni mediante la aprobación rutinaria de otro PR:
 
 | Decisión | Estado | Constancia de Jhunier y Duverney |
 |---|---|---|
-| Paleta compartida o diferenciada y valores | Pendiente | — |
-| Tokens de éxito/advertencia del cliente | Pendiente | — |
-| Familia disponible y escala/pesos tipográficos | Pendiente | — |
-| Modo oscuro y alcance | Pendiente | — |
-| Vidrio, sombras, movimiento y dependencia | Pendiente | — |
+| Paleta compartida o diferenciada y valores | Acordada: acentos distintos (índigo `#5048e5` en el cliente, teal en `verifier-web/`) con tokens de éxito, advertencia y error comunes. Criterio de contraste: los tonos `-500` solo en elementos de interfaz (≥ 3:1); el texto sobre color usa `-700` o más oscuro (≥ 4,5:1). `.primary-button` parte de `--teal-700` | [propuesta de Duverney](https://github.com/rlases/SecureQR-ID/pull/114#pullrequestreview-5640742482); [confirmación de Jhunier](https://github.com/rlases/SecureQR-ID/pull/114#issuecomment-6392185680) |
+| Tokens de éxito/advertencia del cliente | Acordada: formalizar `--success` y `--warning` como `--destructive` | [propuesta de Duverney](https://github.com/rlases/SecureQR-ID/pull/114#pullrequestreview-5640742482); [confirmación de Jhunier](https://github.com/rlases/SecureQR-ID/pull/114#issuecomment-6392185680) |
+| Familia disponible y escala/pesos tipográficos | Acordada: fuentes del sistema o Inter local, nunca de un proveedor externo; pesos de `verifier-web/` normalizados a `medium/semibold/bold` | [propuesta de Duverney](https://github.com/rlases/SecureQR-ID/pull/114#pullrequestreview-5640742482); [confirmación de Jhunier](https://github.com/rlases/SecureQR-ID/pull/114#issuecomment-6392185680) |
+| Modo oscuro y alcance | Acordada: fuera del piloto; se retira `darkMode: ['class']` y queda como pendiente | [propuesta de Duverney](https://github.com/rlases/SecureQR-ID/pull/114#pullrequestreview-5640742482); [confirmación de Jhunier](https://github.com/rlases/SecureQR-ID/pull/114#issuecomment-6392185680) |
+| Vidrio, sombras, movimiento y dependencia | Acordada: «Vidrio elevado» solo con CSS; GSAP rechazado por ahora | [propuesta de Duverney](https://github.com/rlases/SecureQR-ID/pull/114#pullrequestreview-5640742482); [confirmación de Jhunier](https://github.com/rlases/SecureQR-ID/pull/114#issuecomment-6392185680) |
 
 Para cada fila se debe registrar el resultado y el enlace a la discusión explícita
 de ambos autores. Este inventario de código permite revisar valores concretos sin
@@ -398,6 +398,7 @@ conservar la distinción entre estándar aprobado y adopción pendiente en cada 
 
 ## Aprobación
 
-Borrador abierto por Jhunier. Pendiente de revisión explícita de Duverney sobre el
-contenido completo — no basta con la aprobación de PR de rutina exigida por
-`CONTRIBUTING.md` — antes de considerar cerrado el issue #55.
+Abierto por Jhunier. Duverney revisó explícitamente el contenido completo y propuso
+cada fila; Jhunier las confirmó (enlaces en la tabla de arriba). Con eso se cierra el
+acuerdo de #55. La adopción en cada app (tokens, contraste de `.primary-button`,
+pesos tipográficos, retirar `darkMode`) es trabajo pendiente en PR aparte.
