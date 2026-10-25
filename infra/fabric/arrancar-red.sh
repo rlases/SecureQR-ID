@@ -7,4 +7,5 @@ nombres=$(contenedores_red)
 # shellcheck disable=SC2086
 docker start $nombres >/dev/null
 esperar_peer
+esperar_descubrimiento
 info "red arrancada"

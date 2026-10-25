@@ -42,6 +42,7 @@ info "reinicio automático de los contenedores"
 # shellcheck disable=SC2046
 docker update --restart unless-stopped $(contenedores_red) >/dev/null
 
+esperar_descubrimiento
 date -u +%Y-%m-%dT%H:%M:%SZ > "$MARCA"
 info "red creada. Respáldala ahora: infra/fabric/respaldar-red.sh <destino>"
 "$INFRA_DIR/entorno-anchor.sh"
