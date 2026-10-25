@@ -3,6 +3,8 @@
     python -m secureqr_evidence_log export-batch   --db BITACORA --verifier-id ID --output lote.json
     python -m secureqr_evidence_log record-receipt --db BITACORA --receipt recibo.json
     python -m secureqr_evidence_log status         --db BITACORA
+    python -m secureqr_evidence_log seal           --seals-dir DIR --block-hash HEX
+    python -m secureqr_evidence_log seal-upgrade   --seals-dir DIR
     python -m secureqr_evidence_log cycle          --db BITACORA --verifier-id ID --workdir DIR \\
         --anchor-command "..." [--status-file estado.json]
 
@@ -34,6 +36,7 @@ import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from .sealing import SealingError, seal_block_hash, upgrade_pending
 from .evidence_log import (
     DEFAULT_MAX_BATCH_EVENTS,
     DEFAULT_STALE_AFTER_SECONDS,
@@ -198,11 +201,62 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     cycle.add_argument("--max-events", type=_positive_int, default=DEFAULT_MAX_BATCH_EVENTS)
     cycle.add_argument("--timeout-seconds", type=_positive_int, default=300)
+
+    seal = commands.add_parser(
+        "seal", help="sella en OpenTimestamps el hash del último bloque (tarea diaria)"
+    )
+    seal.add_argument("--seals-dir", required=True)
+    seal.add_argument(
+        "--block-hash",
+        required=True,
+        help="hash del último bloque (GetChainInfo de qscc), 64 caracteres hexadecimales",
+    )
+    seal.add_argument("--ots-command", default="ots", help="cliente oficial de OpenTimestamps")
+    seal.add_argument("--timeout-seconds", type=_positive_int, default=120)
+
+    upgrade = commands.add_parser("seal-upgrade", help="reintenta completar los sellos pendientes")
+    upgrade.add_argument("--seals-dir", required=True)
+    upgrade.add_argument("--ots-command", default="ots")
+    upgrade.add_argument("--timeout-seconds", type=_positive_int, default=120)
     return parser
+
+
+def _run_sealing(args: argparse.Namespace) -> int:
+    try:
+        ots_command = shlex.split(args.ots_command, posix=os.name != "nt")
+    except ValueError:
+        ots_command = []
+    if not ots_command:
+        print("Error: --ots-command está vacío o mal formado.", file=sys.stderr)
+        return EXIT_USAGE
+    seals_dir = Path(args.seals_dir)
+    try:
+        if args.command == "seal":
+            results = [
+                seal_block_hash(
+                    args.block_hash,
+                    seals_dir,
+                    ots_command=ots_command,
+                    timeout_seconds=args.timeout_seconds,
+                )
+            ]
+        else:
+            results = upgrade_pending(
+                seals_dir, ots_command=ots_command, timeout_seconds=args.timeout_seconds
+            )
+    except SealingError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+    for result in results:
+        print(f"bloque={result.block_hash} estado={'pendiente' if result.pending else 'completo'}")
+    # Pendiente no es un error: se reintenta sola. Solo falla si no hay ni comprobante.
+    return EXIT_OK if all(r.stamped for r in results) else EXIT_ANCHOR_FAILED
 
 
 def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time.time) -> int:
     args = _build_parser().parse_args(argv)
+    if args.command in ("seal", "seal-upgrade"):
+        return _run_sealing(args)
     try:
         log = _open_log(args.db)
     except SystemExit as exc:
