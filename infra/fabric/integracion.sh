@@ -43,8 +43,13 @@ eval "$("$INFRA_DIR/entorno-anchor.sh")"
 anclar="node $REPO_DIR/anchor/dist/cli.js anclar"
 
 info "ciclo real: evidence-log → anchor → Fabric → recibo"
-"$PYTHON" -m secureqr_evidence_log cycle --db "$db" --verifier-id "$verifier_id" \
-  --workdir "$trabajo/anclaje" --status-file "$salida/estado.json" --anchor-command "$anclar"
+if ! "$PYTHON" -m secureqr_evidence_log cycle --db "$db" --verifier-id "$verifier_id" \
+  --workdir "$trabajo/anclaje" --status-file "$salida/estado.json" --anchor-command "$anclar"; then
+  # `cycle` solo informa el código de salida: se repite el anclaje para ver el error de anchor/.
+  node "$REPO_DIR/anchor/dist/cli.js" anclar --batch "$trabajo/anclaje/lote.json" \
+    --receipt "$trabajo/recibo-diagnostico.json" || true
+  falla "el ciclo de anclaje falló"
+fi
 cp "$trabajo/anclaje/lote.json" "$trabajo/anclaje/recibo.json" "$salida/"
 
 info "la raíz desde la red y una prueba de inclusión contra ella"
