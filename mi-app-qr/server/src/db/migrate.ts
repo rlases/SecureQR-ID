@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { canonicalCidSql } from '../titulares/identificadores.js';
 
 export function runMigrations(db: Database.Database): void {
   db.exec(`
@@ -275,5 +276,42 @@ function runReseteoMigrations(db: Database.Database): void {
     BEGIN SELECT RAISE(ABORT, 'el registro de reseteos es de solo agregar'); END;
     CREATE TRIGGER IF NOT EXISTS reseteos_cid_no_delete BEFORE DELETE ON reseteos_cid
     BEGIN SELECT RAISE(ABORT, 'el registro de reseteos es de solo agregar'); END;
+  `);
+  runConservacionMigrations(db);
+}
+
+// Conservación y anonimización de datos personales (ADR-0016, punto 10; issue #90).
+function runConservacionMigrations(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS configuracion (
+      clave TEXT PRIMARY KEY,
+      valor TEXT
+    );
+
+    -- Cada anonimización queda registrada: qué alcance, cuántas filas y quién.
+    CREATE TABLE IF NOT EXISTS anonimizaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      alcance TEXT NOT NULL CHECK (alcance IN ('cierre', 'plazo')),
+      titulares INTEGER NOT NULL,
+      registros INTEGER NOT NULL,
+      consultas INTEGER NOT NULL,
+      ejecutado_por TEXT NOT NULL,
+      ejecutado_en TEXT NOT NULL
+    );
+
+    -- Conservación de datos: solo se permite limpiar el motivo y reemplazar un cid
+    -- mal formado (texto libre, no una credencial) por la marca opaca de su fila.
+    -- Un cid canónico nunca se modifica, ni tampoco autor, fecha o atribución.
+    DROP TRIGGER IF EXISTS consultas_cid_no_update;
+    CREATE TRIGGER consultas_cid_no_update BEFORE UPDATE ON consultas_cid
+    WHEN NOT (
+      NEW.motivo IS NULL
+      AND NEW.id = OLD.id AND NEW.usuario_id = OLD.usuario_id
+      AND (NEW.cid = OLD.cid OR (
+        NOT ${canonicalCidSql('OLD.cid')} AND NEW.cid = 'anon-' || OLD.id
+      ))
+      AND NEW.titular_id IS OLD.titular_id AND NEW.en = OLD.en
+    )
+    BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
   `);
 }

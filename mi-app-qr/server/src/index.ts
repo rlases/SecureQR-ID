@@ -6,6 +6,7 @@ import { seedAdminUser } from './db/seed.js';
 import { loadTlsOptionsFromEnv } from './tls.js';
 import { exportarRevocados } from './titulares/gestion.js';
 import { aplicarReseteoSiCorresponde } from './titulares/reseteo.js';
+import { anonimizarVencidos } from './titulares/anonimizacion.js';
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
@@ -73,6 +74,21 @@ async function main(): Promise<void> {
   };
   reseteo();
   setInterval(reseteo, SEIS_HORAS_MS).unref();
+
+  // Plazo de conservación (ADR-0016, punto 10): si el admin lo configuró, cada día se
+  // anonimizan los registros y consultas más antiguos.
+  const conservacion = () => {
+    try {
+      const r = anonimizarVencidos(db, new Date());
+      if (r && (r.registros > 0 || r.consultas > 0)) {
+        console.log(`Anonimizados por plazo: ${r.registros} registros y ${r.consultas} consultas`);
+      }
+    } catch (error) {
+      console.error('No se pudo aplicar el plazo de conservación:', error);
+    }
+  };
+  conservacion();
+  setInterval(conservacion, UN_DIA_MS).unref();
 
   if (tls) {
     https.createServer(tls, app).listen(port, () => {

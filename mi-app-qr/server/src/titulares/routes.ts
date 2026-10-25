@@ -12,6 +12,7 @@ import {
   reactivarTitular,
   revocarCredencial,
 } from './gestion.js';
+import { getPlazoConservacion, setPlazoConservacion } from './anonimizacion.js';
 
 // Rutas de admin sobre el registro de titulares. Ninguna está disponible para el
 // operador: traducir un cid a una persona es solo del admin (ADR-0016, punto 7).
@@ -62,6 +63,25 @@ export function createTitularesRouter(opciones: { revocadosPath?: string } = {})
       }
     });
   }
+
+  // Plazo de conservación de registros y consultas para un uso institucional posterior
+  // (ADR-0016, punto 10). null = se conservan hasta el cierre del piloto.
+  router.get('/conservacion', (req, res) => {
+    const db = req.app.locals.db as Database.Database;
+    res.json({ plazoDias: getPlazoConservacion(db) });
+  });
+
+  router.put('/conservacion', (req, res) => {
+    const parsed = z
+      .object({ plazoDias: z.number().int().min(30).max(3650).nullable() })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'el plazo va de 30 a 3650 días, o vacío' });
+    }
+    const db = req.app.locals.db as Database.Database;
+    setPlazoConservacion(db, parsed.data.plazoDias, req.session.userId!, new Date());
+    return res.json({ plazoDias: parsed.data.plazoDias });
+  });
 
   // Archivo de cid revocados, sin firmar, para que el custodio lo firme (#81).
   router.get('/revocados.txt', (req, res) => {
