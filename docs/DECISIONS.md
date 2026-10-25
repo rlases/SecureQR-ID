@@ -1041,12 +1041,32 @@ conocido de `cambios_configuracion`, ver #108).
   con el documento ajeno obtiene un registro `activo`. La persona real queda en
   revisión y el `admin` lo resuelve con «reemplazar» y motivo `registro_anterior_indebido`.
   Sin esta salida, el documento quedaría ocupado indefinidamente.
-- **A confirmar entre los autores:** la vigencia del código de entrega (propuesta: 72
-  horas, con posibilidad de regenerarlo, lo que invalida el anterior).
-- **Implementación.** Va sobre el PR #106 y sus anteriores (#102, #104). Requiere
-  reconstruir la tabla `titulares` para ampliar su restricción de estados, y pruebas de
-  las tres salidas con auditoría, integridad de `asignaciones_cid` y consulta auditada
-  del `cid` anterior.
+- **Código provisional de entrega, con vigencia de 72 horas** (propuesto; queda acordado
+  cuando los dos autores aprueben este PR). El plazo afecta **solo** al código
+  provisional que el `admin` ve al resolver, y no cambia la decisión 4: el código de
+  recuperación propio del titular no caduca por tiempo.
+  - Corre desde el momento en que el servidor lo genera.
+  - Vencido, el canje se rechaza con la misma respuesta genérica que un código
+    incorrecto, y el `admin` puede **regenerarlo**, lo que invalida el anterior.
+  - Al canjearlo, el titular recibe su código propio y el provisional deja de existir:
+    pierde su carácter provisional y su fecha de vencimiento.
+- **Implementación.** Va sobre el PR #106 y sus anteriores (#102, #104). Requisitos:
+  - **Canje atómico.** Reutilizar el consumo condicional y atómico del hash y la reserva
+    de cuota de intentos de #104: dos canjes simultáneos del mismo código producen un
+    solo éxito. La respuesta que contiene el código lleva `Cache-Control: no-store` y el
+    código no se escribe en registros ni en el almacenamiento persistente del cliente.
+  - **Resolver una sola vez.** Dentro de la transacción solo se resuelve un alta que siga
+    en `en_revision`; una decisión repetida, o una aprobación sobre un estado ya
+    resuelto, falla sin crear otra credencial ni otro código.
+  - **Reconstruir `titulares` sin perder nada.** Para ampliar la restricción de estados
+    se conservan el `id` y la `ref` de cada fila, todas las claves foráneas y todos los
+    triggers, incluido `titulares_referencia_fija` (#105). Se prueba la migración sobre
+    una base existente, `foreign_key_check`, el rollback de un reemplazo fallido y,
+    después, la cadena `asignaciones_cid` y la atribución de la consulta auditada.
+  - **Anonimización.** Las pruebas de #108 cubren también a los titulares `reemplazado`
+    (al cierre del piloto) y a los rechazados (de inmediato), y conservan la limpieza de
+    motivos y de `cid` inválidos.
+  - Pruebas de las tres salidas (rechazar, reemplazar, aprobar) con auditoría.
 
 ---
 
