@@ -73,21 +73,24 @@ referencia visual — la fuente de verdad es el triple HSL.
 | `--border` / `--input` | `220 13% 91%` | `#e5e7eb` | Bordes, contornos de input |
 | `--destructive` | `0 72% 51%` | `#dc2828` | Errores, acciones destructivas |
 | `--destructive-foreground` | `0 0% 100%` | `#ffffff` | Texto sobre `--destructive` |
+| `--success` / `--success-muted` | `163 94% 24%` / `149 80% 90%` | `#047857` / `#d1fae5` | Éxito: texto `-700` sobre fondo `-100` (4,9:1) |
+| `--warning` / `--warning-muted` | `26 90% 37%` / `48 96% 89%` | `#b45309` / `#fef3c7` | Advertencia: texto `-700` sobre fondo `-100` (4,5:1) |
+| `--success-foreground` / `--warning-foreground` | `0 0% 100%` | `#ffffff` | Texto sobre el tono `-700` sólido |
 | `--radius` | — | `0.5rem` | Radio de borde base (botones, cards, inputs) |
 
-**No existen `--success`/`--warning` como variables de token.** Los estados de éxito y
-advertencia se resuelven hoy con clases sueltas de la paleta de Tailwind, no con
-tokens del sistema:
+**`--success` y `--warning` son tokens desde #129**, igual que `--destructive`. Antes
+eran clases sueltas (`emerald-100/700`, `amber-100/700`); ahora se usan así:
 
 ```
-success: 'bg-emerald-100 text-emerald-700'   (DashboardPage.tsx)
-warning: 'bg-amber-100 text-amber-700'
+success: 'bg-success-muted text-success'   (DashboardPage.tsx)
+warning: 'bg-warning-muted text-warning'
 neutral: 'bg-slate-100 text-slate-700'
 ```
 
-La misma pareja `emerald-100/emerald-700` se reutiliza para el badge "Entrada" y
-`amber-100/amber-700` para "Salida" (`DashboardPage.tsx`, `InformesPage.tsx`). Es un
-patrón consistente en la práctica, pero no está tokenizado — ver divergencias.
+La pareja de éxito marca el badge "Entrada" y la de advertencia, "Salida"
+(`DashboardPage.tsx`, `InformesPage.tsx`); la de éxito también el "Vigente" del
+historial de correcciones. `test/tokensEstado.test.ts` falla si vuelve a aparecer una
+clase `emerald`/`amber` suelta.
 "Entrada" y "Salida" son movimientos de asistencia: no equivalen a las decisiones
 criptográficas "aceptada" y "rechazada" del verificador.
 
@@ -203,8 +206,8 @@ distinta de la de `mi-app-qr/client`; no consta aquí un acuerdo de mantener la 
 | `--ink` | `#142a29` | Texto principal |
 | `--muted` / `--muted-strong` | `#5c706f` / `#415856` | Texto secundario |
 | `--line` / `--line-strong` | `#d5e0de` / `#bdcdca` | Bordes |
-| `--teal-500` | `#16a39c` | Acento principal (botones, indicador en vivo) |
-| `--teal-700` / `--teal-800` | `#0d6d69` / `#0b5755` | Hover, gradientes |
+| `--teal-500` | `#16a39c` | Acento en elementos de interfaz sin texto (indicador en vivo, progreso, ícono) |
+| `--teal-700` / `--teal-800` | `#0d6d69` / `#0b5755` | Fondo de `.primary-button` (texto blanco a 6,16:1), hover, gradientes |
 | `--teal-950` | `#082c2b` | Encabezados, superficies oscuras |
 | `--teal-100` | `#d9f1ee` | Fondo de acento suave |
 | `--green-100` | `#dff3e7` | Fondo de estado aceptado |
@@ -222,27 +225,23 @@ los literales de CSS: hay bordes y gradientes con colores escritos directamente.
 
 ### Tipografía
 
-`font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-"Segoe UI", sans-serif` — declarada como pila CSS, no como config de Tailwind (esta app
-no usa Tailwind). Mismo Inter como familia principal que `mi-app-qr/client`, con una
-cadena de reemplazo de sistema más larga.
-Al igual que en el cliente, no se encontró un mecanismo de carga de Inter en el
-código/HTML revisados. Los pesos declarados pueden resolverse mediante una fuente
-de reemplazo; no implican que esté cargada una variante variable de Inter.
+`font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+sans-serif` — fuentes del sistema, declaradas como pila CSS (esta app no usa
+Tailwind). Desde #130 no se declara Inter: no viene empaquetada y el acuerdo de #55
+descarta pedirla a un proveedor externo.
 
 | Nivel | Tamaño / peso | Uso |
 |---|---|---|
-| Hero (decisión grande) | `46px` / peso `800` | Título grande de resultado dentro del layout |
-| `h1` | `24px` / peso `760` | Título de página |
-| `h2` (result card) | `18–22px` / peso `740` | Título de superficie |
+| Hero (decisión grande) | `46px` / bold (`700`) | Título grande de resultado dentro del layout |
+| `h1` | `24px` / bold (`700`) | Título de página |
+| `h2` (result card) | `18–22px` / bold (`700`) | Título de superficie |
 | Cuerpo (result card) | `14px` | Texto de descripción de resultado |
-| Eyebrow | `11px`, mayúsculas, peso `780` | Etiquetas sobre título |
-| Botones | `13px` | — |
+| Eyebrow | `11px`, mayúsculas, bold (`700`) | Etiquetas sobre título |
+| Botones | `13px` / semibold (`600`) | — |
 
-Usa **pesos numéricos no convencionales** (`680`, `720`, `740`, `760`, `780`, `800`) en
-vez de los pasos estándar 400/500/600/700 que usa `mi-app-qr/client` vía
-`font-medium`/`font-semibold`. Divergencia real, no solo de valores sino del propio
-sistema de pesos — ver divergencias.
+Desde #130 los pesos siguen la escala `medium`/`semibold`/`bold` (`500`/`600`/`700`)
+de `mi-app-qr/client`. Antes eran valores no convencionales (`680` a `800`): `680` y
+`720` pasaron a `600`, y de `740` a `800` pasaron a `700`. `test/estilos.test.ts` lo comprueba.
 
 ### Espaciado
 
@@ -297,12 +296,10 @@ no se encontró una regla global equivalente en `mi-app-qr/client/src/index.css`
 
 ## Modo oscuro
 
-**No implementado en ninguna de las dos apps.** `tailwind.config.ts` de
-`mi-app-qr/client` declara `darkMode: ['class']`, pero ningún componente agrega la
-clase `.dark` ni existe un bloque de variables CSS para modo oscuro — es andamiaje del
-scaffold de shadcn/ui que nunca se activó, no una funcionalidad real. `verifier-web/`
-no tiene ninguna referencia a modo oscuro. Se documenta como pendiente, no como
-decisión tomada.
+**Fuera del piloto, por acuerdo (#55).** No está implementado en ninguna de las dos
+apps. El `darkMode: ['class']` inerte que traía `tailwind.config.ts` de
+`mi-app-qr/client` (andamiaje de shadcn/ui que nunca se activó) se retiró en #129 para
+no sugerir una capacidad que no existe. Queda como pendiente para después del piloto.
 
 ---
 
@@ -400,5 +397,6 @@ conservar la distinción entre estándar aprobado y adopción pendiente en cada 
 
 Abierto por Jhunier. Duverney revisó explícitamente el contenido completo y propuso
 cada fila; Jhunier las confirmó (enlaces en la tabla de arriba). Con eso se cierra el
-acuerdo de #55. La adopción en cada app (tokens, contraste de `.primary-button`,
-pesos tipográficos, retirar `darkMode`) es trabajo pendiente en PR aparte.
+acuerdo de #55. La adopción en cada app va en PR aparte: tokens de estado y retirar
+`darkMode` en `mi-app-qr/client` (#129); contraste de `.primary-button` y pesos
+tipográficos en `verifier-web/` (#130).

@@ -23,8 +23,8 @@ interface MetricCardProps {
 
 const toneClasses: Record<MetricCardProps['tone'], string> = {
   primary: 'bg-primary/10 text-primary',
-  success: 'bg-emerald-100 text-emerald-700',
-  warning: 'bg-amber-100 text-amber-700',
+  success: 'bg-success-muted text-success',
+  warning: 'bg-warning-muted text-warning',
   neutral: 'bg-slate-100 text-slate-700',
 };
 
@@ -205,8 +205,8 @@ export default function DashboardPage() {
                       <span
                         className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
                           registro.tipo === 'entrada'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                            ? 'bg-success-muted text-success'
+                            : 'bg-warning-muted text-warning'
                         }`}
                       >
                         {registro.tipo === 'entrada' ? 'Entrada' : 'Salida'}

@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const https = require('https');
 const { loadOrCreateCertificate } = require('./src/lib/tls');
+const { buildServerEnv } = require('./src/lib/serverEnv');
 
 const isDev = !app.isPackaged;
 
@@ -31,6 +32,16 @@ async function loadConfiguration() {
         }
     } catch (error) {
         console.log('No se encontró config.json. Usando duración de prueba por defecto (500 días).');
+    }
+}
+
+// config.json completo para el arranque del servidor (issue #131); vacío si no existe o
+// no se puede leer.
+async function readConfig() {
+    try {
+        return JSON.parse(await fs.readFile(configFilePath, 'utf-8')) || {};
+    } catch (error) {
+        return {};
     }
 }
 
@@ -190,19 +201,20 @@ async function startServer() {
         ? [process.execPath, [path.join(SERVER_DIR, 'dist', 'index.js')], { ELECTRON_RUN_AS_NODE: '1' }]
         : ['node', [path.join(SERVER_DIR, 'dist', 'index.js')], {}];
 
+    // Emisor, cabeza de asignaciones, revocados y zona horaria (issue #131): ver
+    // src/lib/serverEnv.js, que explica por qué Electron no arranca `secureqr-issuer serve`.
+    const { env: serverEnv, avisos } = buildServerEnv({
+        userDataPath,
+        secrets,
+        config: await readConfig(),
+        baseEnv: process.env,
+        tls: { certPath, keyPath },
+        port: SERVER_PORT,
+    });
+    avisos.forEach((aviso) => console.warn(aviso));
+
     serverProcess = spawn(command, commandArgs, {
-        env: {
-            ...process.env,
-            ...extraEnv,
-            PORT: String(SERVER_PORT),
-            SESSION_SECRET: secrets.sessionSecret,
-            ASIGNACIONES_KEY: secrets.asignacionesKey,
-            DB_PATH: path.join(userDataPath, 'server-data', 'app.db'),
-            SEED_ADMIN_USERNAME: secrets.adminUsername,
-            SEED_ADMIN_PASSWORD: secrets.adminPassword,
-            TLS_CERT_PATH: certPath,
-            TLS_KEY_PATH: keyPath,
-        },
+        env: { ...serverEnv, ...extraEnv },
         stdio: 'pipe',
         shell: process.platform === 'win32',
     });
