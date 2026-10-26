@@ -292,7 +292,7 @@ Detalle de la implementación:
 - Descubrimiento del servidor por los demás puestos: IP fija, nombre en la red o
   configuración manual.
 - Estrategia de respaldo del almacenamiento (el motor en sí ya se resolvió de facto,
-  ver nota abajo). Propuesta en ADR-0018 (2026-10-26).
+  ver nota abajo). Resuelta en ADR-0018 (2026-10-26).
 
 (El catálogo de roles, que estaba pendiente aquí, se resolvió en ADR-0009. El motor de
 almacenamiento también quedó resuelto de facto: SQLite embebido vía `better-sqlite3`, ya
@@ -1376,7 +1376,7 @@ una semana en aparecer, si entra por un archivo que no dispara el flujo. Lo miti
 
 ## ADR-0018 — Cifrado en reposo y respaldo diario cifrado de las bases del servidor del CCAV
 
-**Estado:** Propuesta (2026-10-26)
+**Estado:** Aceptada (2026-10-26, aprobada por Jhunier en #146)
 
 **Contexto.** En el servidor del CCAV hay tres almacenes con datos sensibles, todos en
 claro en el disco:

@@ -34,7 +34,7 @@ Duverney: con #148 se aceptan las decisiones conjuntas de abajo.
 borrado criptográfico de los respaldos al cierre del piloto (se destruye la identidad de
 `age`), para que no sobrevivan a la anonimización de ADR-0016, punto 10:
 
-- **ADR-0018 (Propuesta):** cifrado de disco completo (LUKS2 o BitLocker, con frase de
+- **ADR-0018 (Aceptada):** cifrado de disco completo (LUKS2 o BitLocker, con frase de
   paso del custodio) y respaldo diario cifrado con `age` hacia una clave pública. Cierra
   el pendiente de respaldo de ADR-0008.
 - `infra/respaldo/respaldar-datos.sh`, `restaurar-datos.sh` y `probar-respaldo.sh`;
