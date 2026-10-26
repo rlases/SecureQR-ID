@@ -105,17 +105,14 @@ clave de emisión. Ver "Relación con el prototipo existente" en `docs/ARCHITECT
 - Al cerrar cada sesión de trabajo, actualiza `docs/STATE.md`. Es el handoff real.
 - Los nombres del código deben coincidir con los del documento de grado. Si el artículo
   dice "raíz de Merkle", el código dice `merkle_root`, no `hash_tree_top`.
-- **Reparto de trabajo nuevo entre Jhunier y Duverney: siempre carga pareja, ni más ni
-  menos.** Cada vez que aparezca un lote de trabajo nuevo (issues, frentes de una
-  iniciativa), repártelo en partes iguales entre los dos autores en ese momento — no
-  uses el desbalance acumulado histórico (quién ha cerrado más PR en total) para
-  inclinar el reparto de lo nuevo hacia uno de los dos. El desbalance acumulado sí se
-  documenta como contexto en `docs/STATE.md` (para que quede visible), y es lo que
-  desempata cuando el lote **no** se puede partir parejo (número impar de issues
-  indivisibles, un solo issue, o piezas de tamaño muy distinto): en ese caso el
-  ítem/parte que sobra le toca a quien tenga *menos* carga acumulada hasta ese momento,
-  no a quien redactó el lote ni por conveniencia. Con dos issues divisibles o un lote
-  parejo, la regla simple (2 y 2, mitad y mitad) sigue siendo la norma.
+- **Reparto de trabajo nuevo entre Jhunier y Duverney: se nivela la carga acumulada.**
+  Cada vez que aparezca un lote de trabajo nuevo (issues, frentes de una iniciativa),
+  mira primero la carga acumulada de cada autor (PR fusionados en `main`) y reparte el
+  lote de forma que se acorte la diferencia: quien lleva menos recibe más, hasta emparejar.
+  Cuando la carga acumulada ya esté pareja, el lote se reparte mitad y mitad, y lo
+  indivisible que sobre va a quien tenga menos carga. El desbalance y el reparto de cada
+  lote se documentan en `docs/STATE.md`, para que quede visible por qué se asignó así.
+  (Cambio de 2026-10-26: antes la regla era carga pareja sin mirar lo acumulado.)
 
 ## Trampas conocidas
 

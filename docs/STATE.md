@@ -19,9 +19,32 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ## Estado vigente — 2026-10-26
 
-### Cierre de la sesión de Duverney — 2026-10-26 (madrugada, hora UTC)
+### Reparto del lote nuevo — 2026-10-26 (Jhunier)
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Cambia la regla de reparto** de `CLAUDE.md`. Antes era carga pareja sin mirar lo acumulado; ahora se **nivela la carga acumulada**, a pedido de Jhunier. Este PR necesita la aprobación de Duverney, así que el cambio solo rige si él lo acepta.
+
+**Carga acumulada en PR fusionados en `main`:** Jhunier unos 55 y Duverney unos 24. El conteo es aproximado (primera página de la API), pero la diferencia es clara.
+
+**Lote nuevo: las cinco piezas, para Duverney.**
+
+| Issue | Pieza |
+|---|---|
+| #129 | `mi-app-qr/client`: tokens `--success`/`--warning` y retirar `darkMode` (acuerdo #55) |
+| #130 | `verifier-web/`: `.primary-button` sobre `--teal-700` y pesos tipográficos (acuerdo #55) |
+| #131 | Electron: pasar las variables del emisor y de la cabeza de asignaciones; quién arranca `secureqr-issuer serve` |
+| #132 | Aviso en la interfaz cuando un reemplazo levanta una suspensión (#122) |
+| #133 | Guía de instalación del servidor del CCAV (Fabric, emisor, custodia de claves, Wi-Fi) |
+
+**Jhunier no toma piezas nuevas de este lote.** Le quedan las revisiones cruzadas y las decisiones conjuntas que siguen abiertas:
+
+- el texto libre de `cambios_configuracion.motivo`;
+- el tag `v0.1.0`;
+- el certificado para los teléfonos;
+- los pendientes del documento de grado.
+
+### Cierre de la sesión de Duverney — 2026-10-26 (madrugada, hora UTC)
 
 **No queda ningún issue ni PR abierto.** Todo lo de esta sesión se revisó por Jhunier y
 entró en `main` con squash y el CI en verde:
