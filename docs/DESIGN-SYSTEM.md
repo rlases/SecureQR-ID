@@ -206,8 +206,8 @@ distinta de la de `mi-app-qr/client`; no consta aquí un acuerdo de mantener la 
 | `--ink` | `#142a29` | Texto principal |
 | `--muted` / `--muted-strong` | `#5c706f` / `#415856` | Texto secundario |
 | `--line` / `--line-strong` | `#d5e0de` / `#bdcdca` | Bordes |
-| `--teal-500` | `#16a39c` | Acento principal (botones, indicador en vivo) |
-| `--teal-700` / `--teal-800` | `#0d6d69` / `#0b5755` | Hover, gradientes |
+| `--teal-500` | `#16a39c` | Acento en elementos de interfaz sin texto (indicador en vivo, progreso, ícono) |
+| `--teal-700` / `--teal-800` | `#0d6d69` / `#0b5755` | Fondo de `.primary-button` (texto blanco a 6,16:1), hover, gradientes |
 | `--teal-950` | `#082c2b` | Encabezados, superficies oscuras |
 | `--teal-100` | `#d9f1ee` | Fondo de acento suave |
 | `--green-100` | `#dff3e7` | Fondo de estado aceptado |
@@ -225,27 +225,23 @@ los literales de CSS: hay bordes y gradientes con colores escritos directamente.
 
 ### Tipografía
 
-`font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-"Segoe UI", sans-serif` — declarada como pila CSS, no como config de Tailwind (esta app
-no usa Tailwind). Mismo Inter como familia principal que `mi-app-qr/client`, con una
-cadena de reemplazo de sistema más larga.
-Al igual que en el cliente, no se encontró un mecanismo de carga de Inter en el
-código/HTML revisados. Los pesos declarados pueden resolverse mediante una fuente
-de reemplazo; no implican que esté cargada una variante variable de Inter.
+`font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+sans-serif` — fuentes del sistema, declaradas como pila CSS (esta app no usa
+Tailwind). Desde #130 no se declara Inter: no viene empaquetada y el acuerdo de #55
+descarta pedirla a un proveedor externo.
 
 | Nivel | Tamaño / peso | Uso |
 |---|---|---|
-| Hero (decisión grande) | `46px` / peso `800` | Título grande de resultado dentro del layout |
-| `h1` | `24px` / peso `760` | Título de página |
-| `h2` (result card) | `18–22px` / peso `740` | Título de superficie |
+| Hero (decisión grande) | `46px` / bold (`700`) | Título grande de resultado dentro del layout |
+| `h1` | `24px` / bold (`700`) | Título de página |
+| `h2` (result card) | `18–22px` / bold (`700`) | Título de superficie |
 | Cuerpo (result card) | `14px` | Texto de descripción de resultado |
-| Eyebrow | `11px`, mayúsculas, peso `780` | Etiquetas sobre título |
-| Botones | `13px` | — |
+| Eyebrow | `11px`, mayúsculas, bold (`700`) | Etiquetas sobre título |
+| Botones | `13px` / semibold (`600`) | — |
 
-Usa **pesos numéricos no convencionales** (`680`, `720`, `740`, `760`, `780`, `800`) en
-vez de los pasos estándar 400/500/600/700 que usa `mi-app-qr/client` vía
-`font-medium`/`font-semibold`. Divergencia real, no solo de valores sino del propio
-sistema de pesos — ver divergencias.
+Desde #130 los pesos siguen la escala `medium`/`semibold`/`bold` (`500`/`600`/`700`)
+de `mi-app-qr/client`. Antes eran valores no convencionales (`680` a `800`): `680` y
+`720` pasaron a `600`, y de `740` a `800` pasaron a `700`. `test/estilos.test.ts` lo comprueba.
 
 ### Espaciado
 
