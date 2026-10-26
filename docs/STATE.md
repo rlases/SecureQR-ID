@@ -67,12 +67,16 @@ identidad de respaldo en el equipo del custodio y seguir la guía completa (#133
   - la licencia nueva respalda legalmente, pero no impide la copia.
 - **#144** corrige el filtro: con `always()`, un flujo cancelado por concurrencia corría igual las doce suites. Pasa a `!cancelled()`.
 
-**Pendiente (decisiones conjuntas):**
+**Decisiones conjuntas propuestas por Jhunier** (enmienda de 2026-10-26 a ADR-0016). Quedan aceptadas cuando Duverney apruebe este PR:
 
-- qué hacer con el texto libre de `cambios_configuracion.motivo` antes del cierre del piloto;
-- el tag `v0.1.0`;
-- el certificado para los teléfonos;
-- los pendientes del documento de grado.
+- **Texto libre de `cambios_configuracion`:** se anonimiza al cierre y por plazo, igual que `registros.motivo`. Implementación en **#147, asignado a Duverney** por la regla de reparto.
+- **Certificado del portal:** en el piloto sigue la huella SHA-256 publicada; el dominio con Let's Encrypt se reevalúa después.
+- **Tags de fase** (`ROADMAP.md`):
+  - `v0.1.0` en `690bfcc`, el cierre de la Fase 2 (#53, 2026-09-23);
+  - `v0.2.0` en `main`, al cierre de la Fase 3, con los cinco módulos probados y el anclaje real en Fabric.
+  - Los crea Jhunier a mano, porque el proxy de la sesión no permite escribir referencias.
+
+**Pendiente:** los pendientes del documento de grado.
 
 ### Sesión de Duverney — 2026-10-26 (mañana, hora UTC)
 
