@@ -16,6 +16,10 @@ vi.mock('../src/lib/apiClient', async (importOriginal) => {
     exportarRevocadosAhora: vi.fn(),
     getConservacion: vi.fn(),
     setConservacion: vi.fn(),
+    rechazarAlta: vi.fn(),
+    reemplazarRegistro: vi.fn(),
+    aprobarAlta: vi.fn(),
+    regenerarCodigoProvisional: vi.fn(),
   };
 });
 
@@ -29,7 +33,20 @@ const ana = {
   estamento: 'Docente',
   estamentoConfirmado: false,
   dispositivoActivo: true,
+  provisionalVenceEn: null,
+  registroVigenteId: null,
   creadoEn: '2026-10-24T15:00:00.000Z',
+};
+
+// Alta en revisión por documento repetido (issue #109).
+const anaNueva = {
+  ...ana,
+  id: 5,
+  nombre: 'Ana Nueva',
+  estado: 'en_revision' as const,
+  estamentoConfirmado: true,
+  dispositivoActivo: false,
+  registroVigenteId: 1,
 };
 
 function renderPage() {
@@ -121,5 +138,63 @@ describe('TitularesPage', () => {
       'href',
       '/api/titulares/revocados.txt'
     );
+  });
+
+  it('reemplaza un alta en revisión con un motivo de la lista y muestra el código una sola vez', async () => {
+    vi.mocked(apiClient.listTitulares).mockResolvedValue({ titulares: [ana, anaNueva] });
+    vi.mocked(apiClient.reemplazarRegistro).mockResolvedValue({
+      codigoProvisional: 'ABCD-EFGH-IJKL-MNOP',
+      venceEn: '2026-10-28T15:00:00.000Z',
+    });
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Reemplazar registro con el alta de Ana Nueva' }));
+    const dialogo = screen.getByRole('dialog', { name: /Reemplazar registro: Ana Nueva/ });
+    const enviar = within(dialogo).getByRole('button', { name: 'Reemplazar' });
+    expect(enviar).toBeDisabled();
+    await user.click(within(dialogo).getByLabelText(/El registro anterior era indebido/));
+    expect(within(dialogo).getByText(/se revoca y entra en la próxima lista/)).toBeInTheDocument();
+    await user.click(enviar);
+    await waitFor(() =>
+      expect(apiClient.reemplazarRegistro).toHaveBeenCalledWith(5, 'registro_anterior_indebido', '')
+    );
+    expect(await within(dialogo).findByText('ABCD-EFGH-IJKL-MNOP')).toBeInTheDocument();
+    expect(within(dialogo).getByRole('status')).toHaveTextContent(/una sola vez/);
+    await user.click(within(dialogo).getByRole('button', { name: 'Ya lo entregué, cerrar' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('ABCD-EFGH-IJKL-MNOP')).not.toBeInTheDocument();
+  });
+
+  it('rechaza un alta en revisión con una nota opcional', async () => {
+    vi.mocked(apiClient.listTitulares).mockResolvedValue({ titulares: [ana, anaNueva] });
+    vi.mocked(apiClient.rechazarAlta).mockResolvedValue({ ok: true });
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Rechazar alta de Ana Nueva' }));
+    const dialogo = screen.getByRole('dialog', { name: /Rechazar alta: Ana Nueva/ });
+    await user.type(within(dialogo).getByLabelText('Nota (opcional)'), 'verificado');
+    await user.click(within(dialogo).getByRole('button', { name: 'Rechazar alta' }));
+    await waitFor(() => expect(apiClient.rechazarAlta).toHaveBeenCalledWith(5, 'verificado'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('sin registro vigente ofrece aprobar, y regenera el código provisional pendiente', async () => {
+    const sinAnterior = { ...anaNueva, registroVigenteId: null };
+    const pendiente = { ...ana, id: 7, nombre: 'Luis Sintético', provisionalVenceEn: '2026-10-28T15:00:00.000Z' };
+    vi.mocked(apiClient.listTitulares).mockResolvedValue({ titulares: [sinAnterior, pendiente] });
+    vi.mocked(apiClient.regenerarCodigoProvisional).mockResolvedValue({
+      codigoProvisional: 'QRST-UVWX-YZ23-4567',
+      venceEn: '2026-10-29T15:00:00.000Z',
+    });
+    renderPage();
+    const user = userEvent.setup();
+    expect(await screen.findByRole('button', { name: 'Aprobar alta de Ana Nueva' })).toBeInTheDocument();
+    expect(screen.getByText(/Sin registro vigente con este documento/)).toBeInTheDocument();
+    expect(screen.getByText(/Código provisional sin canjear/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Nuevo código provisional para Luis Sintético' }));
+    const dialogo = screen.getByRole('dialog');
+    await user.click(within(dialogo).getByRole('button', { name: 'Generar código' }));
+    expect(await within(dialogo).findByText('QRST-UVWX-YZ23-4567')).toBeInTheDocument();
+    expect(apiClient.regenerarCodigoProvisional).toHaveBeenCalledWith(7);
   });
 });

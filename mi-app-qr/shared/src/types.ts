@@ -87,7 +87,12 @@ export interface Estamento {
   esBase: boolean;
 }
 
-export type EstadoTitular = 'activo' | 'en_revision' | 'suspendido' | 'anonimizado';
+export type EstadoTitular =
+  | 'activo'
+  | 'en_revision'
+  | 'suspendido'
+  | 'reemplazado'
+  | 'anonimizado';
 
 export interface Titular {
   id: number;
@@ -191,6 +196,27 @@ export interface EstadoPortal {
   estamentoPendiente: boolean;
 }
 
+// QR del titular (issue #85). El token no se guarda en ningún almacenamiento del navegador.
+export interface QrTitular {
+  token: string;
+  expiraEn: string;
+  // Cuándo pedir el siguiente: unos 15 segundos antes de que venza.
+  renovarEnSegundos: number;
+}
+
+export type MotivoSinQr =
+  | 'fuera_de_ventana'
+  | 'dia_cerrado'
+  | 'sin_ventanas'
+  | 'sin_estamento_base'
+  | 'titular_no_activo'
+  | 'sin_credencial_vigente';
+
+export interface QrNoDisponible {
+  motivo: MotivoSinQr;
+  mensaje: string;
+}
+
 // --- Consulta auditada cid → persona (ADR-0016, punto 7; solo admin) --------------------
 
 export type ResultadoConsultaCid =
@@ -230,5 +256,16 @@ export interface TitularAdmin {
   estamento: string;
   estamentoConfirmado: boolean;
   dispositivoActivo: boolean;
+  // Vencimiento del código provisional de entrega aún sin canjear (issue #109), o null.
+  provisionalVenceEn: string | null;
+  // Para un alta en revisión: el registro vigente con su mismo documento, si lo hay.
+  registroVigenteId: number | null;
   creadoEn: string;
+}
+
+export type MotivoReemplazo = 'misma_persona' | 'registro_anterior_indebido';
+
+export interface CodigoProvisionalResponse {
+  codigoProvisional: string;
+  venceEn: string;
 }

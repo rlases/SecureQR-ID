@@ -2,6 +2,10 @@ module github.com/rlases/secureqr-id/anchor/chaincode
 
 go 1.25.0
 
+// fabric-chaincode-go/v2 queda en una pseudo-versión porque es la que exige
+// fabric-contract-api-go v2.2.2; la última etiqueta (v2.3.0) es anterior. Pasar a una
+// etiqueta cuando contract-api-go publique una versión que la use y compile con el Go de
+// fabric-ccenv:2.5.16 (ver infra/fabric/README.md).
 require (
 	github.com/hyperledger/fabric-chaincode-go/v2 v2.3.1-0.20260319210430-56968fdc7833
 	github.com/hyperledger/fabric-contract-api-go/v2 v2.2.2

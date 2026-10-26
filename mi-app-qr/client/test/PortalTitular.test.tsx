@@ -17,6 +17,7 @@ vi.mock('../src/lib/apiClient', async (importOriginal) => {
     altaTitular: vi.fn(),
     recuperarTelefono: vi.fn(),
     getEstadoPortal: vi.fn(),
+    pedirQr: vi.fn(async () => ({ tipo: 'sin_qr', motivo: 'fuera_de_ventana', mensaje: 'Estás fuera de tu horario de ingreso.' })),
   };
 });
 

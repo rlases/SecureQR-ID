@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-24
+**Última actualización:** 2026-10-25
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
@@ -16,11 +16,110 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ---
 
-## Estado vigente — 2026-10-24
+## Estado vigente — 2026-10-25
 
-### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
+### Sesión de Duverney — 2026-10-25 (noche, hora de Colombia)
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Cerrados:** #55 (acuerdo registrado en #114) y #94 (implementado en #116, que no tenía
+la palabra de cierre).
+
+**Seis PR nuevos, todos con CI en verde y la revisión de Jhunier solicitada.** La
+protección de `main` exige una aprobación de alguien distinto del autor, así que **no se
+pueden fusionar hasta que Jhunier los apruebe**:
+
+| PR | Issue | Qué hace |
+|---|---|---|
+| [#121](https://github.com/rlases/SecureQR-ID/pull/121) | #120 | Límite de altas por IP en el portal (`ALTA_MAX_POR_IP`, 10/hora), reservado en `IMMEDIATE` antes de bcrypt |
+| [#122](https://github.com/rlases/SecureQR-ID/pull/122) | #109 | Rechazar, reemplazar o aprobar altas en revisión según la enmienda #111; código provisional de 72 h; `titulares` reconstruida con el estado `reemplazado` |
+| [#123](https://github.com/rlases/SecureQR-ID/pull/123) | #85 | Cliente del servicio de emisión, `POST /api/portal/qr` con `puedeEmitir` y `SITE_TIME_ZONE`, límite por teléfono y página del QR que se renueva; trabajo de CI `emision-e2e` contra `secureqr-issuer serve` real |
+| [#124](https://github.com/rlases/SecureQR-ID/pull/124) | #119 | Cabeza de `asignaciones_cid` registrada y anclada por `evidence-log cycle --head-file`; `mi-app-qr` la compara con los compromisos anclados. Segunda enmienda de 2026-10-25 a ADR-0016 |
+| [#125](https://github.com/rlases/SecureQR-ID/pull/125) | #82 | `infra/fabric/` (Fabric 2.5.16, CA 1.5.22, commit fijo de `fabric-samples`; crear una vez, detener, arrancar, respaldar) y contrato en Go con `go test` en CI |
+| [#126](https://github.com/rlases/SecureQR-ID/pull/126) | #93 | `anchor verificar`, `infra/fabric/integracion.sh` y flujo `fabric-integracion.yml` con la evidencia como artefacto. **Va encima de #125** |
+
+**Verificado contra la red Fabric real** (Docker en el entorno de la sesión, no en el
+servidor del CCAV):
+- `crear-red.sh` levantó la red;
+- `probar-persistencia.sh` comprobó que el ledger sobrevive a un reinicio y que un `loteId` repetido se rechaza;
+- `integracion.sh` ancló un lote de 25 eventos por el ciclo real (bloque 7), verificó la prueba de inclusión contra la raíz leída de la red y obtuvo el mismo recibo al reintentar.
+
+El servidor del CCAV sigue sin verificar.
+
+**Orden para fusionar:** #121, #122, #123 y #124 son independientes entre sí. Pueden
+chocar en `docs/THREAT-MODEL.md` y en `mi-app-qr/server` (`app.ts`, `index.ts`,
+`titulares/routes.ts`, `.env.example`); tras cada squash, fusionar `main` en el siguiente.
+#125 antes que #126; luego cambiar la base de #126 a `main`.
+
+**Carga:** #119 era de Jhunier y lo resolvió Duverney porque así lo pidió en esta sesión.
+Queda como contexto del reparto acumulado, no como cambio del reparto.
+
+**Pendiente:**
+- adopción del acuerdo de diseño (#55), por repartir en partes iguales;
+- decidir antes del cierre del piloto qué hacer con el texto libre de `cambios_configuracion.motivo`;
+- instalación en el servidor del CCAV (Docker, Fabric, emisor) y piloto.
+
+### Cierre de la sesión de Jhunier — 2026-10-25
+
+
+**Integrado en `main` (PR de Duverney revisados y fusionados por Jhunier):**
+
+- #99 (tabla `anclajes`);
+- #98 (docs tras ADR-0016/0017);
+- #100 (`FabricLedgerClient`);
+- #111 (enmienda de ADR-0016, aceptada con el código provisional de 72 h);
+- #116 (sellado en OpenTimestamps; #94 ya cerrado);
+- #117.
+
+**Pila de Jhunier (#102–#108 y #115): integrada en `main`.**
+
+- **Qué entró:** el registro de credenciales de ADR-0016 completo, es decir, titulares, estamentos y horario, portal del titular, consulta auditada del `cid`, revocación, reseteo trimestral y anonimización.
+- **Cómo:** Duverney la revisó y la fusionó en orden con squash. Tras cada squash fusionó `main` en la rama siguiente. Todo con el CI en verde.
+- **Qué aportó #115, el último eslabón:**
+  - las correcciones de Codex por caché entre sesiones (#103 y #105);
+  - el `cid` en `cambios_configuracion` (#106);
+  - el NUL en el chequeo SQL del `cid` (#108);
+  - **el P1 de #102.** La cadena `asignaciones_cid` pasa a HMAC-SHA256 con `ASIGNACIONES_KEY` fuera de la base. Es la enmienda de 2026-10-25 a ADR-0016, **aceptada** por Duverney, y queda en `THREAT-MODEL.md` con su riesgo residual.
+**Clave nueva.** Su respaldo entra en el procedimiento de custodia del piloto, junto a las demás claves: si se pierde, toda consulta cid → persona responde 503 por integridad.
+  - Electron la genera en `server-secrets.json`;
+  - fuera de Electron va en `.env`;
+  - el servidor no arranca sin ella.
+- **Falla intermitente de `reseteo.test.ts`:** venía de una BD de prueba residual. Corregida con un directorio temporal por prueba. Servidor 191/191 y cliente 102/102.
+- **Hilos de Codex** de #102, #103, #105, #106 y #108: respondidos y resueltos.
+
+**#114 (acuerdo de diseño de #55):**
+
+- Jhunier confirmó por escrito las cinco propuestas de Duverney, incluido el criterio de contraste.
+- La tabla de `DESIGN-SYSTEM.md` quedó con los enlaces. #114 está fusionado en `main`, así que #55 queda acordado.
+- La adopción en cada app es trabajo nuevo, y se reparte en partes iguales: tokens `--success`/`--warning`, `.primary-button` sobre `--teal-700`, pesos tipográficos y retirar `darkMode`.
+
+**Observaciones de Duverney sobre #103**, corregidas en #115:
+
+- solo `SQLITE_CONSTRAINT_UNIQUE` se traduce a «ya existe»;
+- `borrarEstamento` registra las excepciones y los dominios que arrastra en cascada.
+
+**Issues nuevos**, salidos de esas observaciones. Son dos piezas, una para cada uno:
+
+- **#119**, comprometer la cabeza de `asignaciones_cid` en la bitácora anclada: Jhunier, porque es su módulo y su enmienda.
+- **#120**, límite por IP en el alta del portal: Duverney.
+
+**Quedan anotadas:**
+
+- La zona horaria de `puedeEmitir`/`dentroDeHorario` debe ser la misma `SITE_TIME_ZONE` del reseteo. Duverney la pasa en #85.
+- Antes del cierre del piloto hay que decidir si se limpia el texto libre de `cambios_configuracion.motivo` o si se mantiene el aviso en la interfaz.
+
+**Le toca a Duverney:**
+
+1. #120.
+2. Los pendientes propios de abajo: #82, #93 y #94.
+3. **#85 y #109:** se desbloquean ahora que la pila está en `main`.
+
+**Le toca a Jhunier:**
+
+- #119.
+- Su parte de la adopción del acuerdo de diseño (#55), cuando se reparta.
+
+### Cierre de la sesión de Duverney — 2026-10-24 (tarde, hora de Colombia)
 
 **Integrado hoy en `main`:** #74 (ADR-0013 a 0015), #77 (ADR-0017, aceptada), #112
 (`baseline-o3` fijada) y #110 (este handoff), además de #113 (arreglo Unicode de

@@ -1,6 +1,20 @@
 import type Database from 'better-sqlite3';
 import { canonicalCidSql } from '../titulares/identificadores.js';
 
+// Índice y disparadores de `titulares`. DROP TABLE los elimina, así que la
+// reconstrucción de `migrarEstadosTitulares` los vuelve a crear con este mismo texto.
+const TITULARES_INDICES_Y_DISPARADORES = `
+    -- Un registro vigente por documento (activo o suspendido). Una nueva alta con el
+    -- mismo documento queda en revisión y no choca con este índice.
+    CREATE UNIQUE INDEX IF NOT EXISTS titulares_documento_unico
+      ON titulares (documento) WHERE estado IN ('activo', 'suspendido');
+    CREATE TRIGGER IF NOT EXISTS titulares_no_delete BEFORE DELETE ON titulares
+    BEGIN SELECT RAISE(ABORT, 'un titular se anonimiza, no se borra'); END;
+    CREATE TRIGGER IF NOT EXISTS titulares_referencia_fija BEFORE UPDATE OF ref ON titulares
+    WHEN NEW.ref <> OLD.ref
+    BEGIN SELECT RAISE(ABORT, 'la referencia opaca del titular no cambia'); END;
+`;
+
 export function runMigrations(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -32,6 +46,7 @@ export function runMigrations(db: Database.Database): void {
     );
   `);
   runCredentialMigrations(db);
+  migrarEstadosTitulares(db);
 }
 
 // Registro de credenciales y portal del titular (ADR-0016, issue #79).
@@ -55,32 +70,8 @@ function runCredentialMigrations(db: Database.Database): void {
     CREATE UNIQUE INDEX IF NOT EXISTS estamentos_una_base
       ON estamentos (es_base) WHERE es_base = 1;
 
-    CREATE TABLE IF NOT EXISTS titulares (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      -- Identificador interno opaco (128 bits, Base64url). Es lo único del titular que
-      -- sale de esta base: el historial de asignaciones lo usa en lugar de sus datos.
-      ref TEXT NOT NULL UNIQUE,
-      nombre TEXT NOT NULL,
-      documento TEXT NOT NULL,
-      -- Solo contacto: no se verifica ni es único (ADR-0016, punto 2).
-      correo TEXT NOT NULL,
-      estamento_id INTEGER NOT NULL REFERENCES estamentos(id),
-      -- 0 mientras un admin no confirme un estamento que lo requiere: hasta entonces el
-      -- titular recibe las ventanas del estamento base.
-      estamento_confirmado INTEGER NOT NULL CHECK (estamento_confirmado IN (0, 1)),
-      -- activo: puede pedir QR · en_revision: alta detenida por documento repetido ·
-      -- suspendido: credencial revocada, solo un admin lo reactiva · anonimizado: cierre
-      -- del piloto (ADR-0016, punto 10).
-      estado TEXT NOT NULL CHECK (estado IN ('activo', 'en_revision', 'suspendido', 'anonimizado')),
-      -- bcrypt del código de recuperación; nunca el código.
-      codigo_recuperacion_hash TEXT,
-      autorizacion_datos_en TEXT NOT NULL,
-      creado_en TEXT NOT NULL
-    );
-    -- Un registro vigente por documento (activo o suspendido). Una nueva alta con el
-    -- mismo documento queda en revisión y no choca con este índice.
-    CREATE UNIQUE INDEX IF NOT EXISTS titulares_documento_unico
-      ON titulares (documento) WHERE estado IN ('activo', 'suspendido');
+    ${titularesDdl('titulares')}
+    ${TITULARES_INDICES_Y_DISPARADORES}
 
     CREATE TABLE IF NOT EXISTS credenciales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -146,11 +137,6 @@ function runCredentialMigrations(db: Database.Database): void {
     BEFORE UPDATE OF estado ON dispositivos WHEN OLD.estado <> 'activo'
     BEGIN SELECT RAISE(ABORT, 'un dispositivo desactivado no vuelve a activarse'); END;
 
-    CREATE TRIGGER IF NOT EXISTS titulares_no_delete BEFORE DELETE ON titulares
-    BEGIN SELECT RAISE(ABORT, 'un titular se anonimiza, no se borra'); END;
-    CREATE TRIGGER IF NOT EXISTS titulares_referencia_fija BEFORE UPDATE OF ref ON titulares
-    WHEN NEW.ref <> OLD.ref
-    BEGIN SELECT RAISE(ABORT, 'la referencia opaca del titular no cambia'); END;
   `);
   runScheduleMigrations(db);
 }
@@ -234,6 +220,15 @@ function runPortalMigrations(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS intentos_recuperacion_documento
       ON intentos_recuperacion (documento, en);
     CREATE INDEX IF NOT EXISTS intentos_recuperacion_ip ON intentos_recuperacion (ip, en);
+
+    -- Altas por IP, para frenar el registro masivo desde un mismo equipo (issue #120).
+    -- Solo la IP y el momento: nada del formulario.
+    CREATE TABLE IF NOT EXISTS intentos_alta (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip TEXT NOT NULL,
+      en TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS intentos_alta_ip ON intentos_alta (ip, en);
   `);
   runConsultasMigrations(db);
 }
@@ -314,4 +309,85 @@ function runConservacionMigrations(db: Database.Database): void {
     )
     BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
   `);
+}
+
+// Definición de `titulares`, compartida por la creación y por su reconstrucción
+// (`migrarEstadosTitulares`): las dos deben dar exactamente la misma tabla.
+function titularesDdl(nombre: string): string {
+  return `CREATE TABLE IF NOT EXISTS ${nombre} (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      -- Identificador interno opaco (128 bits, Base64url). Es lo único del titular que
+      -- sale de esta base: el historial de asignaciones lo usa en lugar de sus datos.
+      ref TEXT NOT NULL UNIQUE,
+      nombre TEXT NOT NULL,
+      documento TEXT NOT NULL,
+      -- Solo contacto: no se verifica ni es único (ADR-0016, punto 2).
+      correo TEXT NOT NULL,
+      estamento_id INTEGER NOT NULL REFERENCES estamentos(id),
+      -- 0 mientras un admin no confirme un estamento que lo requiere: hasta entonces el
+      -- titular recibe las ventanas del estamento base.
+      estamento_confirmado INTEGER NOT NULL CHECK (estamento_confirmado IN (0, 1)),
+      -- activo: puede pedir QR · en_revision: alta detenida por documento repetido ·
+      -- suspendido: credencial revocada, solo un admin lo reactiva · reemplazado: un admin
+      -- lo sustituyó por un alta nueva con el mismo documento (enmienda de 2026-10-24) ·
+      -- anonimizado: cierre del piloto o alta rechazada (ADR-0016, punto 10).
+      estado TEXT NOT NULL CHECK (
+        estado IN ('activo', 'en_revision', 'suspendido', 'reemplazado', 'anonimizado')
+      ),
+      -- bcrypt del código de recuperación; nunca el código.
+      codigo_recuperacion_hash TEXT,
+      -- Solo para el código provisional que entrega un admin al resolver un alta en
+      -- revisión: vence a las 72 horas. NULL para el código propio del titular, que no vence.
+      provisional_vence_en TEXT,
+      autorizacion_datos_en TEXT NOT NULL,
+      creado_en TEXT NOT NULL
+    );`;
+}
+
+const TITULARES_COLUMNAS_ORIGINALES = [
+  'id',
+  'ref',
+  'nombre',
+  'documento',
+  'correo',
+  'estamento_id',
+  'estamento_confirmado',
+  'estado',
+  'codigo_recuperacion_hash',
+  'autorizacion_datos_en',
+  'creado_en',
+].join(', ');
+
+/**
+ * Amplía la restricción de estados de `titulares` con `reemplazado` (enmienda de
+ * 2026-10-24 a ADR-0016, issue #109). SQLite no permite cambiar un CHECK: se reconstruye
+ * la tabla conservando `id`, `ref` y todas las filas, y se recrean sus índices y
+ * disparadores. Las demás tablas la referencian por nombre, así que sus claves foráneas
+ * siguen valiendo. Todo o nada: si `foreign_key_check` encuentra algo, se deshace.
+ */
+function migrarEstadosTitulares(db: Database.Database): void {
+  const fila = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'titulares'")
+    .get() as { sql: string };
+  if (fila.sql.includes("'reemplazado'")) return;
+  const fks = db.pragma('foreign_keys', { simple: true }) as number;
+  db.pragma('foreign_keys = OFF');
+  try {
+    db.transaction(() => {
+      db.exec(titularesDdl('titulares_nueva'));
+      db.exec(
+        `INSERT INTO titulares_nueva (${TITULARES_COLUMNAS_ORIGINALES})
+         SELECT ${TITULARES_COLUMNAS_ORIGINALES} FROM titulares`
+      );
+      db.exec('DROP TABLE titulares');
+      db.exec('ALTER TABLE titulares_nueva RENAME TO titulares');
+      db.exec(TITULARES_INDICES_Y_DISPARADORES);
+      const rotas = db.pragma('foreign_key_check') as unknown[];
+      if (rotas.length > 0) {
+        throw new Error('La reconstrucción de titulares dejó claves foráneas rotas.');
+      }
+    })();
+  } finally {
+    if (fks) db.pragma('foreign_keys = ON');
+  }
 }
