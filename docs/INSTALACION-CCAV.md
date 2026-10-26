@@ -129,7 +129,8 @@ sudo -u secureqr-issuer env \
      },
      "anclaje": {
        "cabeza": "/var/lib/secureqr-id/anclaje/cabeza-asignaciones.json",
-       "compromisos": "/var/lib/secureqr-id/anclaje/compromisos.json"
+       "compromisos": "/var/lib/secureqr-id/anclaje/compromisos.json",
+       "estado": "/var/lib/secureqr-id/anclaje/estado.json"
      },
      "revocadosPath": "/var/lib/secureqr-id/revocados.txt",
      "zonaHoraria": "America/Bogota"
@@ -191,7 +192,8 @@ variable de entorno del sistema para la cuenta `secureqr`, no de `config.json`. 
 ```
 
 - `--db` es la misma base de la bitácora de `verifier-service` (`SQRID_EVIDENCE_DB_PATH`).
-- `--head-file` y `--commitments-file` son las rutas de `anclaje` de `config.json` (§5).
+- `--head-file`, `--commitments-file` y `--status-file` son las rutas `cabeza`,
+  `compromisos` y `estado` de `anclaje` en `config.json` (§5).
 - **Códigos de salida del ciclo:**
   - `1`: Fabric no respondió; se reintenta solo.
   - `3`: **alerta**; hay que investigar. Incluye una cabeza de asignaciones que retrocede, por ejemplo tras restaurar un respaldo de `mi-app-qr`. Aun así, los pasos se anclan.
@@ -200,9 +202,10 @@ variable de entorno del sistema para la cuenta `secureqr`, no de `config.json`. 
   `secureqr-revocation sign --input /var/lib/secureqr-id/revocados.txt …`
   (`revocation/README.md`). Así renueva el `iat` antes de que venza
   `SQRID_REVOCATION_MAX_AGE_SECONDS`.
-- **Alerta de 2 horas sin anclar.** Por ahora, `mi-app-qr` **no lee** `estado.json`. Mientras
-  eso no exista, el custodio revisa `stale` en ese archivo o en `anclaje.log` al
-  refirmar la lista cada día.
+- **Alerta de 2 horas sin anclar (#139).** `mi-app-qr` lee `estado.json` y el panel
+  del `admin` muestra un aviso si hay eventos sin anclar desde hace más de 2 horas o
+  si el ciclo dejó de escribir ese archivo. La alerta también queda en el log de la
+  app. Si el aviso aparece, revisa `anclaje.log` y que la red Fabric esté arriba.
 
 ---
 
@@ -271,6 +274,7 @@ Complétalo la primera vez que se siga esta guía en el servidor del CCAV. Con e
 | §5 Cabeza de asignaciones escrita | | | |
 | §6 QR validado en el punto de control | | | |
 | §7 Primer ciclo de anclaje con código 0 | | | |
+| §7 El panel del `admin` no muestra la alerta de anclaje | | | |
 | §7 Primer sello (pendiente o completo) | | | |
 | §8 Topología del Wi-Fi comprobada | | | |
 | §9 Calendarios de OpenTimestamps responden | | | |
