@@ -27,8 +27,8 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 carga acumulada). Conteo exacto en GitHub al aprobar: Jhunier 55 PR fusionados, Duverney
 25 (con #127).
 
-**Todo el lote #129–#133 está resuelto en PR, con el CI en verde, a la espera de la
-aprobación de Jhunier:**
+**Todo el lote #129–#133 y #139 quedó resuelto; Jhunier revisó y aprobó, y todo entró
+en `main` con el CI en verde:**
 
 | PR | Issue | Qué hace |
 |---|---|---|
@@ -42,9 +42,11 @@ aprobación de Jhunier:**
 **Lote nuevo de esta sesión:** #139 salió de escribir la guía. Por la regla de #128 va a
 Duverney, que sigue con menos carga acumulada.
 
-**Orden para fusionar:** independientes entre sí. #134 y #135 tocan `mi-app-qr/client`;
-#135 y #136 tocan `docs/DESIGN-SYSTEM.md` (secciones distintas). Tras cada squash, poner
-el siguiente al día con `main`.
+**Abierto:** [#142](https://github.com/rlases/SecureQR-ID/pull/142), la nota de Jhunier
+en #138 (cron corre con un `PATH` mínimo: las tareas usan
+`/opt/secureqr-id/.venv/bin/python`). El commit llegó después de la fusión de #138. Su CI
+falló dos veces sin que GitHub asignara runner (sin log); hay que relanzarlo desde
+Actions.
 
 **Verificado contra una red Fabric real (Docker en la sesión):** `ultimo-bloque.sh`
 devuelve el hash del último bloque; `integracion.sh` completo pasa con ese paso nuevo.
@@ -54,8 +56,7 @@ de OpenTimestamps: hay que comprobarlos desde el servidor del CCAV (guía, §9).
 **Pendiente de Duverney:** solo #133, que se cierra cuando la guía se siga una vez en el
 servidor del CCAV y se complete su registro de ejecución.
 
-**Pendiente de Jhunier:** aprobar #134–#138 y #140 (y este PR), y las decisiones
-conjuntas de abajo.
+**Pendiente de Jhunier:** aprobar #142 (y este PR), y las decisiones conjuntas de abajo.
 
 ### Reparto del lote nuevo — 2026-10-26 (Jhunier)
 
