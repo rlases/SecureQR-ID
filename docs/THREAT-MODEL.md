@@ -85,6 +85,20 @@ mismo equipo servidor que `mi-app-qr/`.
 | Custodio no disponible | Sin refirmado diario la lista vence (48 a 72 h) y todos los puntos de control rechazan | Respaldo del PEM de revocación en un medio externo cifrado y su contraseña en el gestor de Jhunier; si pasan 24 horas sin refirmado, Jhunier firma con el respaldo y queda anotado |
 | Firmar la lista con la clave equivocada | El verificador deja de arrancar tras un reinicio y la lista vigente termina por vencer | El comando de firma se niega a reemplazar una lista firmada con otra clave, salvo rotación explícita |
 
+## Datos en reposo del servidor del CCAV (ADR-0018)
+
+| Amenaza | Riesgo | Control |
+|---|---|---|
+| Robo del equipo o del disco | Lectura de la base de titulares, de la bitácora y del material de Fabric sin ninguna cuenta | Cifrado de disco completo (LUKS2 o BitLocker) con frase de paso que escribe el custodio al encender; sin desbloqueo automático por TPM |
+| Falla del disco | Pérdida del registro de credenciales y de los eventos sin anclar | Respaldo diario de las dos bases con copia consistente y `integrity_check`; 14 días en el servidor y copia semanal al medio externo |
+| Robo o filtración de un respaldo | Lectura de los datos personales respaldados | Cifrado con `age` hacia claves públicas; la identidad privada no está en el servidor |
+| Respaldo de la base junto con la clave HMAC | Reescribir el historial `cid` → titular sin que el HMAC lo note | El script nunca incluye `server-secrets.json`; la clave va en otro medio (ADR-0016) |
+| Restaurar un respaldo anterior | Historial que retrocede; eventos anclados sin copia local | El ciclo devuelve el código 3 y lo anota; se registra en `docs/STATE.md` y el rango no se vuelve a anclar |
+
+Riesgo residual: con el equipo encendido y desbloqueado, el cifrado de disco no protege;
+contra eso quedan las cuentas separadas y el HMAC del historial. Entre dos respaldos se
+pueden perder hasta 24 horas de datos.
+
 ## Anclaje real (ADR-0017)
 
 | Amenaza | Riesgo | Control |

@@ -1,7 +1,7 @@
 # Instalación del piloto en el servidor del CCAV Pitalito
 
 Guía operativa para dejar SecureQR-ID funcionando en el servidor del CCAV (issue #133).
-Reúne lo que está repartido en los README de cada módulo y en ADR-0008 y ADR-0014 a ADR-0017.
+Reúne lo que está repartido en los README de cada módulo y en ADR-0008 y ADR-0014 a ADR-0018.
 También incluye los pendientes que salieron de las revisiones de #121 a #126 y #131.
 
 > **Estado:** escrita y probada por partes fuera del CCAV. La red Fabric, el ciclo de
@@ -21,12 +21,36 @@ Rutas de ejemplo para Linux. En Windows, las equivalentes están en los README e
 |---|---|
 | Equipo servidor con 8 GB de RAM o más (Fabric usa unos 4 GB) | Todo corre en el mismo equipo |
 | **IP fija** en la red del CCAV (reserva de DHCP o dirección estática) | El certificado autofirmado se regenera si cambia la IP, y con él la huella publicada (ADR-0008, ADR-0016) |
+| **Disco cifrado** (LUKS2 o BitLocker) desde la instalación del sistema operativo | Las bases quedan en claro en el disco sin él (ADR-0018) |
 | Docker Engine, `git`, `curl`, Go (solo para empaquetar el contrato) | Red Fabric (`infra/fabric/README.md`) |
+| `age` (`apt install age`) | Respaldo diario cifrado de las bases (§11) |
 | Python 3.11 o superior | `issuer/`, `evidence-log/`, `revocation/`, `verifier-service/` |
 | Node.js 22 | `anchor/`, `verifier-web/` |
 | Instalador de la app de escritorio `mi-app-qr` (Registro QR), versión con #131 | Registro de credenciales y portal del titular |
 | Dos medios externos para respaldos, que no sean equipos de trabajo | Custodia de claves y respaldo de Fabric |
 | Gestor de contraseñas de Jhunier listo para recibir copias | Respaldo de contraseñas (ADR-0016, punto 6) |
+
+### Cifrado del disco (ADR-0018)
+
+La base de `mi-app-qr` (`~secureqr/.config/registro-qr/server-data/app.db`) guarda nombres,
+documentos y correos en claro, y la bitácora guarda el `cid` de cada validación. La
+aplicación no las cifra: las protege el cifrado del disco completo. Se configura **al
+instalar el sistema operativo**, antes de crear ningún dato; después ya no se puede
+activar sin reinstalar o sin una conversión arriesgada.
+
+- **Linux:** en el instalador (Ubuntu: «Funciones avanzadas» → «Usar LVM y cifrado»), que
+  crea un volumen LUKS2. Comprobación: `lsblk -f` muestra `crypto_LUKS` bajo el disco
+  del sistema.
+- **Windows:** BitLocker con **TPM y PIN de arranque** (no solo TPM). Comprobación:
+  `manage-bde -status C:` dice `Protección activada`.
+- **Frase de paso o PIN:** la escribe el custodio al encender el equipo. **No** se
+  configura desbloqueo automático con TPM sin PIN: quien se lleve el equipo entero lo
+  arrancaría con el disco abierto.
+- La frase de paso y la clave de recuperación (BitLocker) van al gestor de Jhunier, nunca
+  en el servidor ni en el medio de respaldos.
+
+El cifrado de disco protege el equipo apagado o robado, no el equipo encendido. Contra
+eso siguen las cuentas separadas (§1) y el HMAC del historial.
 
 ---
 
@@ -88,6 +112,8 @@ Se crean una vez, en la sede, con el custodio presente.
 | `ASIGNACIONES_KEY` (HMAC del historial cid → titular) | La crea `mi-app-qr` al primer arranque, en `server-secrets.json` | `userData` de `mi-app-qr` (ver §5), fuera de `server-data/` | **Copia en un medio externo, separada del respaldo de la base** | Toda consulta cid → persona responde **503** por integridad |
 | Certificado TLS de `mi-app-qr` | Lo genera `mi-app-qr` (ADR-0008) | `userData/tls/` | No hace falta; se regenera | Cambia la huella publicada: hay que reemplazar el cartel |
 | Material criptográfico de Fabric | `crear-red.sh` | `/var/lib/secureqr-id/fabric` | Respaldo semanal cifrado (§2) | No se puede seguir anclando en esa red |
+| Identidad de **respaldo** (`age`) | `age-keygen \| age -p > respaldo.age.key.age`, en el equipo del custodio (§11) | **Fuera del servidor**, con el custodio; en el servidor solo su pública, `/etc/secureqr-id/respaldo.age.pub` | Copia en el medio externo de claves; su frase de paso, en el gestor de Jhunier | No se pueden descifrar los respaldos de las bases |
+| Frase de paso del **disco** (LUKS o BitLocker) | Al instalar el sistema (§0) | La escribe el custodio al encender | Gestor de Jhunier, con la clave de recuperación de BitLocker | Sin ella el servidor no arranca y los datos son irrecuperables |
 
 > Ningún respaldo de claves va en el mismo medio que el respaldo de la base de
 > `mi-app-qr` o de la bitácora. Quien tenga la base y la clave HMAC juntas puede
@@ -193,6 +219,9 @@ ruta completa del intérprete de ese entorno, y `sellar.sh` lo recibe en `PYTHON
 # Sellado diario en OpenTimestamps del hash del último bloque del canal (ADR-0017, punto 7).
 17 3 * * * secureqr SQRID_FABRIC_HOME=/var/lib/secureqr-id/fabric PYTHON=/opt/secureqr-id/.venv/bin/python PATH=/opt/secureqr-id/.venv/bin:/usr/bin:/bin /opt/secureqr-id/infra/fabric/sellar.sh /var/lib/secureqr-id/sellos >> /var/log/secureqr-id/sellado.log 2>&1
 
+# Respaldo diario cifrado de las dos bases (ADR-0018, §11).
+41 2 * * * secureqr SQRID_RESPALDO_DESTINATARIOS=/etc/secureqr-id/respaldo.age.pub SQRID_APP_DB=/var/lib/secureqr-id/.config/registro-qr/server-data/app.db SQRID_EVIDENCE_DB=/var/lib/secureqr-id/evidence.sqlite3 SQRID_ANCLAJE_DIR=/var/lib/secureqr-id/anclaje PYTHON=/opt/secureqr-id/.venv/bin/python /opt/secureqr-id/infra/respaldo/respaldar-datos.sh /var/backups/secureqr-id >> /var/log/secureqr-id/respaldo.log 2>&1
+
 # Sincronización de la lista de revocación publicada.
 */10 * * * * secureqr /opt/secureqr-id/.venv/bin/python -m secureqr_verifier_service.sync >> /var/log/secureqr-id/revocacion.log 2>&1
 ```
@@ -266,6 +295,63 @@ aparte, desde un equipo con Bitcoin Core podado (ADR-0017).
 
 ---
 
+## 11. Respaldo diario de las bases (ADR-0018)
+
+Respalda la base de `mi-app-qr` y la bitácora de `verifier-service`, con los archivos de
+anclaje, cifrados con `age` hacia una clave pública. En el servidor no queda nada que
+descifre el respaldo. **Nunca** incluye `server-secrets.json` (`ASIGNACIONES_KEY`) ni las
+claves de §3.
+
+**Una sola vez, en el equipo del custodio (no en el servidor):**
+
+```bash
+age-keygen | age -p > respaldo.age.key.age      # pide una frase de paso
+age -d respaldo.age.key.age | age-keygen -y     # imprime la clave pública (age1…)
+```
+
+- Guarda `respaldo.age.key.age` en el medio externo de claves (§3) y su frase de paso
+  en el gestor de Jhunier.
+- Copia **solo la línea pública** (`age1…`) al servidor:
+
+```bash
+sudo install -d -m 0755 /etc/secureqr-id
+echo 'age1…' | sudo tee /etc/secureqr-id/respaldo.age.pub
+sudo install -d -o secureqr -g secureqr -m 0700 /var/backups/secureqr-id
+```
+
+El script se niega a usar un archivo de destinatarios que contenga una clave privada.
+
+**Cada día**, cron lo corre a las 2:41 (§7). Copia las bases en caliente, comprueba su
+integridad, cifra y conserva 14 días en `/var/backups/secureqr-id`. Revisa
+`respaldo.log`: cada corrida termina con `respaldo en …`.
+
+**Cada semana**, el custodio copia `/var/backups/secureqr-id/*.age` al medio externo,
+junto con el respaldo de Fabric (§2). Es otro medio que el de las claves (§3).
+
+**Prueba de restauración** (una vez al instalar y luego una vez al mes), en el equipo del
+custodio o en el servidor con la identidad traída en el medio externo:
+
+```bash
+age -d respaldo.age.key.age > /dev/shm/respaldo.key     # pide la frase de paso
+infra/respaldo/restaurar-datos.sh /var/backups/secureqr-id/secureqr-datos-<fecha>.tar.gz.age \
+  /dev/shm/respaldo.key /tmp/restauracion
+shred -u /dev/shm/respaldo.key
+```
+
+Deja las bases comprobadas en una carpeta nueva; no toca las que están en uso.
+
+**Para reemplazar una base dañada:**
+
+1. Cierra `mi-app-qr` y detén `verifier-service`.
+2. Guarda aparte la base dañada (no la borres) y copia la restaurada en su lugar, con
+   dueño `secureqr` y permisos `0600`.
+3. Arranca de nuevo. Si restauraste `app.db`, la siguiente corrida del ciclo de anclaje
+   devuelve el código 3 porque la cabeza de asignaciones retrocedió: es lo esperado.
+4. Anota en `docs/STATE.md` la fecha, el respaldo usado y, si restauraste la bitácora,
+   qué rango ya anclado quedó sin eventos locales.
+
+---
+
 ## Registro de ejecución
 
 Complétalo la primera vez que se siga esta guía en el servidor del CCAV. Con eso se cierra #133.
@@ -284,3 +370,6 @@ Complétalo la primera vez que se siga esta guía en el servidor del CCAV. Con e
 | §7 Primer sello (pendiente o completo) | | | |
 | §8 Topología del Wi-Fi comprobada | | | |
 | §9 Calendarios de OpenTimestamps responden | | | |
+| §0 Disco cifrado comprobado (`lsblk -f` o `manage-bde`) | | | |
+| §11 Primer respaldo diario cifrado | | | |
+| §11 Prueba de restauración | | | |

@@ -19,6 +19,28 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ## Estado vigente — 2026-10-26
 
+### Sesión de Duverney — 2026-10-26 (tarde, hora UTC)
+
+Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Revisado de Jhunier:** #143 (licencia y filtro de módulos en `ci.yml`) fusionado sin
+revisión cruzada; el repositorio es público y el CI volvió a arrancar (verde en `main`
+desde `c4ef6ac`). #144 sigue abierto, con el CI en verde.
+
+**Nuevo: #145 y su PR (rama `adr/145-respaldo-cifrado`), propuesta para Jhunier:**
+
+- **ADR-0018 (Propuesta):** cifrado de disco completo (LUKS2 o BitLocker, con frase de
+  paso del custodio) y respaldo diario cifrado con `age` hacia una clave pública. Cierra
+  el pendiente de respaldo de ADR-0008.
+- `infra/respaldo/respaldar-datos.sh`, `restaurar-datos.sh` y `probar-respaldo.sh`;
+  trabajo `respaldo-test` en CI.
+- Guía del CCAV: §0 (cifrado del disco), §3 (identidad de respaldo y frase del disco),
+  §7 (cron diario), §11 (respaldo y restauración) y filas nuevas del registro.
+- `THREAT-MODEL.md`: sección «Datos en reposo del servidor del CCAV».
+
+**Pendiente en la sede (Duverney):** instalar el sistema con el disco cifrado, generar la
+identidad de respaldo en el equipo del custodio y seguir la guía completa (#133).
+
 ### Sesión de Duverney — 2026-10-26 (mañana, hora UTC)
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.

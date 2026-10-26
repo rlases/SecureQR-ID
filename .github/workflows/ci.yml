@@ -36,6 +36,7 @@ jobs:
       verifier-service-test: ${{ steps.filtro.outputs.verifier-service-test }}
       anchor-test: ${{ steps.filtro.outputs.anchor-test }}
       chaincode-test: ${{ steps.filtro.outputs.chaincode-test }}
+      respaldo-test: ${{ steps.filtro.outputs.respaldo-test }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,6 +78,7 @@ jobs:
           marcar verifier-service-test '^(verifier-service|verifier|issuer|revocation|evidence-log)/' ''
           marcar anchor-test '^anchor/' '^anchor/chaincode/'
           marcar chaincode-test '^anchor/chaincode/' ''
+          marcar respaldo-test '^infra/respaldo/' ''
 
   test:
     name: mi-app-qr — tests
@@ -361,3 +363,14 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
 
+  respaldo-test:
+    name: infra/respaldo — respaldo cifrado
+    needs: cambios
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.respaldo-test == 'true') }}
+    # Respaldo diario cifrado de las bases del servidor del CCAV (ADR-0018, issue #145).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: sudo apt-get update && sudo apt-get install -y age
+      - run: infra/respaldo/probar-respaldo.sh
