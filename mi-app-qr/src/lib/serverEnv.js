@@ -11,14 +11,16 @@ const path = require('path');
 const ISSUER_URL_POR_DEFECTO = 'http://127.0.0.1:8765';
 const ZONA_POR_DEFECTO = 'America/Bogota';
 
-// Rutas por defecto dentro de userData. Las de anclaje/ las lee el ciclo de evidence-log
-// (`cycle --head-file` y `--commitments-file`) y el custodio (revocados).
+// Rutas por defecto dentro de userData. En anclaje/ se cruzan mi-app-qr y el ciclo de
+// evidence-log (`cycle --head-file`, `--commitments-file` y `--status-file`); los revocados
+// los lee el custodio.
 function rutasPorDefecto(userDataPath) {
     const anclaje = path.join(userDataPath, 'anclaje');
     return {
         db: path.join(userDataPath, 'server-data', 'app.db'),
         cabeza: path.join(anclaje, 'cabeza-asignaciones.json'),
         compromisos: path.join(anclaje, 'compromisos.json'),
+        estado: path.join(anclaje, 'estado.json'),
         revocados: path.join(anclaje, 'revocados.txt'),
         secretoEmisor: path.join(userDataPath, 'issuer.secret'),
     };
@@ -27,7 +29,8 @@ function rutasPorDefecto(userDataPath) {
 /**
  * Arma las variables del servidor. Prioridad: variable de entorno ya definida, luego
  * config.json (`emisor.url`, `emisor.archivoSecreto`, `anclaje.cabeza`,
- * `anclaje.compromisos`, `revocadosPath`, `zonaHoraria`), luego el valor por defecto.
+ * `anclaje.compromisos`, `anclaje.estado`, `revocadosPath`, `zonaHoraria`), luego el
+ * valor por defecto.
  *
  * El secreto del emisor solo se pasa si el archivo existe: el servidor lo lee al arrancar
  * y, sin él, falla. Sin secreto el portal funciona pero no entrega QR, y se avisa.
@@ -55,6 +58,8 @@ function buildServerEnv({ userDataPath, secrets, config = {}, baseEnv = {}, tls,
         REVOCADOS_EXPORT_PATH: elegir('REVOCADOS_EXPORT_PATH', config.revocadosPath, rutas.revocados),
         ASIGNACIONES_CABEZA_PATH: elegir('ASIGNACIONES_CABEZA_PATH', anclaje.cabeza, rutas.cabeza),
         ASIGNACIONES_COMPROMISOS_PATH: elegir('ASIGNACIONES_COMPROMISOS_PATH', anclaje.compromisos, rutas.compromisos),
+        // Estado que deja `evidence-log cycle --status-file`; alimenta la alerta de 2 horas (#139).
+        ANCLAJE_ESTADO_PATH: elegir('ANCLAJE_ESTADO_PATH', anclaje.estado, rutas.estado),
         ISSUER_SERVICE_URL: elegir('ISSUER_SERVICE_URL', emisor.url, ISSUER_URL_POR_DEFECTO),
     };
     delete env.SQRID_PRIVATE_KEY_PASSWORD;

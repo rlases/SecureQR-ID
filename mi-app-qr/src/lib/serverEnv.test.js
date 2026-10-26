@@ -28,6 +28,7 @@ describe('buildServerEnv (issue #131)', () => {
       SQRID_ISSUER_SECRET_FILE: path.join(userDataPath, 'issuer.secret'),
       ASIGNACIONES_CABEZA_PATH: path.join(userDataPath, 'anclaje', 'cabeza-asignaciones.json'),
       ASIGNACIONES_COMPROMISOS_PATH: path.join(userDataPath, 'anclaje', 'compromisos.json'),
+      ANCLAJE_ESTADO_PATH: path.join(userDataPath, 'anclaje', 'estado.json'),
       REVOCADOS_EXPORT_PATH: path.join(userDataPath, 'anclaje', 'revocados.txt'),
       SITE_TIME_ZONE: 'America/Bogota',
     });
@@ -44,7 +45,11 @@ describe('buildServerEnv (issue #131)', () => {
     const { env } = armar({
       config: {
         emisor: { url: 'http://[::1]:9000', archivoSecreto: '/srv/issuer/issuer.secret' },
-        anclaje: { cabeza: '/srv/anclaje/cabeza.json', compromisos: '/srv/anclaje/compromisos.json' },
+        anclaje: {
+          cabeza: '/srv/anclaje/cabeza.json',
+          compromisos: '/srv/anclaje/compromisos.json',
+          estado: '/srv/anclaje/estado.json',
+        },
         revocadosPath: '/srv/custodio/revocados.txt',
         zonaHoraria: 'America/Lima',
       },
@@ -54,6 +59,7 @@ describe('buildServerEnv (issue #131)', () => {
       SQRID_ISSUER_SECRET_FILE: '/srv/issuer/issuer.secret',
       ASIGNACIONES_CABEZA_PATH: '/srv/anclaje/cabeza.json',
       ASIGNACIONES_COMPROMISOS_PATH: '/srv/anclaje/compromisos.json',
+      ANCLAJE_ESTADO_PATH: '/srv/anclaje/estado.json',
       REVOCADOS_EXPORT_PATH: '/srv/custodio/revocados.txt',
       SITE_TIME_ZONE: 'America/Lima',
     });
