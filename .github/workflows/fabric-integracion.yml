@@ -19,10 +19,13 @@ on:
     paths:
       - 'infra/fabric/**'
       - 'anchor/chaincode/**'
-      - 'anchor/src/fabric.ts'
-      - 'anchor/src/cli.ts'
+      # El cliente de Fabric y todo lo que importa cli.ts (anchoring, batch, merkle).
+      - 'anchor/src/**'
+      - 'anchor/package.json'
       - 'anchor/package-lock.json'
-      - 'evidence-log/src/secureqr_evidence_log/cli.py'
+      # Los comandos del ciclo y lo que importan (lotes, recibos, compromisos).
+      - 'evidence-log/src/**'
+      - 'evidence-log/pyproject.toml'
       - '.github/workflows/fabric-integracion.yml'
 
 permissions:
