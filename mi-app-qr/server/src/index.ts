@@ -13,6 +13,16 @@ import { crearClienteEmisor, leerSecretoEmisor } from './emision/clienteEmisor.j
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
 
+// Un valor mal escrito no puede dejar el alta sin límite: se rechaza al arrancar.
+function leerAltaMaxPorIp(valor: string | undefined): number | undefined {
+  if (valor === undefined || valor === '') return undefined;
+  const n = Number(valor);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error('ALTA_MAX_POR_IP debe ser un entero positivo.');
+  }
+  return n;
+}
+
 async function main(): Promise<void> {
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
@@ -59,6 +69,7 @@ async function main(): Promise<void> {
     secureCookies: tls !== null,
     certificate: tls?.cert,
     revocadosExportPath: process.env.REVOCADOS_EXPORT_PATH,
+    altaMaxPorIp: leerAltaMaxPorIp(process.env.ALTA_MAX_POR_IP),
     emisor,
     timeZone: process.env.SITE_TIME_ZONE,
   });

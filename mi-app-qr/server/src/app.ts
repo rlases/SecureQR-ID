@@ -24,6 +24,8 @@ export interface AppDependencies {
   certificate?: Buffer;
   // Archivo donde se exportan, sin firmar, los cid revocados (ADR-0016, punto 9).
   revocadosExportPath?: string;
+  // Altas permitidas por IP y hora en el portal del titular (issue #120).
+  altaMaxPorIp?: number;
   // Cliente del servicio local de emisión de issuer/ (#85). Sin él, el portal no da QR.
   emisor?: ClienteEmisor;
   // Zona horaria de la sede (SITE_TIME_ZONE), la misma del reseteo trimestral.
@@ -58,6 +60,7 @@ export function createApp(deps: AppDependencies): Express {
     createPortalRouter({
       secureCookies: deps.secureCookies ?? false,
       huella: huellaDeCertificado(deps.certificate),
+      altaMaxPorIp: deps.altaMaxPorIp,
       emisor: deps.emisor,
       timeZone: deps.timeZone,
       maxTokensPorMinuto: deps.maxTokensPorMinuto,

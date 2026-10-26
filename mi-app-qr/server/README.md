@@ -66,7 +66,9 @@ Rutas bajo `/api/portal`, para el teléfono del titular:
   huella SHA-256 del certificado, para compararla con la del navegador.
 - `POST /alta`: alta con datos declarados y autorización de tratamiento de datos. Vincula
   el teléfono y devuelve el código de recuperación **una sola vez**. Un documento repetido
-  queda `en_revision`, sin vínculo ni código.
+  queda `en_revision`, sin vínculo ni código. Límite por IP: `ALTA_MAX_POR_IP` altas por
+  hora (10 por defecto), contando también las que quedan en revisión; al excederlo
+  responde 429.
 - `POST /recuperar`: documento + código vinculan un teléfono nuevo, desactivan el anterior
   y renuevan el código. Límite: 5 fallos por documento y 20 por IP cada 15 minutos.
 - `GET /yo`: estado de la credencial del teléfono vinculado.

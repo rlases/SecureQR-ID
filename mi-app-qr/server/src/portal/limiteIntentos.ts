@@ -61,3 +61,34 @@ export function reservarIntento(
     return registrarIntento(db, documento, ip, false, ahora);
   }).immediate();
 }
+
+// Límite de altas por IP (issue #120). ADR-0016 lista el registro masivo con datos
+// falsos desde la red del CCAV como superficie de ataque: esto lo frena desde un mismo
+// equipo, no desde muchos. Cuenta toda alta que pasa la validación del formulario,
+// termine activa o en revisión.
+
+export const ALTA_VENTANA_MINUTOS = 60;
+export const ALTA_MAX_POR_IP = 10;
+
+/**
+ * Reserva una plaza de alta para la IP, antes de bcrypt. Devuelve false si la IP ya
+ * agotó su cupo en la ventana. IMMEDIATE serializa también reservas simultáneas.
+ */
+export function reservarAlta(
+  db: Database.Database,
+  ip: string,
+  ahora: Date,
+  maxPorIp: number = ALTA_MAX_POR_IP
+): boolean {
+  const inicio = new Date(ahora.getTime() - ALTA_VENTANA_MINUTOS * 60_000).toISOString();
+  return db.transaction(() => {
+    // Lo que salió de la ventana ya no cuenta: no se conserva la IP más de lo necesario.
+    db.prepare('DELETE FROM intentos_alta WHERE en <= ?').run(inicio);
+    const { n } = db
+      .prepare('SELECT COUNT(*) AS n FROM intentos_alta WHERE ip = ?')
+      .get(ip) as { n: number };
+    if (n >= maxPorIp) return false;
+    db.prepare('INSERT INTO intentos_alta (ip, en) VALUES (?, ?)').run(ip, ahora.toISOString());
+    return true;
+  }).immediate();
+}

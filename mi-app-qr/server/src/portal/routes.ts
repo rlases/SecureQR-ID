@@ -21,7 +21,7 @@ import {
   linkDevice,
   verifyRecoveryCode,
 } from './credencialesTitular.js';
-import { reservarIntento } from './limiteIntentos.js';
+import { reservarAlta, reservarIntento } from './limiteIntentos.js';
 import { puedeEmitir, type MotivoEmision } from '../titulares/gestion.js';
 import { DEFAULT_TIME_ZONE } from '../estamentos/horario.js';
 import { EmisorNoDisponibleError, type ClienteEmisor } from '../emision/clienteEmisor.js';
@@ -132,6 +132,8 @@ export function createPortalRouter(opciones: {
   // Zona horaria de la sede para las ventanas de ingreso.
   timeZone?: string;
   maxTokensPorMinuto?: number;
+  // Altas por IP en la ventana de `ALTA_VENTANA_MINUTOS` (issue #120).
+  altaMaxPorIp?: number;
 }): Router {
   const router = Router();
   const limite = new LimiteDispositivo(opciones.maxTokensPorMinuto);
@@ -172,6 +174,11 @@ export function createPortalRouter(opciones: {
       return res.status(409).json({ error: 'el registro todavía no está abierto' });
     }
     const ahora = new Date();
+    if (!reservarAlta(db(req), req.ip ?? 'desconocida', ahora, opciones.altaMaxPorIp)) {
+      return res
+        .status(429)
+        .json({ error: 'demasiados registros desde este equipo; espera una hora o acude a un administrador' });
+    }
     const codigo = generateRecoveryCode();
     const codigoHash = await hashRecoveryCode(codigo);
     let resultado: { body: AltaTitularResponse; llave: string | null };
