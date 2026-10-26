@@ -53,6 +53,52 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  emision-e2e:
+    name: mi-app-qr — emisión e2e con issuer/
+    # Portal del titular → mi-app-qr/server → servicio local real de issuer/ (issue #85).
+    # Clave, contraseña y secreto son sintéticos y efímeros: se crean en el runner y se
+    # descartan con él.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: issuer/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mi-app-qr/server/package-lock.json
+
+      - run: python -m pip install -e issuer
+
+      - name: Arrancar el servicio local de emisión
+        env:
+          SQRID_PRIVATE_KEY_PATH: ${{ runner.temp }}/emision.pem
+          SQRID_PUBLIC_KEY_PATH: ${{ runner.temp }}/emision.pub
+          SQRID_ISSUER_SECRET_FILE: ${{ runner.temp }}/issuer.secret
+          SQRID_TOKEN_TTL_SECONDS: '60'
+        run: |
+          export SQRID_PRIVATE_KEY_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(24))')"
+          secureqr-issuer generate-key
+          secureqr-issuer generate-secret --output "$SQRID_ISSUER_SECRET_FILE"
+          nohup secureqr-issuer serve --port 8765 </dev/null > "$RUNNER_TEMP/issuer.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8765/health && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/issuer.log"; exit 1
+
+      - name: Prueba de punta a punta
+        working-directory: mi-app-qr/server
+        env:
+          ISSUER_E2E_URL: http://127.0.0.1:8765
+          ISSUER_E2E_SECRET_FILE: ${{ runner.temp }}/issuer.secret
+        run: |
+          npm install
+          npm run test:e2e:emision
+
   client-test:
     name: mi-app-qr/client — tests
     runs-on: ubuntu-latest

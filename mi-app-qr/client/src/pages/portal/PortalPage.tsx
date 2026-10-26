@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { ApiError, getEstadoPortal } from '../../lib/apiClient';
 import { Button } from '../../components/ui/button';
 import { PortalLayout } from './PortalLayout';
+import QrRenovable from './QrRenovable';
 
-// Inicio del titular en su teléfono vinculado. La página que muestra y renueva el QR es
-// el issue #85; aquí queda el estado de la credencial.
+// Inicio del titular en su teléfono vinculado: el estado de su credencial y, si está
+// activa, el QR que se renueva solo (issue #85).
 
 export default function PortalPage() {
   const { data, error, isLoading, refetch } = useQuery({
@@ -70,6 +71,7 @@ export default function PortalPage() {
           estamento general.
         </p>
       )}
+      {data.estado === 'activo' && <QrRenovable onSinVinculo={() => refetch()} />}
     </PortalLayout>
   );
 }

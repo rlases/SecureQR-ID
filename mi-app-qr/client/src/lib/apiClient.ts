@@ -23,6 +23,8 @@ import type {
   ResultadoConsultaCid,
   EstadoTitular,
   TitularAdmin,
+  QrNoDisponible,
+  QrTitular,
   CodigoProvisionalResponse,
   MotivoReemplazo,
 } from '@mi-app-qr/shared';
@@ -327,4 +329,28 @@ export function setConservacion(plazoDias: number | null): Promise<{ plazoDias: 
     method: 'PUT',
     body: JSON.stringify({ plazoDias }),
   });
+}
+
+// --- QR del titular (issue #85) ----------------------------------------------------------
+
+export type ResultadoQr =
+  | ({ tipo: 'qr' } & QrTitular)
+  | ({ tipo: 'sin_qr' } & QrNoDisponible)
+  | { tipo: 'sin_vinculo' };
+
+/**
+ * Pide un token nuevo con el teléfono vinculado. La respuesta no pasa por la caché de
+ * consultas ni por ningún almacenamiento del navegador (ADR-0012, ADR-0016 punto 3).
+ */
+export async function pedirQr(): Promise<ResultadoQr> {
+  const res = await fetch('/api/portal/qr', {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return { tipo: 'qr', ...(body as QrTitular) };
+  if (res.status === 401) return { tipo: 'sin_vinculo' };
+  if (res.status === 403 && body.motivo) return { tipo: 'sin_qr', ...(body as QrNoDisponible) };
+  throw new ApiError(body.error ?? 'Error desconocido', res.status);
 }

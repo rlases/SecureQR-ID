@@ -9,7 +9,8 @@
     "start": "node --env-file=.env dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "anonimizar": "node --env-file=.env dist/cli/anonimizar.js"
+    "anonimizar": "node --env-file=.env dist/cli/anonimizar.js",
+    "test:e2e:emision": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
     "@mi-app-qr/shared": "file:../shared",
