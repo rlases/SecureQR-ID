@@ -72,6 +72,11 @@ cmp -s <("$PYTHON" -c 'import json,sys;print(json.dumps(json.load(open(sys.argv[
        <("$PYTHON" -c 'import json,sys;print(json.dumps(json.load(open(sys.argv[1])),sort_keys=True))' "$trabajo/recibo-2.json") \
   || falla "el reintento produjo un recibo distinto"
 
+info "hash del último bloque del canal (lo que sella OpenTimestamps cada día)"
+"$INFRA_DIR/ultimo-bloque.sh" > "$salida/ultimo-bloque.txt"
+grep -Eqx '[0-9a-f]{64}' "$salida/ultimo-bloque.txt" || falla "ultimo-bloque.sh no devolvió 64 hex"
+cat "$salida/ultimo-bloque.txt"
+
 info "la bitácora queda anclada y sin pendientes"
 "$PYTHON" - "$db" "$salida/estado.json" <<'PY'
 import json, sys

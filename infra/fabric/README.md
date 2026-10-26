@@ -38,6 +38,8 @@ eso, en el servidor del CCAV:
 | Respaldar (con la red detenida) | `respaldar-red.sh <destino>` |
 | Comprobar que el ledger sobrevive a un reinicio | `probar-persistencia.sh` |
 | Integración real: anclar un lote y verificar la prueba de inclusión | `integracion.sh <carpeta>` |
+| Hash del último bloque del canal, en hexadecimal (solo lectura) | `ultimo-bloque.sh` |
+| Sellado diario en OpenTimestamps de ese hash | `sellar.sh <carpeta de sellos>` |
 
 **Nunca** `network.sh down` ni `network.sh up` sobre la red del piloto.
 
