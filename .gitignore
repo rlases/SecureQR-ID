@@ -86,3 +86,12 @@ Thumbs.db
 # ─────────────────────────────────────────────────────────────
 docs/raw/*.pdf
 docs/raw/*.docx
+
+# ─────────────────────────────────────────────────────────────
+# Red Fabric (ADR-0017, issue #82)
+# ─────────────────────────────────────────────────────────────
+# Lo genera `network.sh deployCC` al empaquetar el contrato.
+anchor/chaincode/vendor/
+# Material criptográfico de la test-network, si alguien lo copia aquí.
+organizations/
+channel-artifacts/

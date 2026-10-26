@@ -116,3 +116,69 @@ describe('anclar', () => {
     expect(opened).toBe(false);
   });
 });
+
+describe('verificar (issue #93)', () => {
+  async function anclado(hashes?: string[]) {
+    const paths = setup(hashes);
+    const ledger = new InMemoryLedgerClient(() => 1_800_000_000_000);
+    await run(['anclar', '--batch', paths.batch, '--receipt', paths.receipt], ledger);
+    return { ...paths, ledger, evidence: join(paths.dir, 'evidencia.json') };
+  }
+
+  it('lee la raíz de la red y verifica una prueba de inclusión contra ella', async () => {
+    const { batch, ledger, evidence } = await anclado([h('a'), h('b'), h('c'), h('d'), h('e')]);
+    const result = await run(['verificar', '--batch', batch, '--evidence', evidence], ledger);
+
+    expect(result.code).toBe(EXIT_OK);
+    expect(result.closed()).toBe(true);
+    const datos = JSON.parse(readFileSync(evidence, 'utf-8'));
+    expect(datos).toMatchObject({
+      version: 1,
+      batch_id: 'ccav-test-1:seq-000001-000005',
+      transaction_id: 'tx-ccav-test-1:seq-000001-000005',
+      block_number: 1,
+      anchored_at: 1_800_000_000,
+      leaf_index: 2,
+      event_seq: 3,
+      leaf_hash: h('c'),
+      inclusion_valid: true,
+      tampered_leaf_rejected: true,
+    });
+    expect(datos.merkle_root_ledger).toBe(datos.merkle_root_local);
+    expect(datos.proof.length).toBeGreaterThan(0);
+  });
+
+  it('verifica cualquier hoja pedida, también la que se promovió sin pareja', async () => {
+    const { batch, ledger, evidence } = await anclado([h('a'), h('b'), h('c')]);
+    for (const indice of ['0', '1', '2']) {
+      const result = await run(['verificar', '--batch', batch, '--evidence', evidence, '--leaf-index', indice], ledger);
+      expect(result.code).toBe(EXIT_OK);
+      expect(JSON.parse(readFileSync(evidence, 'utf-8')).inclusion_valid).toBe(true);
+    }
+  });
+
+  it('un lote que no está en la red es un fallo de anclaje, sin evidencia', async () => {
+    const { batch, dir } = setup();
+    const evidence = join(dir, 'evidencia.json');
+    const result = await run(['verificar', '--batch', batch, '--evidence', evidence], new InMemoryLedgerClient());
+    expect(result.code).toBe(EXIT_LEDGER_FAILED);
+    expect(existsSync(evidence)).toBe(false);
+  });
+
+  it('si el lote local cambió después de anclarse, es alerta', async () => {
+    const { ledger, dir } = await anclado([h('a'), h('b'), h('c')]);
+    const alterado = setup([h('a'), h('B'), h('c')]);
+    const evidence = join(dir, 'evidencia.json');
+    const result = await run(['verificar', '--batch', alterado.batch, '--evidence', evidence], ledger);
+    expect(result.code).toBe(EXIT_ALERT);
+    expect(existsSync(evidence)).toBe(false);
+  });
+
+  it('valida los argumentos', async () => {
+    const { batch, ledger, evidence } = await anclado();
+    expect((await run(['verificar', '--batch', batch], ledger)).code).toBe(EXIT_USAGE);
+    expect((await run(['verificar', '--batch', batch, '--evidence', evidence, '--leaf-index', '-1'], ledger)).code).toBe(EXIT_USAGE);
+    expect((await run(['verificar', '--batch', batch, '--evidence', evidence, '--leaf-index', '3'], ledger)).code).toBe(EXIT_USAGE);
+    expect((await run(['verificar', '--batch', batch, '--evidence', evidence, '--receipt', 'x'], ledger)).code).toBe(EXIT_USAGE);
+  });
+});
