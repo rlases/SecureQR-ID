@@ -16,8 +16,72 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cada trabajo corre solo si cambió su módulo o algo de lo que depende: los minutos de
+  # Actions se cobran por trabajo, redondeados al minuto, y un PR que solo toca
+  # documentación no necesita las doce suites. Si este paso falla, todos los trabajos
+  # corren: falla hacia probar, nunca hacia saltarse pruebas.
+  cambios:
+    name: Detectar módulos cambiados
+    runs-on: ubuntu-latest
+    outputs:
+      test: ${{ steps.filtro.outputs.test }}
+      server-test: ${{ steps.filtro.outputs.server-test }}
+      emision-e2e: ${{ steps.filtro.outputs.emision-e2e }}
+      client-test: ${{ steps.filtro.outputs.client-test }}
+      issuer-test: ${{ steps.filtro.outputs.issuer-test }}
+      verifier-test: ${{ steps.filtro.outputs.verifier-test }}
+      verifier-web-test: ${{ steps.filtro.outputs.verifier-web-test }}
+      evidence-log-test: ${{ steps.filtro.outputs.evidence-log-test }}
+      revocation-test: ${{ steps.filtro.outputs.revocation-test }}
+      verifier-service-test: ${{ steps.filtro.outputs.verifier-service-test }}
+      anchor-test: ${{ steps.filtro.outputs.anchor-test }}
+      chaincode-test: ${{ steps.filtro.outputs.chaincode-test }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filtro
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          todo=0
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            todo=1
+          else
+            archivos="$(git diff --name-only "$BASE"...HEAD)"
+            # Un cambio en este flujo vuelve a probar todo.
+            if printf '%s\n' "$archivos" | grep -qx '.github/workflows/ci.yml'; then todo=1; fi
+          fi
+          marcar() {
+            local valor=false
+            if [ "$todo" = 1 ]; then
+              valor=true
+            elif [ -n "$3" ]; then
+              if printf '%s\n' "$archivos" | grep -E "$2" | grep -Evq "$3"; then valor=true; fi
+            elif printf '%s\n' "$archivos" | grep -Eq "$2"; then
+              valor=true
+            fi
+            echo "$1=$valor" >> "$GITHUB_OUTPUT"
+            echo "$1: $valor"
+          }
+          marcar test '^mi-app-qr/' '^mi-app-qr/(server|client|shared)/'
+          marcar server-test '^mi-app-qr/(server|shared)/' ''
+          marcar emision-e2e '^(mi-app-qr/(server|shared)|issuer)/' ''
+          marcar client-test '^mi-app-qr/(client|shared)/' ''
+          marcar issuer-test '^issuer/' ''
+          marcar verifier-test '^(verifier|issuer|evidence-log)/' ''
+          marcar verifier-web-test '^verifier-web/' ''
+          marcar evidence-log-test '^evidence-log/' ''
+          marcar revocation-test '^revocation/' ''
+          marcar verifier-service-test '^(verifier-service|verifier|issuer|revocation|evidence-log)/' ''
+          marcar anchor-test '^anchor/' '^anchor/chaincode/'
+          marcar chaincode-test '^anchor/chaincode/' ''
+
   test:
     name: mi-app-qr — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,6 +100,8 @@ jobs:
 
   server-test:
     name: mi-app-qr/server — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.server-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -55,6 +121,8 @@ jobs:
 
   emision-e2e:
     name: mi-app-qr — emisión e2e con issuer/
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.emision-e2e == 'true') }}
     # Portal del titular → mi-app-qr/server → servicio local real de issuer/ (issue #85).
     # Clave, contraseña y secreto son sintéticos y efímeros: se crean en el runner y se
     # descartan con él.
@@ -101,6 +169,8 @@ jobs:
 
   client-test:
     name: mi-app-qr/client — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.client-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -120,6 +190,8 @@ jobs:
 
   issuer-test:
     name: issuer — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.issuer-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -138,6 +210,8 @@ jobs:
 
   verifier-test:
     name: verifier — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.verifier-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -159,6 +233,8 @@ jobs:
 
   verifier-web-test:
     name: verifier-web — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.verifier-web-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -180,6 +256,8 @@ jobs:
 
   evidence-log-test:
     name: evidence-log — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.evidence-log-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -198,6 +276,8 @@ jobs:
 
   revocation-test:
     name: revocation — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.revocation-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -216,6 +296,8 @@ jobs:
 
   verifier-service-test:
     name: verifier-service — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.verifier-service-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -239,6 +321,8 @@ jobs:
 
   anchor-test:
     name: anchor — tests
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.anchor-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -258,6 +342,8 @@ jobs:
 
   chaincode-test:
     name: anchor/chaincode — go test
+    needs: cambios
+    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.chaincode-test == 'true') }}
     # Contrato en Go que corre en la red Fabric (ADR-0017, issue #82).
     runs-on: ubuntu-latest
     defaults:

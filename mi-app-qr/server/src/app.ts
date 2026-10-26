@@ -9,6 +9,7 @@ import { createRegistrosRouter } from './registros/routes.js';
 import { createUsersRouter } from './users/routes.js';
 import { createEstamentosRouter } from './estamentos/routes.js';
 import { createPortalRouter, huellaDeCertificado } from './portal/routes.js';
+import { createAnclajeRouter } from './anclaje/routes.js';
 import { createTitularesRouter } from './titulares/routes.js';
 import type { ClienteEmisor } from './emision/clienteEmisor.js';
 
@@ -34,6 +35,8 @@ export interface AppDependencies {
   maxTokensPorMinuto?: number;
   // Compromisos anclados de la cabeza de asignaciones que exporta evidence-log/ (#119).
   compromisosPath?: string;
+  // Estado del ciclo de anclaje que escribe `evidence-log cycle --status-file` (#139).
+  anclajeEstadoPath?: string;
 }
 
 declare module 'express-session' {
@@ -60,6 +63,7 @@ export function createApp(deps: AppDependencies): Express {
       revocadosPath: deps.revocadosExportPath,
       compromisosPath: deps.compromisosPath,
     }));
+  app.use('/api/anclaje', createAnclajeRouter({ estadoPath: deps.anclajeEstadoPath }));
   app.use(
     '/api/portal',
     createPortalRouter({

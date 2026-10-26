@@ -3,8 +3,8 @@ title: >-
   SecureQR-ID: Modelo criptográfico con anclaje blockchain para la validación
   inmutable de credenciales digitales en entornos organizacionales
 message: >-
-  Si utiliza este software o el modelo que implementa, por favor cítelo
-  usando los metadatos de este archivo.
+  Todos los derechos reservados: el uso de este software requiere autorización
+  de los autores. Para citar el modelo, use los metadatos de este archivo.
 type: software
 authors:
   - given-names: Duverney
@@ -38,6 +38,6 @@ keywords:
   - identidad digital
   - control de acceso
   - trazabilidad verificable
-license: Apache-2.0
+# Sin campo `license`: todos los derechos reservados (ver LICENSE).
 version: 0.1.0
 date-released: '2026-01-01'   # TODO: fecha real del primer release
