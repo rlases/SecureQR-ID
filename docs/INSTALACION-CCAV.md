@@ -177,18 +177,24 @@ variable de entorno del sistema para la cuenta `secureqr`, no de `config.json`. 
 
 ## 7. Tareas programadas
 
+Los paquetes de Python (`evidence-log`, `verifier-service` y sus dependencias, y
+`opentimestamps-client` para el sellado) van en un entorno virtual,
+`/opt/secureqr-id/.venv`. Cron corre con un `PATH` mínimo, así que las tareas usan la
+ruta completa del intérprete de ese entorno, y `sellar.sh` lo recibe en `PYTHON` (y el
+`PATH` para encontrar `ots`).
+
 `/etc/cron.d/secureqr-id` (el sexto campo es la cuenta):
 
 ```cron
 # Anclaje cada 15 minutos: registra la cabeza de asignaciones, fija el lote, ancla en
 # Fabric y deja los compromisos para mi-app-qr (ADR-0017, #119).
-*/15 * * * * secureqr . /etc/secureqr-id/anchor.env; python -m secureqr_evidence_log cycle --db /var/lib/secureqr-id/evidence.sqlite3 --verifier-id ccav-pitalito-porteria-1 --workdir /var/lib/secureqr-id/anclaje --status-file /var/lib/secureqr-id/anclaje/estado.json --anchor-command "node /opt/secureqr-id/anchor/dist/cli.js anclar" --head-file /var/lib/secureqr-id/anclaje/cabeza-asignaciones.json --commitments-file /var/lib/secureqr-id/anclaje/compromisos.json >> /var/log/secureqr-id/anclaje.log 2>&1
+*/15 * * * * secureqr . /etc/secureqr-id/anchor.env; /opt/secureqr-id/.venv/bin/python -m secureqr_evidence_log cycle --db /var/lib/secureqr-id/evidence.sqlite3 --verifier-id ccav-pitalito-porteria-1 --workdir /var/lib/secureqr-id/anclaje --status-file /var/lib/secureqr-id/anclaje/estado.json --anchor-command "node /opt/secureqr-id/anchor/dist/cli.js anclar" --head-file /var/lib/secureqr-id/anclaje/cabeza-asignaciones.json --commitments-file /var/lib/secureqr-id/anclaje/compromisos.json >> /var/log/secureqr-id/anclaje.log 2>&1
 
 # Sellado diario en OpenTimestamps del hash del último bloque del canal (ADR-0017, punto 7).
-17 3 * * * secureqr SQRID_FABRIC_HOME=/var/lib/secureqr-id/fabric /opt/secureqr-id/infra/fabric/sellar.sh /var/lib/secureqr-id/sellos >> /var/log/secureqr-id/sellado.log 2>&1
+17 3 * * * secureqr SQRID_FABRIC_HOME=/var/lib/secureqr-id/fabric PYTHON=/opt/secureqr-id/.venv/bin/python PATH=/opt/secureqr-id/.venv/bin:/usr/bin:/bin /opt/secureqr-id/infra/fabric/sellar.sh /var/lib/secureqr-id/sellos >> /var/log/secureqr-id/sellado.log 2>&1
 
 # Sincronización de la lista de revocación publicada.
-*/10 * * * * secureqr python -m secureqr_verifier_service.sync >> /var/log/secureqr-id/revocacion.log 2>&1
+*/10 * * * * secureqr /opt/secureqr-id/.venv/bin/python -m secureqr_verifier_service.sync >> /var/log/secureqr-id/revocacion.log 2>&1
 ```
 
 - `--db` es la misma base de la bitácora de `verifier-service` (`SQRID_EVIDENCE_DB_PATH`).
