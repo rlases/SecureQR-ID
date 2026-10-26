@@ -272,3 +272,18 @@ export interface CodigoProvisionalResponse {
   codigoProvisional: string;
   venceEn: string;
 }
+
+// --- Estado del anclaje para el panel del admin (ADR-0017, punto 6; issue #139) ---------
+
+export interface ResumenAnclaje {
+  eventosPendientes: number;
+  pendienteMasAntiguo: string | null;
+  ultimoLote: string | null;
+  ultimoAnclaje: string | null;
+  escritoEn: string;
+}
+
+export type EstadoAnclaje =
+  | { estado: 'sin_configurar' }
+  | { estado: 'ok'; resumen: ResumenAnclaje }
+  | { estado: 'alerta'; detalle: string; resumen: ResumenAnclaje | null };

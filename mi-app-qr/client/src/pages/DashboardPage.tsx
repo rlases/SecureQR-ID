@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowDownToLine, ArrowUpFromLine, ClipboardCheck, RefreshCw, Users } from 'lucide-react';
-import type { Registro } from '@mi-app-qr/shared';
+import { ArrowDownToLine, ArrowUpFromLine, ClipboardCheck, RefreshCw, TriangleAlert, Users } from 'lucide-react';
+import type { EstadoAnclaje, Registro } from '@mi-app-qr/shared';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui/button';
-import { listRegistros, listUsers } from '../lib/apiClient';
+import { getEstadoAnclaje, listRegistros, listUsers } from '../lib/apiClient';
 
 const RECENT_ACTIVITY_LIMIT = 8;
 
@@ -58,6 +58,16 @@ export default function DashboardPage() {
     queryFn: listUsers,
     enabled: user?.role === 'admin',
   });
+  // Alerta de anclaje (ADR-0017, punto 6; #139): eventos sin anclar desde hace más de 2
+  // horas, o un ciclo que dejó de correr. Se revisa cada 5 minutos.
+  const anclajeQuery = useQuery({
+    queryKey: ['anclaje', 'estado'],
+    queryFn: getEstadoAnclaje,
+    enabled: user?.role === 'admin',
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const alertaAnclaje =
+    anclajeQuery.data?.estado === 'alerta' ? (anclajeQuery.data as Extract<EstadoAnclaje, { estado: 'alerta' }>) : null;
 
   const registros = useMemo(() => registrosQuery.data?.registros ?? [], [registrosQuery.data]);
   const today = new Date().toISOString().slice(0, 10);
@@ -95,6 +105,34 @@ export default function DashboardPage() {
             <RefreshCw aria-hidden="true" />
             Reintentar
           </Button>
+        </div>
+      )}
+
+      {alertaAnclaje && (
+        <div
+          role="alert"
+          aria-labelledby="alerta-anclaje-title"
+          className="flex gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
+        >
+          <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <div className="space-y-1 text-sm">
+            <p id="alerta-anclaje-title" className="font-semibold text-foreground">
+              El anclaje de la bitácora está atrasado
+            </p>
+            <p className="text-foreground">{alertaAnclaje.detalle}</p>
+            {alertaAnclaje.resumen && (
+              <p className="text-muted-foreground">
+                {alertaAnclaje.resumen.eventosPendientes} eventos pendientes · último anclaje:{' '}
+                {alertaAnclaje.resumen.ultimoAnclaje
+                  ? new Date(alertaAnclaje.resumen.ultimoAnclaje).toLocaleString('es-CO')
+                  : 'ninguno'}
+              </p>
+            )}
+            <p className="text-muted-foreground">
+              La validación en los puntos de control sigue funcionando; revisa la red Fabric y la
+              tarea programada del ciclo (docs/INSTALACION-CCAV.md, §7).
+            </p>
+          </div>
         </div>
       )}
 

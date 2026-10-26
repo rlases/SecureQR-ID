@@ -47,6 +47,7 @@ async function metric(name: string) {
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(apiClient.getEstadoAnclaje).mockResolvedValue({ estado: 'sin_configurar' });
   });
 
   it('calcula registros vigentes, entradas y salidas de hoy', async () => {
@@ -101,5 +102,43 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(apiClient.getMe).toHaveBeenCalledOnce());
     expect(screen.queryByRole('heading', { name: 'Usuarios activos' })).not.toBeInTheDocument();
     expect(apiClient.listUsers).not.toHaveBeenCalled();
+  });
+
+  it('avisa al admin cuando el anclaje está atrasado (#139)', async () => {
+    vi.mocked(apiClient.getMe).mockResolvedValue({
+      user: { id: 1, username: 'admin', role: 'admin', cargo: null, createdAt: '2026-01-01' },
+    });
+    vi.mocked(apiClient.listRegistros).mockResolvedValue({ registros: [] });
+    vi.mocked(apiClient.listUsers).mockResolvedValue({ users: [] });
+    vi.mocked(apiClient.getEstadoAnclaje).mockResolvedValue({
+      estado: 'alerta',
+      detalle: 'Hay eventos sin anclar desde hace más de 2 horas: Fabric no responde o el anclaje está fallando.',
+      resumen: {
+        eventosPendientes: 12,
+        pendienteMasAntiguo: '2026-10-26T08:00:00.000Z',
+        ultimoLote: 'ccav-pitalito-porteria-1:seq-000001-000040',
+        ultimoAnclaje: null,
+        escritoEn: '2026-10-26T11:55:00.000Z',
+      },
+    });
+
+    renderPage();
+
+    const alerta = await screen.findByRole('alert', { name: 'El anclaje de la bitácora está atrasado' });
+    expect(alerta).toHaveTextContent(/sin anclar desde hace más de 2 horas/);
+    expect(alerta).toHaveTextContent(/12 eventos pendientes · último anclaje: ninguno/);
+  });
+
+  it('sin alerta de anclaje no muestra aviso, y un operador ni la consulta', async () => {
+    vi.mocked(apiClient.getMe).mockResolvedValue({
+      user: { id: 2, username: 'operador1', role: 'operador', cargo: 'Recepción', createdAt: '2026-01-01' },
+    });
+    vi.mocked(apiClient.listRegistros).mockResolvedValue({ registros: [] });
+
+    renderPage();
+
+    await metric('Registros vigentes');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(apiClient.getEstadoAnclaje).not.toHaveBeenCalled();
   });
 });
