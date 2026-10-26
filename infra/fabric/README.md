@@ -85,5 +85,5 @@ reintentar el anclaje da el mismo recibo. En la carpeta quedan `lote.json`, `rec
 `estado.json` y `verificacion.json` (transacción, bloque, raíz y prueba): la evidencia del
 anexo del documento de grado. Lo ejecuta el flujo
 [`fabric-integracion.yml`](../../.github/workflows/fabric-integracion.yml) a mano, cada
-noche y en los PR que tocan la red, el contrato, `anchor/` o `evidence-log/`, y guarda la
-carpeta como artefacto.
+semana y en los PR que tocan la red, el contrato, el cliente de Fabric o los comandos del
+ciclo (enmienda de 2026-10-26 a ADR-0017), y guarda la carpeta como artefacto.

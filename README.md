@@ -136,9 +136,10 @@ Usa el botón *Cite this repository* de GitHub o el archivo [`CITATION.cff`](CIT
 
 ## Licencia
 
-Apache-2.0 — ver [`LICENSE`](LICENSE).
-Sujeto a verificación frente al reglamento de propiedad intelectual de la UNAD para
-trabajos de grado.
+**Todos los derechos reservados** — ver [`LICENSE`](LICENSE). No se permite usar, copiar,
+modificar ni distribuir este proyecto sin autorización previa y por escrito de sus
+autores. Sujeto a verificación frente al reglamento de propiedad intelectual de la UNAD
+para trabajos de grado.
 
 ## Autores
 

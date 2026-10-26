@@ -1318,3 +1318,23 @@ proxy de módulos de Go).**
     Bitcoin.
 - El documento de grado podrá decir que el anclaje está cumplido solo cuando la prueba de
   integración pase contra la red real.
+
+**Enmienda (2026-10-26) — Frecuencia de la prueba de integración (punto 8).** La prueba
+contra la red Fabric real pasa de nocturna a **semanal** (lunes) y sigue disponible a
+mano. En los PR solo corre si cambia algo que toca la red real:
+
+- `infra/fabric/`;
+- el contrato (`anchor/chaincode/`);
+- el cliente de Fabric (`anchor/src/fabric.ts`, `anchor/src/cli.ts` y sus dependencias);
+- los comandos del ciclo (`evidence-log/.../cli.py`).
+
+**Por qué.** El repositorio es privado y sus minutos de Actions son limitados (3000 al
+mes). En octubre de 2026 se agotaron y el CI quedó detenido varios días. En el mismo
+cambio, `ci.yml` corre cada suite solo cuando cambia su módulo o algo de lo que depende.
+
+**Consecuencia.** Una regresión que solo se vea contra la red real puede tardar hasta
+una semana en aparecer, si entra por un archivo que no dispara el flujo. Lo mitigan:
+
+- las pruebas unitarias con el doble en memoria, que siguen corriendo en cada PR;
+- que el flujo sigue corriendo en los PR que tocan la red, el contrato o el cliente de Fabric;
+- la ejecución manual antes de anexar la evidencia al documento de grado.
