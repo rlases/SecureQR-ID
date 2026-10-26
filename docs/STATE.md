@@ -25,7 +25,10 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 
 **Revisado de Jhunier:** #143 (licencia y filtro de módulos en `ci.yml`) fusionado sin
 revisión cruzada; el repositorio es público y el CI volvió a arrancar (verde en `main`
-desde `c4ef6ac`). #144 aprobado y fusionado por Duverney.
+desde `c4ef6ac`). Duverney revisó #143 ya fusionado: la licencia y el filtro de `ci.yml`
+están bien. El disparador de la integración con Fabric no cubría las dependencias de
+`cli.ts` ni de `cli.py`, y lo corrige #149. #144 y #148 quedaron aprobados y fusionados por
+Duverney: con #148 se aceptan las decisiones conjuntas de abajo.
 
 **Nuevo: #145 y #146**, revisado por Jhunier. A pedido suyo, ADR-0018 suma el punto 6:
 borrado criptográfico de los respaldos al cierre del piloto (se destruye la identidad de
@@ -67,7 +70,7 @@ identidad de respaldo en el equipo del custodio y seguir la guía completa (#133
   - la licencia nueva respalda legalmente, pero no impide la copia.
 - **#144** corrige el filtro: con `always()`, un flujo cancelado por concurrencia corría igual las doce suites. Pasa a `!cancelled()`.
 
-**Decisiones conjuntas propuestas por Jhunier** (enmienda de 2026-10-26 a ADR-0016). Quedan aceptadas cuando Duverney apruebe este PR:
+**Decisiones conjuntas propuestas por Jhunier** (enmienda de 2026-10-26 a ADR-0016). **Aceptadas**: Duverney aprobó #148:
 
 - **Texto libre de `cambios_configuracion`:** se anonimiza al cierre y por plazo, igual que `registros.motivo`. Implementación en **#147, asignado a Duverney** por la regla de reparto.
 - **Certificado del portal:** en el piloto sigue la huella SHA-256 publicada; el dominio con Let's Encrypt se reevalúa después.
