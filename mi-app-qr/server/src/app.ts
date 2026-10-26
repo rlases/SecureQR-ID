@@ -23,6 +23,8 @@ export interface AppDependencies {
   certificate?: Buffer;
   // Archivo donde se exportan, sin firmar, los cid revocados (ADR-0016, punto 9).
   revocadosExportPath?: string;
+  // Altas permitidas por IP y hora en el portal del titular (issue #120).
+  altaMaxPorIp?: number;
   // Compromisos anclados de la cabeza de asignaciones que exporta evidence-log/ (#119).
   compromisosPath?: string;
 }
@@ -56,6 +58,7 @@ export function createApp(deps: AppDependencies): Express {
     createPortalRouter({
       secureCookies: deps.secureCookies ?? false,
       huella: huellaDeCertificado(deps.certificate),
+      altaMaxPorIp: deps.altaMaxPorIp,
     })
   );
 

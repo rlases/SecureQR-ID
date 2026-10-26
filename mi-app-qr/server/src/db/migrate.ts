@@ -234,6 +234,15 @@ function runPortalMigrations(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS intentos_recuperacion_documento
       ON intentos_recuperacion (documento, en);
     CREATE INDEX IF NOT EXISTS intentos_recuperacion_ip ON intentos_recuperacion (ip, en);
+
+    -- Altas por IP, para frenar el registro masivo desde un mismo equipo (issue #120).
+    -- Solo la IP y el momento: nada del formulario.
+    CREATE TABLE IF NOT EXISTS intentos_alta (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip TEXT NOT NULL,
+      en TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS intentos_alta_ip ON intentos_alta (ip, en);
   `);
   runConsultasMigrations(db);
 }

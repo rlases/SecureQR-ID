@@ -15,7 +15,13 @@ import {
   generateRecoveryCode,
   normalizeRecoveryCode,
 } from '../src/portal/credencialesTitular.js';
-import { MAX_FALLOS_POR_DOCUMENTO, MAX_FALLOS_POR_IP } from '../src/portal/limiteIntentos.js';
+import {
+  ALTA_MAX_POR_IP,
+  ALTA_VENTANA_MINUTOS,
+  MAX_FALLOS_POR_DOCUMENTO,
+  MAX_FALLOS_POR_IP,
+  reservarAlta,
+} from '../src/portal/limiteIntentos.js';
 
 // Datos sintéticos (SECURITY.md).
 let testDirectory: string;
@@ -336,4 +342,56 @@ describe('recuperación con código', () => {
     expect(respuestas.map((r) => r.status).sort()).toEqual([401, 429]);
     expect(db.prepare('SELECT COUNT(*) AS n FROM intentos_recuperacion WHERE ip = ? AND exito = 0').get(ip)).toEqual({ n: MAX_FALLOS_POR_IP });
   }, 30_000);
+});
+
+describe('límite de altas por IP (issue #120)', () => {
+  it('admite justo el cupo ante altas simultáneas desde la misma IP', async () => {
+    prepararEstamentos();
+    app = createApp({ db, sessionSecret: 'test-secret', altaMaxPorIp: 3 });
+    const respuestas = await Promise.all(
+      Array.from({ length: 6 }, (_, i) =>
+        request(app).post('/api/portal/alta').send(datosAlta(`43000000${i}0`))
+      )
+    );
+    expect(respuestas.filter((r) => r.status === 201)).toHaveLength(3);
+    const rechazadas = respuestas.filter((r) => r.status === 429);
+    expect(rechazadas).toHaveLength(3);
+    // Respuesta genérica, sin decir nada de los documentos ni de otras altas.
+    for (const r of rechazadas) expect(Object.keys(r.body)).toEqual(['error']);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM titulares').get()).toEqual({ n: 3 });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM intentos_alta').get()).toEqual({ n: 3 });
+  }, 30_000);
+
+  it('cuenta también las altas que quedan en revisión', async () => {
+    prepararEstamentos();
+    app = createApp({ db, sessionSecret: 'test-secret', altaMaxPorIp: 2 });
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('4310000001'))).status).toBe(201);
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('4310000001'))).status).toBe(202);
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('4310000002'))).status).toBe(429);
+  }, 30_000);
+
+  it('un formulario inválido no consume cupo', async () => {
+    prepararEstamentos();
+    app = createApp({ db, sessionSecret: 'test-secret', altaMaxPorIp: 1 });
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('x'))).status).toBe(400);
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('4320000001'))).status).toBe(201);
+  }, 30_000);
+
+  it('libera el cupo cuando pasa la ventana y no conserva las IP vencidas', async () => {
+    prepararEstamentos();
+    app = createApp({ db, sessionSecret: 'test-secret', altaMaxPorIp: 1 });
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('4330000001'))).status).toBe(201);
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('4330000002'))).status).toBe(429);
+    const haceDosHoras = new Date(Date.now() - (ALTA_VENTANA_MINUTOS + 60) * 60_000).toISOString();
+    db.prepare('UPDATE intentos_alta SET en = ?').run(haceDosHoras);
+    expect((await request(app).post('/api/portal/alta').send(datosAlta('4330000002'))).status).toBe(201);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM intentos_alta WHERE en = ?').get(haceDosHoras)).toEqual({ n: 0 });
+  }, 30_000);
+
+  it('por defecto admite ALTA_MAX_POR_IP altas', () => {
+    expect(ALTA_MAX_POR_IP).toBe(10);
+    for (let i = 0; i < ALTA_MAX_POR_IP; i++) expect(reservarAlta(db, '10.0.0.9', new Date())).toBe(true);
+    expect(reservarAlta(db, '10.0.0.9', new Date())).toBe(false);
+    expect(reservarAlta(db, '10.0.0.10', new Date())).toBe(true);
+  });
 });

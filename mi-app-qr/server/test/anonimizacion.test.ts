@@ -45,6 +45,7 @@ function poblar() {
   db.prepare(
     "INSERT INTO intentos_recuperacion (documento, ip, exito, en) VALUES ('8000000001', '10.0.0.5', 0, ?)"
   ).run(new Date().toISOString());
+  db.prepare("INSERT INTO intentos_alta (ip, en) VALUES ('10.0.0.5', ?)").run(new Date().toISOString());
   return cids;
 }
 
@@ -116,6 +117,8 @@ describe('cierre del piloto', () => {
       expect(todo).not.toContain(p.documento);
       expect(todo).not.toContain(p.correo);
     }
+    // Las IP de los intentos de alta y de recuperación tampoco sobreviven.
+    expect(todo).not.toContain('10.0.0.5');
     // La consulta auditada ya no devuelve a nadie.
     const resultados = consultarCids(db, adminId, cids, null, new Date());
     expect(resultados.every((x) => x.encontrado && x.anonimizado)).toBe(true);
