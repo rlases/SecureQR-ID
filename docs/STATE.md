@@ -4,59 +4,76 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-25
+**Última actualización:** 2026-10-26
 **Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
 (diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
 `SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
 unificado en tres (issue #4). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al
 cerrar cada fase — pendiente, decisión conjunta, no depende de código. De los cinco
 módulos de Fase 3 (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`)
-sigue pendiente completar el anclaje real de `anchor/` (issue #9). El resumen
+el anclaje real de `anchor/` ya corre contra Fabric 2.5 (#125 y #126); falta instalarlo
+en el servidor del CCAV. El resumen
 vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ---
 
-## Estado vigente — 2026-10-25
+## Estado vigente — 2026-10-26
 
-### Sesión de Duverney — 2026-10-25 (noche, hora de Colombia)
+### Cierre de la sesión de Duverney — 2026-10-26 (madrugada, hora UTC)
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 
-**Cerrados:** #55 (acuerdo registrado en #114) y #94 (implementado en #116, que no tenía
-la palabra de cierre).
-
-**Seis PR nuevos, todos con CI en verde y la revisión de Jhunier solicitada.** La
-protección de `main` exige una aprobación de alguien distinto del autor, así que **no se
-pueden fusionar hasta que Jhunier los apruebe**:
+**No queda ningún issue ni PR abierto.** Todo lo de esta sesión se revisó por Jhunier y
+entró en `main` con squash y el CI en verde:
 
 | PR | Issue | Qué hace |
 |---|---|---|
 | [#121](https://github.com/rlases/SecureQR-ID/pull/121) | #120 | Límite de altas por IP en el portal (`ALTA_MAX_POR_IP`, 10/hora), reservado en `IMMEDIATE` antes de bcrypt |
 | [#122](https://github.com/rlases/SecureQR-ID/pull/122) | #109 | Rechazar, reemplazar o aprobar altas en revisión según la enmienda #111; código provisional de 72 h; `titulares` reconstruida con el estado `reemplazado` |
 | [#123](https://github.com/rlases/SecureQR-ID/pull/123) | #85 | Cliente del servicio de emisión, `POST /api/portal/qr` con `puedeEmitir` y `SITE_TIME_ZONE`, límite por teléfono y página del QR que se renueva; trabajo de CI `emision-e2e` contra `secureqr-issuer serve` real |
-| [#124](https://github.com/rlases/SecureQR-ID/pull/124) | #119 | Cabeza de `asignaciones_cid` registrada y anclada por `evidence-log cycle --head-file`; `mi-app-qr` la compara con los compromisos anclados. Segunda enmienda de 2026-10-25 a ADR-0016 |
-| [#125](https://github.com/rlases/SecureQR-ID/pull/125) | #82 | `infra/fabric/` (Fabric 2.5.16, CA 1.5.22, commit fijo de `fabric-samples`; crear una vez, detener, arrancar, respaldar) y contrato en Go con `go test` en CI |
-| [#126](https://github.com/rlases/SecureQR-ID/pull/126) | #93 | `anchor verificar`, `infra/fabric/integracion.sh` y flujo `fabric-integracion.yml` con la evidencia como artefacto. **Va encima de #125** |
+| [#124](https://github.com/rlases/SecureQR-ID/pull/124) | #119 | Cabeza de `asignaciones_cid` registrada y anclada por `evidence-log cycle --head-file`; `mi-app-qr` la compara con los compromisos anclados. Segunda enmienda de 2026-10-25 a ADR-0016, **aceptada** por Jhunier |
+| [#125](https://github.com/rlases/SecureQR-ID/pull/125) | #82 | `infra/fabric/` (Fabric 2.5.16, CA 1.5.22, commit fijo de `fabric-samples`, SHA-256 de `install-fabric.sh`; crear una vez, detener, arrancar, respaldar) y contrato en Go con `go test` en CI |
+| [#126](https://github.com/rlases/SecureQR-ID/pull/126) | #93 | `anchor verificar`, `infra/fabric/integracion.sh` y flujo `fabric-integracion.yml` (a mano, cada noche y en PR que tocan `infra/fabric/`, `anchor/` o `evidence-log/`) con la evidencia como artefacto |
 
-**Verificado contra la red Fabric real** (Docker en el entorno de la sesión, no en el
-servidor del CCAV):
-- `crear-red.sh` levantó la red;
-- `probar-persistencia.sh` comprobó que el ledger sobrevive a un reinicio y que un `loteId` repetido se rechaza;
-- `integracion.sh` ancló un lote de 25 eventos por el ciclo real (bloque 7), verificó la prueba de inclusión contra la raíz leída de la red y obtuvo el mismo recibo al reintentar.
+**Cambio pedido por Jhunier en #124 y aplicado:** si la cabeza de asignaciones es
+ilegible, retrocede (p. ej., al restaurar un respaldo de `mi-app-qr`) o cambia el hash de
+una `seq` ya comprometida, `cycle` registra la ALERTA y devuelve el código 3 **al final**,
+pero ancla igual el lote con los pasos del punto de control.
+
+**Verificado contra una red Fabric real:**
+- en el entorno de la sesión: `crear-red.sh`, `probar-persistencia.sh` (el ledger
+  sobrevive al reinicio, un `loteId` repetido se rechaza) e `integracion.sh` (lote de 25
+  eventos anclado por el ciclo real, prueba de inclusión verificada contra la raíz leída
+  de la red, mismo recibo al reintentar);
+- en CI: el flujo `Fabric 2.5 — anclar y verificar` pasó en #126 y en #124.
 
 El servidor del CCAV sigue sin verificar.
 
-**Orden para fusionar:** #121, #122, #123 y #124 son independientes entre sí. Pueden
-chocar en `docs/THREAT-MODEL.md` y en `mi-app-qr/server` (`app.ts`, `index.ts`,
-`titulares/routes.ts`, `.env.example`); tras cada squash, fusionar `main` en el siguiente.
-#125 antes que #126; luego cambiar la base de #126 a `main`.
+**Notas de revisión no bloqueantes que quedan anotadas:**
+- Cualquier identidad del canal puede llamar `registrarRaiz`; en el piloto la red la
+  operan los autores (ADR-0017), pero va al documento de grado junto a la nota de
+  gobernanza de `infra/fabric/README.md`.
+- `fabric-chaincode-go/v2` va en pseudo-versión (explicado en `go.mod`); pasar a la
+  etiqueta cuando salga una compatible con `contract-api-go v2.2.2`.
+- `event_seq` de la evidencia de `anchor verificar` es `first_event + leaf_index`. Es
+  exacto porque `parseBatch` exige un hash por evento del rango; si el formato del lote
+  llega a admitir huecos, ese campo debe salir de la lista de `seq`.
+- Dos `commit-head` simultáneos podrían registrar la misma cabeza dos veces; es
+  inofensivo y con un solo ciclo programado no ocurre.
 
-**Carga:** #119 era de Jhunier y lo resolvió Duverney porque así lo pidió en esta sesión.
+**Carga:** #119 era de Jhunier y lo resolvió Duverney porque así se pidió en esta sesión.
 Queda como contexto del reparto acumulado, no como cambio del reparto.
 
-**Pendiente:**
+**Pendiente (sin issue abierto todavía):**
 - adopción del acuerdo de diseño (#55), por repartir en partes iguales;
-- decidir antes del cierre del piloto qué hacer con el texto libre de `cambios_configuracion.motivo`;
+- aviso en la interfaz cuando un reemplazo (#122) levanta una suspensión (sugerencia de
+  Jhunier, sin decidir);
+- Electron (`main.js`) no pasa `ISSUER_SERVICE_URL` ni `SQRID_ISSUER_SECRET_FILE`, y falta
+  decidir quién arranca `secureqr-issuer serve` en el CCAV;
+- con el NAT del Wi-Fi del CCAV, 10 altas por hora por IP puede quedarse corto
+  (`ALTA_MAX_POR_IP`); si se pone un proxy inverso, hace falta `trust proxy`;
+- decidir antes del cierre del piloto qué hacer con el texto libre de
+  `cambios_configuracion.motivo`;
 - instalación en el servidor del CCAV (Docker, Fabric, emisor) y piloto.
 
 ### Cierre de la sesión de Jhunier — 2026-10-25
