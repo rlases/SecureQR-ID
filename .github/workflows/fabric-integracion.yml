@@ -1,20 +1,28 @@
 name: Integración con Fabric
 
 # Prueba de integración contra la red Fabric real (ADR-0017 punto 8, issue #93). Aparte
-# del CI de cada PR porque tarda varios minutos: se ejecuta a mano, cada noche y en los PR
-# que tocan la red, el contrato o anchor/. La evidencia (lote, recibo, estado y
+# del CI de cada PR porque tarda varios minutos: se ejecuta a mano, cada semana y en los PR
+# que tocan la red, el contrato o el cliente de Fabric. La evidencia (lote, recibo, estado y
 # verificación de la prueba de inclusión) queda como artefacto para el anexo del documento
 # de grado. La red y su material criptográfico son efímeros: se crean y se descartan con
 # el runner.
+#
+# Semanal y no nocturno (enmienda de 2026-10-26 a ADR-0017): cada corrida cuesta varios
+# minutos de Actions. En los PR corre solo si cambia algo que toca la red real: la red, el
+# contrato, el cliente de Fabric o los comandos del ciclo. El resto de anchor/ y de
+# evidence-log/ lo cubren sus pruebas unitarias en ci.yml.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 7 * * *' # 02:17 en Colombia
+    - cron: '17 7 * * 1' # lunes, 02:17 en Colombia
   pull_request:
     paths:
       - 'infra/fabric/**'
-      - 'anchor/**'
-      - 'evidence-log/**'
+      - 'anchor/chaincode/**'
+      - 'anchor/src/fabric.ts'
+      - 'anchor/src/cli.ts'
+      - 'anchor/package-lock.json'
+      - 'evidence-log/src/secureqr_evidence_log/cli.py'
       - '.github/workflows/fabric-integracion.yml'
 
 permissions:
