@@ -9,9 +9,12 @@ import { aplicarReseteoSiCorresponde } from './titulares/reseteo.js';
 import { anonimizarVencidos } from './titulares/anonimizacion.js';
 import { claveAsignaciones } from './titulares/asignaciones.js';
 import { crearClienteEmisor, leerSecretoEmisor } from './emision/clienteEmisor.js';
+import { escribirCabeza, verificarContraCompromisos } from './titulares/compromiso.js';
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
+const UNA_HORA_MS = 60 * 60 * 1000;
+const QUINCE_MINUTOS_MS = 15 * 60 * 1000;
 
 // Un valor mal escrito no puede dejar el alta sin límite: se rechaza al arrancar.
 function leerAltaMaxPorIp(valor: string | undefined): number | undefined {
@@ -72,7 +75,33 @@ async function main(): Promise<void> {
     altaMaxPorIp: leerAltaMaxPorIp(process.env.ALTA_MAX_POR_IP),
     emisor,
     timeZone: process.env.SITE_TIME_ZONE,
+    compromisosPath: process.env.ASIGNACIONES_COMPROMISOS_PATH,
   });
+
+  // Compromiso externo del historial cid → titular (enmienda de 2026-10-25 a ADR-0016,
+  // #119): la cabeza se escribe cada 15 minutos para que el ciclo de evidence-log la
+  // registre y la ancle; cada hora se compara el historial con lo ya anclado.
+  const cabezaPath = process.env.ASIGNACIONES_CABEZA_PATH;
+  if (cabezaPath) {
+    const escribir = () => {
+      try {
+        escribirCabeza(db, cabezaPath, new Date());
+      } catch (error) {
+        console.error('No se pudo escribir la cabeza de asignaciones:', error);
+      }
+    };
+    escribir();
+    setInterval(escribir, QUINCE_MINUTOS_MS).unref();
+  }
+  const compromisosPath = process.env.ASIGNACIONES_COMPROMISOS_PATH;
+  if (compromisosPath) {
+    const verificar = () => {
+      const r = verificarContraCompromisos(db, compromisosPath);
+      if (r.estado === 'alerta') console.error(`ALERTA de integridad del historial cid → titular: ${r.detalle}`);
+    };
+    verificar();
+    setInterval(verificar, UNA_HORA_MS).unref();
+  }
 
   // Exportación diaria de cid revocados para el refirmado del custodio (ADR-0015 y
   // ADR-0016, punto 9). Se exporta al arrancar y luego cada 24 horas; el panel tiene

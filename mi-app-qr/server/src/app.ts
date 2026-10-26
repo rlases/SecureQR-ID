@@ -32,6 +32,8 @@ export interface AppDependencies {
   timeZone?: string;
   // Tokens por minuto que puede pedir un mismo teléfono.
   maxTokensPorMinuto?: number;
+  // Compromisos anclados de la cabeza de asignaciones que exporta evidence-log/ (#119).
+  compromisosPath?: string;
 }
 
 declare module 'express-session' {
@@ -54,7 +56,10 @@ export function createApp(deps: AppDependencies): Express {
   app.use('/api/registros', createRegistrosRouter());
   app.use('/api/users', createUsersRouter());
   app.use('/api/estamentos', createEstamentosRouter());
-  app.use('/api/titulares', createTitularesRouter({ revocadosPath: deps.revocadosExportPath }));
+  app.use('/api/titulares', createTitularesRouter({
+      revocadosPath: deps.revocadosExportPath,
+      compromisosPath: deps.compromisosPath,
+    }));
   app.use(
     '/api/portal',
     createPortalRouter({
