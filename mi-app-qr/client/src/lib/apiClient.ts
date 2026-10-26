@@ -23,6 +23,8 @@ import type {
   ResultadoConsultaCid,
   EstadoTitular,
   TitularAdmin,
+  CodigoProvisionalResponse,
+  MotivoReemplazo,
 } from '@mi-app-qr/shared';
 
 export class ApiError extends Error {
@@ -260,6 +262,40 @@ export function accionTitular(
   return request<{ ok: true }>(`/api/titulares/${id}/${accion}`, {
     method: 'POST',
     body: JSON.stringify({ motivo }),
+  });
+}
+
+// Resolución de altas en revisión (enmienda de 2026-10-24 a ADR-0016, issue #109). Las
+// respuestas con código provisional no se guardan en ninguna caché: el código vive solo en
+// el estado del diálogo hasta que el admin lo cierra.
+export function rechazarAlta(id: number, nota: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/api/titulares/${id}/rechazar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { nota } : {}),
+  });
+}
+
+export function reemplazarRegistro(
+  id: number,
+  motivo: MotivoReemplazo,
+  nota: string
+): Promise<CodigoProvisionalResponse> {
+  return request<CodigoProvisionalResponse>(`/api/titulares/${id}/reemplazar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { motivo, nota } : { motivo }),
+  });
+}
+
+export function aprobarAlta(id: number, nota: string): Promise<CodigoProvisionalResponse> {
+  return request<CodigoProvisionalResponse>(`/api/titulares/${id}/aprobar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { nota } : {}),
+  });
+}
+
+export function regenerarCodigoProvisional(id: number): Promise<CodigoProvisionalResponse> {
+  return request<CodigoProvisionalResponse>(`/api/titulares/${id}/regenerar-codigo`, {
+    method: 'POST',
   });
 }
 
