@@ -44,10 +44,10 @@ npm install
 npm test
 npm run build
 
-# anchor/chaincode/ (Go, solo el contrato que corre en la red Fabric — ADR-0017, llega con #82)
+# anchor/chaincode/ (Go, solo el contrato que corre en la red Fabric — ADR-0017, #82)
 go test ./...
 
-# infra/fabric/ (red Fabric 2.5 en Docker — ADR-0017, llega con #82)
+# infra/fabric/ (red Fabric 2.5 en Docker — ADR-0017, #82): infra/fabric/crear-red.sh una sola vez
 # Se crea una sola vez y después solo se detiene y arranca; nunca `network.sh down`,
 # que borra el ledger. Ver infra/fabric/README.md.
 
