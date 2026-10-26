@@ -1161,6 +1161,39 @@ cuentan en los lotes, y se distinguen por su decisión.
   (#93).
 - Sigue el límite de proceso por archivos (ADR-0005): ni Python importa Node ni al revés.
 
+**Enmienda (2026-10-26) — Texto libre del historial de cambios y certificado del portal.**
+Cierra dos puntos que quedaban abiertos. Decisión conjunta: la propone Jhunier y queda
+aceptada cuando Duverney apruebe el PR que la trae.
+
+**1. Texto libre en `cambios_configuracion`.** Las notas y los motivos libres que escribe
+el `admin` (por ejemplo, la `nota` al resolver un alta en revisión, o el motivo de una
+revocación) pueden contener datos personales. Hoy no se anonimizan, porque la tabla es
+de solo agregar (límite conocido, #108).
+
+**Decisión.** Se anonimizan con la misma regla que `registros.motivo` y `consultas_cid`
+(punto 10):
+
+- al cierre del piloto, y por plazo si el `admin` configuró uno, se eliminan las claves
+  de texto libre (`nota`, `motivo` cuando no es de lista cerrada) dentro de
+  `valor_anterior` y `valor_nuevo`;
+- se conservan `usuario_id`, `entidad`, `entidad_id`, `accion`, `en` y los motivos de
+  lista cerrada;
+- el disparador de solo agregar se reemplaza por uno que admite **solo** esa limpieza: no
+  permite cambiar ninguna otra columna ni agregar contenido.
+
+La interfaz mantiene el aviso de no escribir datos personales, porque hasta el cierre el
+texto sigue ahí.
+
+**2. Certificado del portal del titular.** El «pendiente de decidir» de este ADR se
+cierra así: **en el piloto se sigue con la huella SHA-256 publicada** en el cartel de la
+sede y en la página de alta. Es la mitigación que ya está implementada y no tiene costo.
+El dominio propio con Let's Encrypt (DNS-01) se reevalúa después del piloto, con lo que
+se observe sobre cuántos titulares comparan la huella.
+
+**Implementación.** El punto 1 va en un issue aparte; por la regla de reparto de
+`CLAUDE.md` le toca a Duverney. Incluye pruebas de que el disparador nuevo rechaza
+cualquier otra modificación. El punto 2 no requiere código.
+
 ---
 
 ## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps
