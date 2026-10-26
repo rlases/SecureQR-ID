@@ -36,6 +36,18 @@ coincide, reescribe el mismo recibo, byte a byte. Por eso `anchored_at` es la fe
 la transacción en el ledger y no la hora local de la corrida: `evidence-log
 record-receipt` acepta el recibo repetido sin ver un anclaje distinto.
 
+## Comando `verificar` (issue #93)
+
+```bash
+node dist/cli.js verificar --batch lote.json --evidence evidencia.json [--leaf-index N]
+```
+
+Lee la raíz del lote desde la red con `consultarRaiz` (sin emitir transacciones), la compara
+con la del lote local y verifica contra ella la prueba de inclusión de una hoja (por
+defecto, la del medio); comprueba además que una hoja alterada no verifica. Escribe la
+evidencia: transacción, bloque, raíz, hoja y prueba. Códigos: 0 si verifica, 1 si el lote no
+está en la red o falla la conexión, 2 por uso, 3 (alerta) si la raíz o la prueba no coinciden.
+
 ## Configuración
 
 Todo sale del entorno, sin valores por defecto:
