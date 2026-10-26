@@ -73,21 +73,24 @@ referencia visual — la fuente de verdad es el triple HSL.
 | `--border` / `--input` | `220 13% 91%` | `#e5e7eb` | Bordes, contornos de input |
 | `--destructive` | `0 72% 51%` | `#dc2828` | Errores, acciones destructivas |
 | `--destructive-foreground` | `0 0% 100%` | `#ffffff` | Texto sobre `--destructive` |
+| `--success` / `--success-muted` | `163 94% 24%` / `149 80% 90%` | `#047857` / `#d1fae5` | Éxito: texto `-700` sobre fondo `-100` (4,9:1) |
+| `--warning` / `--warning-muted` | `26 90% 37%` / `48 96% 89%` | `#b45309` / `#fef3c7` | Advertencia: texto `-700` sobre fondo `-100` (4,5:1) |
+| `--success-foreground` / `--warning-foreground` | `0 0% 100%` | `#ffffff` | Texto sobre el tono `-700` sólido |
 | `--radius` | — | `0.5rem` | Radio de borde base (botones, cards, inputs) |
 
-**No existen `--success`/`--warning` como variables de token.** Los estados de éxito y
-advertencia se resuelven hoy con clases sueltas de la paleta de Tailwind, no con
-tokens del sistema:
+**`--success` y `--warning` son tokens desde #129**, igual que `--destructive`. Antes
+eran clases sueltas (`emerald-100/700`, `amber-100/700`); ahora se usan así:
 
 ```
-success: 'bg-emerald-100 text-emerald-700'   (DashboardPage.tsx)
-warning: 'bg-amber-100 text-amber-700'
+success: 'bg-success-muted text-success'   (DashboardPage.tsx)
+warning: 'bg-warning-muted text-warning'
 neutral: 'bg-slate-100 text-slate-700'
 ```
 
-La misma pareja `emerald-100/emerald-700` se reutiliza para el badge "Entrada" y
-`amber-100/amber-700` para "Salida" (`DashboardPage.tsx`, `InformesPage.tsx`). Es un
-patrón consistente en la práctica, pero no está tokenizado — ver divergencias.
+La pareja de éxito marca el badge "Entrada" y la de advertencia, "Salida"
+(`DashboardPage.tsx`, `InformesPage.tsx`); la de éxito también el "Vigente" del
+historial de correcciones. `test/tokensEstado.test.ts` falla si vuelve a aparecer una
+clase `emerald`/`amber` suelta.
 "Entrada" y "Salida" son movimientos de asistencia: no equivalen a las decisiones
 criptográficas "aceptada" y "rechazada" del verificador.
 
@@ -297,12 +300,10 @@ no se encontró una regla global equivalente en `mi-app-qr/client/src/index.css`
 
 ## Modo oscuro
 
-**No implementado en ninguna de las dos apps.** `tailwind.config.ts` de
-`mi-app-qr/client` declara `darkMode: ['class']`, pero ningún componente agrega la
-clase `.dark` ni existe un bloque de variables CSS para modo oscuro — es andamiaje del
-scaffold de shadcn/ui que nunca se activó, no una funcionalidad real. `verifier-web/`
-no tiene ninguna referencia a modo oscuro. Se documenta como pendiente, no como
-decisión tomada.
+**Fuera del piloto, por acuerdo (#55).** No está implementado en ninguna de las dos
+apps. El `darkMode: ['class']` inerte que traía `tailwind.config.ts` de
+`mi-app-qr/client` (andamiaje de shadcn/ui que nunca se activó) se retiró en #129 para
+no sugerir una capacidad que no existe. Queda como pendiente para después del piloto.
 
 ---
 
@@ -400,5 +401,6 @@ conservar la distinción entre estándar aprobado y adopción pendiente en cada 
 
 Abierto por Jhunier. Duverney revisó explícitamente el contenido completo y propuso
 cada fila; Jhunier las confirmó (enlaces en la tabla de arriba). Con eso se cierra el
-acuerdo de #55. La adopción en cada app (tokens, contraste de `.primary-button`,
-pesos tipográficos, retirar `darkMode`) es trabajo pendiente en PR aparte.
+acuerdo de #55. La adopción en cada app va en PR aparte: tokens de estado y retirar
+`darkMode` en `mi-app-qr/client` (#129); contraste de `.primary-button` y pesos
+tipográficos en `verifier-web/` (#130).
