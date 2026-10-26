@@ -164,7 +164,7 @@ export function HistorialCorreccionesModal({
                         {index === 0 ? 'Registro original' : `Corrección ${index}`}
                       </h3>
                       {isCurrent && (
-                        <span className="rounded-sm bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
+                        <span className="rounded-sm bg-success-muted px-2 py-1 text-xs font-semibold text-success">
                           Vigente
                         </span>
                       )}

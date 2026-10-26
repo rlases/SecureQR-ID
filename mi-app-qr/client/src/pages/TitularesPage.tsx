@@ -288,6 +288,17 @@ function DialogoResolucion({
                       La credencial anterior se revoca y entra en la próxima lista de revocados.
                     </p>
                   )}
+                  {titular.registroVigenteEstado === 'suspendido' && (
+                    <p
+                      role="note"
+                      aria-label="Registro vigente suspendido"
+                      className="rounded-md border border-destructive p-3 text-sm text-foreground"
+                    >
+                      <strong>Atención:</strong> el registro vigente con este documento está
+                      suspendido. Si eliges «misma persona», el alta nueva queda activa con
+                      credencial: en la práctica <strong>se levanta la suspensión</strong>.
+                    </p>
+                  )}
                 </fieldset>
               )}
               {resolucion !== 'regenerar' && (
