@@ -1325,8 +1325,8 @@ mano. En los PR solo corre si cambia algo que toca la red real:
 
 - `infra/fabric/`;
 - el contrato (`anchor/chaincode/`);
-- el cliente de Fabric (`anchor/src/fabric.ts`, `anchor/src/cli.ts` y sus dependencias);
-- los comandos del ciclo (`evidence-log/.../cli.py`).
+- el cliente de Fabric y sus dependencias (`anchor/src/` y el `package.json` de `anchor/`);
+- los comandos del ciclo y lo que importan (`evidence-log/src/` y su `pyproject.toml`).
 
 **Por qué.** El repositorio es privado y sus minutos de Actions son limitados (3000 al
 mes). En octubre de 2026 se agotaron y el CI quedó detenido varios días. En el mismo
