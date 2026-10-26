@@ -1,4 +1,5 @@
 import type {
+  EstadoAnclaje,
   LoginRequest,
   LoginResponse,
   CreateRegistroRequest,
@@ -320,6 +321,11 @@ export function exportarRevocadosAhora(): Promise<{ cantidad: number; ruta: stri
 export const URL_REVOCADOS = '/api/titulares/revocados.txt';
 
 // Plazo de conservación de registros y consultas (ADR-0016, punto 10). null = hasta el cierre.
+// Estado del ciclo de anclaje (ADR-0017, punto 6; issue #139). Solo admin.
+export function getEstadoAnclaje(): Promise<EstadoAnclaje> {
+  return request<EstadoAnclaje>('/api/anclaje/estado');
+}
+
 export function getConservacion(): Promise<{ plazoDias: number | null }> {
   return request<{ plazoDias: number | null }>('/api/titulares/conservacion');
 }

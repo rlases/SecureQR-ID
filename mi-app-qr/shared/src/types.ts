@@ -260,6 +260,9 @@ export interface TitularAdmin {
   provisionalVenceEn: string | null;
   // Para un alta en revisión: el registro vigente con su mismo documento, si lo hay.
   registroVigenteId: number | null;
+  // Su estado: si está suspendido, reemplazarlo como la misma persona levanta la
+  // suspensión en la práctica, y la interfaz lo advierte (issue #132).
+  registroVigenteEstado: 'activo' | 'suspendido' | null;
   creadoEn: string;
 }
 
@@ -269,3 +272,18 @@ export interface CodigoProvisionalResponse {
   codigoProvisional: string;
   venceEn: string;
 }
+
+// --- Estado del anclaje para el panel del admin (ADR-0017, punto 6; issue #139) ---------
+
+export interface ResumenAnclaje {
+  eventosPendientes: number;
+  pendienteMasAntiguo: string | null;
+  ultimoLote: string | null;
+  ultimoAnclaje: string | null;
+  escritoEn: string;
+}
+
+export type EstadoAnclaje =
+  | { estado: 'sin_configurar' }
+  | { estado: 'ok'; resumen: ResumenAnclaje }
+  | { estado: 'alerta'; detalle: string; resumen: ResumenAnclaje | null };

@@ -61,6 +61,7 @@ interface TitularRow {
   dispositivo_activo: number;
   provisional_vence_en: string | null;
   registro_vigente_id: number | null;
+  registro_vigente_estado: 'activo' | 'suspendido' | null;
   creado_en: string;
 }
 
@@ -75,7 +76,11 @@ export function listTitulares(db: Database.Database, estado?: EstadoTitular): Ti
               CASE WHEN t.estado = 'en_revision' THEN
                 (SELECT v.id FROM titulares v WHERE v.documento = t.documento
                    AND v.estado IN ('activo', 'suspendido'))
-              END AS registro_vigente_id
+              END AS registro_vigente_id,
+              CASE WHEN t.estado = 'en_revision' THEN
+                (SELECT v.estado FROM titulares v WHERE v.documento = t.documento
+                   AND v.estado IN ('activo', 'suspendido'))
+              END AS registro_vigente_estado
        FROM titulares t JOIN estamentos e ON e.id = t.estamento_id
        WHERE t.estado <> 'anonimizado' AND (? IS NULL OR t.estado = ?)
        ORDER BY t.nombre, t.id`
@@ -93,6 +98,7 @@ export function listTitulares(db: Database.Database, estado?: EstadoTitular): Ti
     dispositivoActivo: r.dispositivo_activo === 1,
     provisionalVenceEn: r.provisional_vence_en,
     registroVigenteId: r.registro_vigente_id,
+    registroVigenteEstado: r.registro_vigente_estado,
     creadoEn: r.creado_en,
   }));
 }

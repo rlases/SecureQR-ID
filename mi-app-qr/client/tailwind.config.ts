@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
+// Sin modo oscuro: queda fuera del piloto (acuerdo de diseño #55).
 const config: Config = {
-  darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
@@ -25,6 +25,16 @@ const config: Config = {
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
+        },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+          muted: 'hsl(var(--success-muted))',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+          foreground: 'hsl(var(--warning-foreground))',
+          muted: 'hsl(var(--warning-muted))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',

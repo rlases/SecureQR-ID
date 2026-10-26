@@ -10,6 +10,7 @@ import { anonimizarVencidos } from './titulares/anonimizacion.js';
 import { claveAsignaciones } from './titulares/asignaciones.js';
 import { crearClienteEmisor, leerSecretoEmisor } from './emision/clienteEmisor.js';
 import { escribirCabeza, verificarContraCompromisos } from './titulares/compromiso.js';
+import { leerEstadoAnclaje } from './anclaje/estado.js';
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
@@ -76,6 +77,7 @@ async function main(): Promise<void> {
     emisor,
     timeZone: process.env.SITE_TIME_ZONE,
     compromisosPath: process.env.ASIGNACIONES_COMPROMISOS_PATH,
+    anclajeEstadoPath: process.env.ANCLAJE_ESTADO_PATH,
   });
 
   // Compromiso externo del historial cid → titular (enmienda de 2026-10-25 a ADR-0016,
@@ -101,6 +103,19 @@ async function main(): Promise<void> {
     };
     verificar();
     setInterval(verificar, UNA_HORA_MS).unref();
+  }
+
+  // Alerta de anclaje (ADR-0017, punto 6; #139): cada hora se revisa el estado que deja el
+  // ciclo de evidence-log y se registra una ALERTA si hay eventos sin anclar desde hace más
+  // de 2 horas o si el ciclo dejó de escribir. El panel del admin muestra lo mismo.
+  const estadoAnclajePath = process.env.ANCLAJE_ESTADO_PATH;
+  if (estadoAnclajePath) {
+    const revisar = () => {
+      const r = leerEstadoAnclaje(estadoAnclajePath, new Date());
+      if (r.estado === 'alerta') console.error(`ALERTA de anclaje: ${r.detalle}`);
+    };
+    revisar();
+    setInterval(revisar, UNA_HORA_MS).unref();
   }
 
   // Exportación diaria de cid revocados para el refirmado del custodio (ADR-0015 y
