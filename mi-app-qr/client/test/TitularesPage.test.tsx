@@ -35,6 +35,7 @@ const ana = {
   dispositivoActivo: true,
   provisionalVenceEn: null,
   registroVigenteId: null,
+  registroVigenteEstado: null,
   creadoEn: '2026-10-24T15:00:00.000Z',
 };
 
@@ -47,6 +48,7 @@ const anaNueva = {
   estamentoConfirmado: true,
   dispositivoActivo: false,
   registroVigenteId: 1,
+  registroVigenteEstado: 'activo' as const,
 };
 
 function renderPage() {
@@ -154,6 +156,7 @@ describe('TitularesPage', () => {
     expect(enviar).toBeDisabled();
     await user.click(within(dialogo).getByLabelText(/El registro anterior era indebido/));
     expect(within(dialogo).getByText(/se revoca y entra en la próxima lista/)).toBeInTheDocument();
+    expect(within(dialogo).queryByRole('note', { name: 'Registro vigente suspendido' })).not.toBeInTheDocument();
     await user.click(enviar);
     await waitFor(() =>
       expect(apiClient.reemplazarRegistro).toHaveBeenCalledWith(5, 'registro_anterior_indebido', '')
@@ -163,6 +166,25 @@ describe('TitularesPage', () => {
     await user.click(within(dialogo).getByRole('button', { name: 'Ya lo entregué, cerrar' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.queryByText('ABCD-EFGH-IJKL-MNOP')).not.toBeInTheDocument();
+  });
+
+  it('advierte que reemplazar un registro suspendido levanta la suspensión (#132)', async () => {
+    const anaSuspendida = { ...ana, estado: 'suspendido' as const };
+    const conSuspendido = { ...anaNueva, registroVigenteEstado: 'suspendido' as const };
+    vi.mocked(apiClient.listTitulares).mockResolvedValue({ titulares: [anaSuspendida, conSuspendido] });
+    vi.mocked(apiClient.reemplazarRegistro).mockResolvedValue({
+      codigoProvisional: 'ABCD-EFGH-IJKL-MNOP',
+      venceEn: '2026-10-28T15:00:00.000Z',
+    });
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Reemplazar registro con el alta de Ana Nueva' }));
+    const dialogo = screen.getByRole('dialog', { name: /Reemplazar registro: Ana Nueva/ });
+    const aviso = within(dialogo).getByRole('note', { name: 'Registro vigente suspendido' });
+    expect(aviso).toHaveTextContent(/se levanta la suspensión/);
+    await user.click(within(dialogo).getByLabelText(/Es la misma persona/));
+    await user.click(within(dialogo).getByRole('button', { name: 'Reemplazar' }));
+    await waitFor(() => expect(apiClient.reemplazarRegistro).toHaveBeenCalledWith(5, 'misma_persona', ''));
   });
 
   it('rechaza un alta en revisión con una nota opcional', async () => {
@@ -179,7 +201,7 @@ describe('TitularesPage', () => {
   });
 
   it('sin registro vigente ofrece aprobar, y regenera el código provisional pendiente', async () => {
-    const sinAnterior = { ...anaNueva, registroVigenteId: null };
+    const sinAnterior = { ...anaNueva, registroVigenteId: null, registroVigenteEstado: null };
     const pendiente = { ...ana, id: 7, nombre: 'Luis Sintético', provisionalVenceEn: '2026-10-28T15:00:00.000Z' };
     vi.mocked(apiClient.listTitulares).mockResolvedValue({ titulares: [sinAnterior, pendiente] });
     vi.mocked(apiClient.regenerarCodigoProvisional).mockResolvedValue({

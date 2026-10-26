@@ -15,6 +15,14 @@
     --secondary-foreground: 222 47% 11%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
+    /* Estados de éxito y advertencia (acuerdo de diseño #55, issue #129). El texto de
+       estado usa el tono -700 sobre el -100: 4,9:1 y 4,5:1, cumple WCAG AA. */
+    --success: 163 94% 24%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 149 80% 90%;
+    --warning: 26 90% 37%;
+    --warning-foreground: 0 0% 100%;
+    --warning-muted: 48 96% 89%;
     --muted: 220 14% 96%;
     --muted-foreground: 215 16% 47%;
     --accent: 220 14% 96%;

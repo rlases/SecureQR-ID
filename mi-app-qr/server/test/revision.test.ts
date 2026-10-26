@@ -275,12 +275,25 @@ describe('código provisional de entrega', () => {
   it('el listado muestra el registro vigente del alta en revisión y el provisional pendiente', async () => {
     const { anterior, nuevoId } = conflicto('7100000045');
     let lista = (await admin.get('/api/titulares?estado=en_revision')).body.titulares;
-    expect(lista).toEqual([expect.objectContaining({ id: nuevoId, registroVigenteId: anterior.id })]);
+    expect(lista).toEqual([
+      expect.objectContaining({ id: nuevoId, registroVigenteId: anterior.id, registroVigenteEstado: 'activo' }),
+    ]);
     await admin.post(`/api/titulares/${nuevoId}/reemplazar`).send({ motivo: 'misma_persona' });
     lista = (await admin.get('/api/titulares?estado=activo')).body.titulares;
     expect(lista.find((t: { id: number }) => t.id === nuevoId).provisionalVenceEn).toBeTruthy();
     lista = (await admin.get('/api/titulares?estado=reemplazado')).body.titulares;
     expect(lista.map((t: { id: number }) => t.id)).toEqual([anterior.id]);
+  }, 30_000);
+
+  it('el listado avisa si el registro vigente del alta en revisión está suspendido (#132)', async () => {
+    const { anterior, nuevoId } = conflicto('7100000046');
+    expect((await admin.post(`/api/titulares/${anterior.id}/revocar`).send({ motivo: 'perdió el carné' })).status).toBe(200);
+    const lista = (await admin.get('/api/titulares?estado=en_revision')).body.titulares;
+    expect(lista).toEqual([
+      expect.objectContaining({ id: nuevoId, registroVigenteId: anterior.id, registroVigenteEstado: 'suspendido' }),
+    ]);
+    const otros = (await admin.get('/api/titulares?estado=suspendido')).body.titulares;
+    expect(otros[0].registroVigenteEstado).toBeNull();
   }, 30_000);
 });
 

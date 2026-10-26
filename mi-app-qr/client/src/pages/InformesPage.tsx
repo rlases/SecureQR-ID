@@ -187,8 +187,8 @@ export default function InformesPage() {
                       <span
                         className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
                           registro.tipo === 'entrada'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                            ? 'bg-success-muted text-success'
+                            : 'bg-warning-muted text-warning'
                         }`}
                       >
                         {registro.tipo === 'entrada' ? 'Entrada' : 'Salida'}

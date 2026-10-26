@@ -260,6 +260,9 @@ export interface TitularAdmin {
   provisionalVenceEn: string | null;
   // Para un alta en revisión: el registro vigente con su mismo documento, si lo hay.
   registroVigenteId: number | null;
+  // Su estado: si está suspendido, reemplazarlo como la misma persona levanta la
+  // suspensión en la práctica, y la interfaz lo advierte (issue #132).
+  registroVigenteEstado: 'activo' | 'suspendido' | null;
   creadoEn: string;
 }
 
