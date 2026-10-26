@@ -228,17 +228,23 @@ export function createPortalRouter(opciones: {
     }
     const titular = db(req)
       .prepare(
-        `SELECT id, codigo_recuperacion_hash FROM titulares
+        `SELECT id, codigo_recuperacion_hash, provisional_vence_en FROM titulares
          WHERE documento = ? AND estado IN ('activo', 'suspendido')`
       )
-      .get(documento) as { id: number; codigo_recuperacion_hash: string | null } | undefined;
+      .get(documento) as
+      | { id: number; codigo_recuperacion_hash: string | null; provisional_vence_en: string | null }
+      | undefined;
     // Siempre se compara contra un hash, exista o no el documento, para no revelar cuáles
     // están registrados por el tiempo de respuesta.
     const valido = await verifyRecoveryCode(
       codigo,
       titular?.codigo_recuperacion_hash ?? (await hashDeRelleno())
     );
-    if (!titular || !titular.codigo_recuperacion_hash || !valido) {
+    // Un código provisional de entrega vencido (enmienda de 2026-10-24) recibe la misma
+    // respuesta que uno incorrecto; el admin puede regenerarlo.
+    const vencido =
+      titular?.provisional_vence_en != null && titular.provisional_vence_en <= ahora.toISOString();
+    if (!titular || !titular.codigo_recuperacion_hash || !valido || vencido) {
       return res.status(401).json({ error: 'documento o código incorrectos' });
     }
     const nuevoCodigo = generateRecoveryCode();
@@ -247,10 +253,12 @@ export function createPortalRouter(opciones: {
       // Consumir solo el hash que se verificó: otro request puede haberlo renovado
       // durante bcrypt, o el titular puede haber sido anonimizado mientras tanto.
       const cambio = db(req)
-        .prepare(`UPDATE titulares SET codigo_recuperacion_hash = ?
+        // Al canjear un código provisional, el propio que lo sustituye ya no vence.
+        .prepare(`UPDATE titulares SET codigo_recuperacion_hash = ?, provisional_vence_en = NULL
                   WHERE id = ? AND codigo_recuperacion_hash = ?
-                    AND estado IN ('activo', 'suspendido')`)
-        .run(nuevoHash, titular.id, titular.codigo_recuperacion_hash);
+                    AND estado IN ('activo', 'suspendido')
+                    AND (provisional_vence_en IS NULL OR provisional_vence_en > ?)`)
+        .run(nuevoHash, titular.id, titular.codigo_recuperacion_hash, ahora.toISOString());
       if (cambio.changes !== 1) return null;
       db(req).prepare('UPDATE intentos_recuperacion SET exito = 1 WHERE id = ?').run(intentoId);
       return linkDevice(db(req), titular.id, ahora);

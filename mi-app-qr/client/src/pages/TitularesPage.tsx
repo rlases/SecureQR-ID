@@ -1,12 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, RefreshCw } from 'lucide-react';
-import type { EstadoTitular, TitularAdmin } from '@mi-app-qr/shared';
+import type {
+  CodigoProvisionalResponse,
+  EstadoTitular,
+  MotivoReemplazo,
+  TitularAdmin,
+} from '@mi-app-qr/shared';
 import {
   ApiError,
   URL_REVOCADOS,
   accionTitular,
+  aprobarAlta,
   confirmarEstamentoTitular,
+  rechazarAlta,
+  reemplazarRegistro,
+  regenerarCodigoProvisional,
   exportarRevocadosAhora,
   getConservacion,
   listTitulares,
@@ -19,13 +28,15 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
 // Gestión de titulares por el admin (ADR-0016, puntos 5 y 9; issue #87): revocar una
-// credencial, cortar el vínculo de un teléfono, reactivar, confirmar el estamento y
-// exportar los cid revocados para que el custodio los firme.
+// credencial, cortar el vínculo de un teléfono, reactivar, confirmar el estamento,
+// resolver las altas en revisión (issue #109) y exportar los cid revocados para que el
+// custodio los firme.
 
 const ESTADOS: Record<EstadoTitular, string> = {
   activo: 'Activo',
   en_revision: 'En revisión',
   suspendido: 'Suspendido',
+  reemplazado: 'Reemplazado',
   anonimizado: 'Anonimizado',
 };
 
@@ -127,6 +138,190 @@ function DialogoAccion({
             </Button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+type Resolucion = 'rechazar' | 'reemplazar' | 'aprobar' | 'regenerar';
+
+const RESOLUCIONES: Record<Resolucion, { titulo: string; ayuda: string; boton: string }> = {
+  rechazar: {
+    titulo: 'Rechazar alta',
+    ayuda:
+      'Por ejemplo, porque alguien usó el documento de otra persona. Los datos de esta alta se anonimizan de inmediato; el registro vigente no cambia.',
+    boton: 'Rechazar alta',
+  },
+  reemplazar: {
+    titulo: 'Reemplazar registro',
+    ayuda:
+      'El registro vigente con este documento queda reemplazado y su teléfono desvinculado. Esta alta queda activa y recibe un código provisional que entregas en persona.',
+    boton: 'Reemplazar',
+  },
+  aprobar: {
+    titulo: 'Aprobar alta',
+    ayuda:
+      'Ya no hay un registro vigente con este documento. Esta alta queda activa y recibe un código provisional que entregas en persona.',
+    boton: 'Aprobar',
+  },
+  regenerar: {
+    titulo: 'Nuevo código provisional',
+    ayuda: 'El código provisional anterior deja de servir en este momento.',
+    boton: 'Generar código',
+  },
+};
+
+const MOTIVOS_REEMPLAZO: Record<MotivoReemplazo, string> = {
+  misma_persona: 'Es la misma persona (cambió de teléfono)',
+  registro_anterior_indebido: 'El registro anterior era indebido (documento ajeno)',
+};
+
+function DialogoResolucion({
+  titular,
+  resolucion,
+  onCancel,
+}: {
+  titular: TitularAdmin;
+  resolucion: Resolucion;
+  onCancel: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [motivo, setMotivo] = useState<MotivoReemplazo | ''>('');
+  const [nota, setNota] = useState('');
+  const [pendiente, setPendiente] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // El código vive solo en este estado: no pasa por la caché de consultas ni de mutaciones,
+  // y desaparece al cerrar el diálogo.
+  const [codigo, setCodigo] = useState<CodigoProvisionalResponse | null>(null);
+  const ref = useModalFocus(true, () => {
+    if (!pendiente) onCancel();
+  });
+  const texto = RESOLUCIONES[resolucion];
+  const listo = resolucion !== 'reemplazar' || motivo !== '';
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!listo) return;
+    setPendiente(true);
+    setError(null);
+    try {
+      const notaLimpia = nota.trim();
+      if (resolucion === 'rechazar') {
+        await rechazarAlta(titular.id, notaLimpia);
+        queryClient.invalidateQueries({ queryKey: ['titulares'] });
+        onCancel();
+        return;
+      }
+      const respuesta =
+        resolucion === 'reemplazar'
+          ? await reemplazarRegistro(titular.id, motivo as MotivoReemplazo, notaLimpia)
+          : resolucion === 'aprobar'
+            ? await aprobarAlta(titular.id, notaLimpia)
+            : await regenerarCodigoProvisional(titular.id);
+      setCodigo(respuesta);
+      queryClient.invalidateQueries({ queryKey: ['titulares'] });
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? `No se pudo completar: ${e.message}.` : 'No se pudo completar. Inténtalo de nuevo.'
+      );
+    } finally {
+      setPendiente(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="resolucion-title"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-background p-6 shadow-xl"
+      >
+        <h2 id="resolucion-title" className="mb-2 text-lg font-semibold text-foreground">
+          {texto.titulo}: {titular.nombre}
+        </h2>
+        {codigo ? (
+          <div className="space-y-4">
+            <div role="status" className="space-y-2">
+              <p className="text-sm text-foreground">
+                Código provisional para {titular.nombre}. Se muestra <strong>una sola vez</strong>.
+              </p>
+              <p className="break-all font-mono text-xl tracking-wider text-foreground">
+                {codigo.codigoProvisional}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Entrégalo en persona, después de verificar su identidad. Lo usa en «Recuperar mi
+                QR» con su documento, idealmente en ese mismo momento. Vence el{' '}
+                {new Date(codigo.venceEn).toLocaleString('es-CO')}.
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={onCancel}>
+                Ya lo entregué, cerrar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Documento {titular.documento}. {texto.ayuda}
+            </p>
+            <form onSubmit={onSubmit} className="space-y-4">
+              {resolucion === 'reemplazar' && (
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium text-foreground">Motivo</legend>
+                  {(Object.keys(MOTIVOS_REEMPLAZO) as MotivoReemplazo[]).map((m) => (
+                    <label key={m} className="flex items-center gap-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="motivo-reemplazo"
+                        value={m}
+                        checked={motivo === m}
+                        onChange={() => setMotivo(m)}
+                      />
+                      {MOTIVOS_REEMPLAZO[m]}
+                    </label>
+                  ))}
+                  {motivo === 'registro_anterior_indebido' && (
+                    <p className="text-xs text-muted-foreground">
+                      La credencial anterior se revoca y entra en la próxima lista de revocados.
+                    </p>
+                  )}
+                </fieldset>
+              )}
+              {resolucion !== 'regenerar' && (
+                <div className="space-y-2">
+                  <Label htmlFor="resolucion-nota">Nota (opcional)</Label>
+                  <Input
+                    id="resolucion-nota"
+                    maxLength={200}
+                    value={nota}
+                    onChange={(e) => setNota(e.target.value)}
+                    placeholder="Queda en el registro de cambios; sin datos personales"
+                  />
+                </div>
+              )}
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" disabled={pendiente} onClick={onCancel}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant={resolucion === 'rechazar' ? 'destructive' : 'default'}
+                  disabled={pendiente || !listo}
+                >
+                  {texto.boton}
+                </Button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
@@ -235,6 +430,7 @@ export default function TitularesPage() {
   const queryClient = useQueryClient();
   const [estado, setEstado] = useState<EstadoTitular | ''>('');
   const [accion, setAccion] = useState<{ titular: TitularAdmin; accion: AccionTitular } | null>(null);
+  const [resolucion, setResolucion] = useState<{ titular: TitularAdmin; resolucion: Resolucion } | null>(null);
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['titulares', estado],
     queryFn: () => listTitulares(estado || undefined),
@@ -268,6 +464,7 @@ export default function TitularesPage() {
               <option value="activo">Activos</option>
               <option value="en_revision">En revisión</option>
               <option value="suspendido">Suspendidos</option>
+              <option value="reemplazado">Reemplazados</option>
             </select>
           </div>
         </div>
@@ -315,7 +512,22 @@ export default function TitularesPage() {
                         <span className="block text-xs text-muted-foreground">Pendiente de confirmar</span>
                       )}
                     </td>
-                    <td className="py-2 text-foreground">{ESTADOS[t.estado]}</td>
+                    <td className="py-2 text-foreground">
+                      {ESTADOS[t.estado]}
+                      {t.provisionalVenceEn && (
+                        <span className="block text-xs text-muted-foreground">
+                          Código provisional sin canjear (vence{' '}
+                          {new Date(t.provisionalVenceEn).toLocaleDateString('es-CO')})
+                        </span>
+                      )}
+                      {t.estado === 'en_revision' && (
+                        <span className="block text-xs text-muted-foreground">
+                          {t.registroVigenteId === null
+                            ? 'Sin registro vigente con este documento'
+                            : 'Documento repetido'}
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2 text-foreground">{t.dispositivoActivo ? 'Vinculado' : '—'}</td>
                     <td className="py-2">
                       <div className="flex flex-wrap justify-end gap-2">
@@ -350,6 +562,42 @@ export default function TitularesPage() {
                             Desvincular teléfono de {t.nombre}
                           </Button>
                         )}
+                        {t.estado === 'en_revision' && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setResolucion({
+                                  titular: t,
+                                  resolucion: t.registroVigenteId === null ? 'aprobar' : 'reemplazar',
+                                })
+                              }
+                            >
+                              {t.registroVigenteId === null ? 'Aprobar alta de' : 'Reemplazar registro con el alta de'}{' '}
+                              {t.nombre}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setResolucion({ titular: t, resolucion: 'rechazar' })}
+                            >
+                              Rechazar alta de {t.nombre}
+                            </Button>
+                          </>
+                        )}
+                        {t.estado === 'activo' && t.provisionalVenceEn && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setResolucion({ titular: t, resolucion: 'regenerar' })}
+                          >
+                            Nuevo código provisional para {t.nombre}
+                          </Button>
+                        )}
                         {t.estado === 'suspendido' && (
                           <Button
                             type="button"
@@ -376,6 +624,13 @@ export default function TitularesPage() {
 
       {accion && (
         <DialogoAccion titular={accion.titular} accion={accion.accion} onCancel={() => setAccion(null)} />
+      )}
+      {resolucion && (
+        <DialogoResolucion
+          titular={resolucion.titular}
+          resolucion={resolucion.resolucion}
+          onCancel={() => setResolucion(null)}
+        />
       )}
     </div>
   );

@@ -97,6 +97,16 @@ lado del servidor solo se guardan el SHA-256 de la llave y el bcrypt del código
   vigente y suspende al titular. Desde ese momento `puedeEmitir` no autoriza tokens.
 - `POST /api/titulares/:id/desvincular`: corta el vínculo del teléfono.
 - `POST /api/titulares/:id/reactivar`: credencial nueva para un titular suspendido.
+- Altas en revisión por documento repetido (enmienda de 2026-10-24 a ADR-0016, issue #109),
+  solo `admin`:
+  - `POST /api/titulares/:id/rechazar` (nota opcional): el alta se anonimiza de inmediato.
+  - `POST /api/titulares/:id/reemplazar` (`motivo`: `misma_persona` o
+    `registro_anterior_indebido`): el registro vigente pasa a `reemplazado`, su credencial a
+    `reemplazada` o `revocada` y su teléfono a `revocado`; el alta queda activa.
+  - `POST /api/titulares/:id/aprobar`: si ya no hay registro vigente con ese documento.
+  - `POST /api/titulares/:id/regenerar-codigo`: invalida el código provisional pendiente.
+  - Reemplazar, aprobar y regenerar devuelven **una sola vez** un código provisional
+    (`Cache-Control: no-store`) que vence a las 72 horas y se canjea en `POST /recuperar`.
 - `GET /api/titulares/revocados.txt`: los `cid` revocados, sin firmar, un `cid` por línea,
   en el formato de `secureqr-revocation sign`.
 - Con `REVOCADOS_EXPORT_PATH`, el servidor escribe ese archivo al arrancar y cada 24
