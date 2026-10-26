@@ -19,7 +19,7 @@ import {
   linkDevice,
   verifyRecoveryCode,
 } from './credencialesTitular.js';
-import { reservarIntento } from './limiteIntentos.js';
+import { reservarAlta, reservarIntento } from './limiteIntentos.js';
 
 // Portal del titular (ADR-0016, puntos 2 a 4; issue #84).
 //
@@ -106,6 +106,8 @@ export function requireDevice(req: Request, res: Response, next: NextFunction): 
 export function createPortalRouter(opciones: {
   secureCookies: boolean;
   huella: HuellaCertificado | null;
+  // Altas por IP en la ventana de `ALTA_VENTANA_MINUTOS` (issue #120).
+  altaMaxPorIp?: number;
 }): Router {
   const router = Router();
   router.use(cookieParser());
@@ -145,6 +147,11 @@ export function createPortalRouter(opciones: {
       return res.status(409).json({ error: 'el registro todavía no está abierto' });
     }
     const ahora = new Date();
+    if (!reservarAlta(db(req), req.ip ?? 'desconocida', ahora, opciones.altaMaxPorIp)) {
+      return res
+        .status(429)
+        .json({ error: 'demasiados registros desde este equipo; espera una hora o acude a un administrador' });
+    }
     const codigo = generateRecoveryCode();
     const codigoHash = await hashRecoveryCode(codigo);
     let resultado: { body: AltaTitularResponse; llave: string | null };

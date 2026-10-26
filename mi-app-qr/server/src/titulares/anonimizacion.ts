@@ -77,6 +77,7 @@ export function anonimizarCierre(
         WHERE motivo IS NOT NULL OR (NOT ${canonicalCidSql()} AND cid <> 'anon-' || id)`)
       .run().changes;
     db.prepare('DELETE FROM intentos_recuperacion').run();
+    db.prepare('DELETE FROM intentos_alta').run();
     const resultado = { titulares, registros, consultas };
     registrar(db, 'cierre', resultado, quien, ahora);
     return resultado;
@@ -141,6 +142,7 @@ export function anonimizarVencidos(
         WHERE en < ? AND (motivo IS NOT NULL OR (NOT ${canonicalCidSql()} AND cid <> 'anon-' || id))`)
       .run(limite.toISOString()).changes;
     db.prepare('DELETE FROM intentos_recuperacion WHERE en < ?').run(limite.toISOString());
+    db.prepare('DELETE FROM intentos_alta WHERE en < ?').run(limite.toISOString());
     const resultado = { titulares: 0, registros, consultas };
     if (registros > 0 || consultas > 0) registrar(db, 'plazo', resultado, quien, ahora);
     return resultado;
