@@ -19,9 +19,40 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ## Estado vigente — 2026-10-26
 
-### Sesión de Duverney — 2026-10-26 (mañana, hora UTC)
+### Cierre de la sesión de Jhunier — 2026-10-26 (tarde, hora UTC)
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Revisados, aprobados y fusionados por Jhunier:**
+
+- #134 a #138 y #140 (lote #129–#133 y #139), todos con el CI en verde;
+- #141 (handoff de Duverney);
+- #142 (la guía usa el `python` del entorno virtual en cron).
+
+**#133 sigue abierto:** se cierra cuando la guía se siga en el servidor del CCAV.
+
+**GitHub Actions: se agotaron los minutos y el repositorio ahora es público.**
+
+- El 26 de octubre se acabaron los 3000 minutos de Actions del mes y el CI dejó de arrancar: GitHub pedía pago, con el límite de gasto en $0.
+- **#143**, fusionado por Jhunier como administrador, sin la revisión cruzada ni el CI, porque había que tener la licencia nueva en `main` antes de publicar:
+  - **licencia: todos los derechos reservados**, en lugar de Apache-2.0 (`LICENSE`, `README.md`, `CITATION.cff`);
+  - en `ci.yml`, cada suite corre solo si cambió su módulo o una dependencia, y un PR de solo documentación no corre ninguna;
+  - la integración con Fabric pasa de cada noche a semanal (enmienda de 2026-10-26 a ADR-0017).
+- Después **Jhunier hizo público el repositorio**, con lo que Actions no tiene límite.
+- **Para Duverney:**
+  - revisar #143 después de fusionado; si algo no le convence, se corrige en otro PR;
+  - los commits anteriores al 26 de octubre siguen visibles con Apache-2.0 en el historial;
+  - la licencia nueva respalda legalmente, pero no impide la copia.
+- **#144** corrige el filtro: con `always()`, un flujo cancelado por concurrencia corría igual las doce suites. Pasa a `!cancelled()`.
+
+**Pendiente (decisiones conjuntas):**
+
+- qué hacer con el texto libre de `cambios_configuracion.motivo` antes del cierre del piloto;
+- el tag `v0.1.0`;
+- el certificado para los teléfonos;
+- los pendientes del documento de grado.
+
+### Sesión de Duverney — 2026-10-26 (mañana, hora UTC)
 
 **#128 aprobado y fusionado por Duverney:** rige la regla nueva de reparto (nivelar la
 carga acumulada). Conteo exacto en GitHub al aprobar: Jhunier 55 PR fusionados, Duverney
