@@ -23,6 +23,10 @@ import type {
   ResultadoConsultaCid,
   EstadoTitular,
   TitularAdmin,
+  QrNoDisponible,
+  QrTitular,
+  CodigoProvisionalResponse,
+  MotivoReemplazo,
 } from '@mi-app-qr/shared';
 
 export class ApiError extends Error {
@@ -263,6 +267,40 @@ export function accionTitular(
   });
 }
 
+// Resolución de altas en revisión (enmienda de 2026-10-24 a ADR-0016, issue #109). Las
+// respuestas con código provisional no se guardan en ninguna caché: el código vive solo en
+// el estado del diálogo hasta que el admin lo cierra.
+export function rechazarAlta(id: number, nota: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/api/titulares/${id}/rechazar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { nota } : {}),
+  });
+}
+
+export function reemplazarRegistro(
+  id: number,
+  motivo: MotivoReemplazo,
+  nota: string
+): Promise<CodigoProvisionalResponse> {
+  return request<CodigoProvisionalResponse>(`/api/titulares/${id}/reemplazar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { motivo, nota } : { motivo }),
+  });
+}
+
+export function aprobarAlta(id: number, nota: string): Promise<CodigoProvisionalResponse> {
+  return request<CodigoProvisionalResponse>(`/api/titulares/${id}/aprobar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { nota } : {}),
+  });
+}
+
+export function regenerarCodigoProvisional(id: number): Promise<CodigoProvisionalResponse> {
+  return request<CodigoProvisionalResponse>(`/api/titulares/${id}/regenerar-codigo`, {
+    method: 'POST',
+  });
+}
+
 export function confirmarEstamentoTitular(
   id: number,
   estamentoId: number
@@ -291,4 +329,28 @@ export function setConservacion(plazoDias: number | null): Promise<{ plazoDias: 
     method: 'PUT',
     body: JSON.stringify({ plazoDias }),
   });
+}
+
+// --- QR del titular (issue #85) ----------------------------------------------------------
+
+export type ResultadoQr =
+  | ({ tipo: 'qr' } & QrTitular)
+  | ({ tipo: 'sin_qr' } & QrNoDisponible)
+  | { tipo: 'sin_vinculo' };
+
+/**
+ * Pide un token nuevo con el teléfono vinculado. La respuesta no pasa por la caché de
+ * consultas ni por ningún almacenamiento del navegador (ADR-0012, ADR-0016 punto 3).
+ */
+export async function pedirQr(): Promise<ResultadoQr> {
+  const res = await fetch('/api/portal/qr', {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return { tipo: 'qr', ...(body as QrTitular) };
+  if (res.status === 401) return { tipo: 'sin_vinculo' };
+  if (res.status === 403 && body.motivo) return { tipo: 'sin_qr', ...(body as QrNoDisponible) };
+  throw new ApiError(body.error ?? 'Error desconocido', res.status);
 }

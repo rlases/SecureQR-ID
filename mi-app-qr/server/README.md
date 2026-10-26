@@ -66,10 +66,25 @@ Rutas bajo `/api/portal`, para el teléfono del titular:
   huella SHA-256 del certificado, para compararla con la del navegador.
 - `POST /alta`: alta con datos declarados y autorización de tratamiento de datos. Vincula
   el teléfono y devuelve el código de recuperación **una sola vez**. Un documento repetido
-  queda `en_revision`, sin vínculo ni código.
+  queda `en_revision`, sin vínculo ni código. Límite por IP: `ALTA_MAX_POR_IP` altas por
+  hora (10 por defecto), contando también las que quedan en revisión; al excederlo
+  responde 429.
 - `POST /recuperar`: documento + código vinculan un teléfono nuevo, desactivan el anterior
   y renuevan el código. Límite: 5 fallos por documento y 20 por IP cada 15 minutos.
 - `GET /yo`: estado de la credencial del teléfono vinculado.
+- `POST /qr` (issue #85): con el teléfono vinculado, aplica la puerta de emisión
+  (`puedeEmitir`: titular activo, credencial vigente y dentro de las ventanas de su
+  estamento, en la zona `SITE_TIME_ZONE`) y pide el token al servicio local de `issuer/`
+  con el `cid` vigente. Devuelve `{ token, expiraEn, renovarEnSegundos }` (unos 15 s antes
+  de vencer), o `403 { motivo, mensaje }` fuera de horario o con la credencial suspendida.
+  Límite: 6 tokens por minuto por teléfono, en memoria. La página del titular renueva el QR
+  sola y no guarda el token en `localStorage`, historial ni caché.
+
+  Configuración (en el entorno del servidor o de la app de escritorio, que lo hereda):
+  `ISSUER_SERVICE_URL` (solo `http://127.0.0.1:<puerto>` o `http://[::1]:<puerto>`) y
+  `SQRID_ISSUER_SECRET_FILE` (el mismo archivo que usa `secureqr-issuer serve`). Sin ellas
+  el portal funciona, pero responde 503 al pedir el QR. `npm run test:e2e:emision` prueba
+  el flujo contra el servicio real (ver el trabajo `emision-e2e` de CI).
 
 La sesión del titular es la cookie `sqrid_dispositivo` (llave de 256 bits, `HttpOnly`,
 `SameSite=Strict`, `Secure` con HTTPS, solo para `/api/portal`). No usa la sesión del
@@ -82,6 +97,16 @@ lado del servidor solo se guardan el SHA-256 de la llave y el bcrypt del código
   vigente y suspende al titular. Desde ese momento `puedeEmitir` no autoriza tokens.
 - `POST /api/titulares/:id/desvincular`: corta el vínculo del teléfono.
 - `POST /api/titulares/:id/reactivar`: credencial nueva para un titular suspendido.
+- Altas en revisión por documento repetido (enmienda de 2026-10-24 a ADR-0016, issue #109),
+  solo `admin`:
+  - `POST /api/titulares/:id/rechazar` (nota opcional): el alta se anonimiza de inmediato.
+  - `POST /api/titulares/:id/reemplazar` (`motivo`: `misma_persona` o
+    `registro_anterior_indebido`): el registro vigente pasa a `reemplazado`, su credencial a
+    `reemplazada` o `revocada` y su teléfono a `revocado`; el alta queda activa.
+  - `POST /api/titulares/:id/aprobar`: si ya no hay registro vigente con ese documento.
+  - `POST /api/titulares/:id/regenerar-codigo`: invalida el código provisional pendiente.
+  - Reemplazar, aprobar y regenerar devuelven **una sola vez** un código provisional
+    (`Cache-Control: no-store`) que vence a las 72 horas y se canjea en `POST /recuperar`.
 - `GET /api/titulares/revocados.txt`: los `cid` revocados, sin firmar, un `cid` por línea,
   en el formato de `secureqr-revocation sign`.
 - Con `REVOCADOS_EXPORT_PATH`, el servidor escribe ese archivo al arrancar y cada 24
