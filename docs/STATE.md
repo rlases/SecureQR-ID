@@ -25,9 +25,10 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 
 **Revisado de Jhunier:** #143 (licencia y filtro de módulos en `ci.yml`) fusionado sin
 revisión cruzada; el repositorio es público y el CI volvió a arrancar (verde en `main`
-desde `c4ef6ac`). #144 sigue abierto, con el CI en verde.
+desde `c4ef6ac`). #144 aprobado y fusionado por Duverney.
 
-**Nuevo: #145 y su PR (rama `adr/145-respaldo-cifrado`), propuesta para Jhunier:**
+**Nuevo: #145 y #146.** Duverney lo fusionó sin esperar la revisión cruzada para ir a
+las pruebas en la sede. **Jhunier debe revisarlo después** y aceptar o enmendar ADR-0018:
 
 - **ADR-0018 (Propuesta):** cifrado de disco completo (LUKS2 o BitLocker, con frase de
   paso del custodio) y respaldo diario cifrado con `age` hacia una clave pública. Cierra
@@ -41,9 +42,38 @@ desde `c4ef6ac`). #144 sigue abierto, con el CI en verde.
 **Pendiente en la sede (Duverney):** instalar el sistema con el disco cifrado, generar la
 identidad de respaldo en el equipo del custodio y seguir la guía completa (#133).
 
-### Sesión de Duverney — 2026-10-26 (mañana, hora UTC)
+### Cierre de la sesión de Jhunier — 2026-10-26 (tarde, hora UTC)
 
-Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+**Revisados, aprobados y fusionados por Jhunier:**
+
+- #134 a #138 y #140 (lote #129–#133 y #139), todos con el CI en verde;
+- #141 (handoff de Duverney);
+- #142 (la guía usa el `python` del entorno virtual en cron).
+
+**#133 sigue abierto:** se cierra cuando la guía se siga en el servidor del CCAV.
+
+**GitHub Actions: se agotaron los minutos y el repositorio ahora es público.**
+
+- El 26 de octubre se acabaron los 3000 minutos de Actions del mes y el CI dejó de arrancar: GitHub pedía pago, con el límite de gasto en $0.
+- **#143**, fusionado por Jhunier como administrador, sin la revisión cruzada ni el CI, porque había que tener la licencia nueva en `main` antes de publicar:
+  - **licencia: todos los derechos reservados**, en lugar de Apache-2.0 (`LICENSE`, `README.md`, `CITATION.cff`);
+  - en `ci.yml`, cada suite corre solo si cambió su módulo o una dependencia, y un PR de solo documentación no corre ninguna;
+  - la integración con Fabric pasa de cada noche a semanal (enmienda de 2026-10-26 a ADR-0017).
+- Después **Jhunier hizo público el repositorio**, con lo que Actions no tiene límite.
+- **Para Duverney:**
+  - revisar #143 después de fusionado; si algo no le convence, se corrige en otro PR;
+  - los commits anteriores al 26 de octubre siguen visibles con Apache-2.0 en el historial;
+  - la licencia nueva respalda legalmente, pero no impide la copia.
+- **#144** corrige el filtro: con `always()`, un flujo cancelado por concurrencia corría igual las doce suites. Pasa a `!cancelled()`.
+
+**Pendiente (decisiones conjuntas):**
+
+- qué hacer con el texto libre de `cambios_configuracion.motivo` antes del cierre del piloto;
+- el tag `v0.1.0`;
+- el certificado para los teléfonos;
+- los pendientes del documento de grado.
+
+### Sesión de Duverney — 2026-10-26 (mañana, hora UTC)
 
 **#128 aprobado y fusionado por Duverney:** rige la regla nueva de reparto (nivelar la
 carga acumulada). Conteo exacto en GitHub al aprobar: Jhunier 55 PR fusionados, Duverney

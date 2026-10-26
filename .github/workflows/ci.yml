@@ -19,7 +19,8 @@ jobs:
   # Cada trabajo corre solo si cambió su módulo o algo de lo que depende: los minutos de
   # Actions se cobran por trabajo, redondeados al minuto, y un PR que solo toca
   # documentación no necesita las doce suites. Si este paso falla, todos los trabajos
-  # corren: falla hacia probar, nunca hacia saltarse pruebas.
+  # corren: falla hacia probar, nunca hacia saltarse pruebas. Si el flujo se cancela (por
+  # ejemplo, porque llegó un push nuevo al PR), no corre nada: `!cancelled()`, no `always()`.
   cambios:
     name: Detectar módulos cambiados
     runs-on: ubuntu-latest
@@ -83,7 +84,7 @@ jobs:
   test:
     name: mi-app-qr — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -103,7 +104,7 @@ jobs:
   server-test:
     name: mi-app-qr/server — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.server-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.server-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -124,7 +125,7 @@ jobs:
   emision-e2e:
     name: mi-app-qr — emisión e2e con issuer/
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.emision-e2e == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.emision-e2e == 'true') }}
     # Portal del titular → mi-app-qr/server → servicio local real de issuer/ (issue #85).
     # Clave, contraseña y secreto son sintéticos y efímeros: se crean en el runner y se
     # descartan con él.
@@ -172,7 +173,7 @@ jobs:
   client-test:
     name: mi-app-qr/client — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.client-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.client-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -193,7 +194,7 @@ jobs:
   issuer-test:
     name: issuer — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.issuer-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.issuer-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -213,7 +214,7 @@ jobs:
   verifier-test:
     name: verifier — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.verifier-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.verifier-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -236,7 +237,7 @@ jobs:
   verifier-web-test:
     name: verifier-web — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.verifier-web-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.verifier-web-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -259,7 +260,7 @@ jobs:
   evidence-log-test:
     name: evidence-log — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.evidence-log-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.evidence-log-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -279,7 +280,7 @@ jobs:
   revocation-test:
     name: revocation — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.revocation-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.revocation-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -299,7 +300,7 @@ jobs:
   verifier-service-test:
     name: verifier-service — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.verifier-service-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.verifier-service-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -324,7 +325,7 @@ jobs:
   anchor-test:
     name: anchor — tests
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.anchor-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.anchor-test == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -345,7 +346,7 @@ jobs:
   chaincode-test:
     name: anchor/chaincode — go test
     needs: cambios
-    if: ${{ always() && (needs.cambios.result != 'success' || needs.cambios.outputs.chaincode-test == 'true') }}
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.chaincode-test == 'true') }}
     # Contrato en Go que corre en la red Fabric (ADR-0017, issue #82).
     runs-on: ubuntu-latest
     defaults:
