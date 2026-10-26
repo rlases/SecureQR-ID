@@ -27,6 +27,8 @@ git -C "$SAMPLES_DIR" checkout -q "$FABRIC_SAMPLES_COMMIT"
 info "binarios e imágenes de Fabric $FABRIC_VERSION y Fabric CA $FABRIC_CA_VERSION"
 curl -fsSL "https://raw.githubusercontent.com/hyperledger/fabric/v${FABRIC_VERSION}/scripts/install-fabric.sh" \
   -o "$FABRIC_HOME/install-fabric.sh"
+echo "$INSTALL_FABRIC_SHA256  $FABRIC_HOME/install-fabric.sh" | sha256sum -c --quiet - \
+  || falla "install-fabric.sh no coincide con el SHA-256 fijado en versiones.env"
 (cd "$FABRIC_HOME" && bash install-fabric.sh --fabric-version "$FABRIC_VERSION" \
   --ca-version "$FABRIC_CA_VERSION" binary docker)
 peer version | grep -q "Version: v\?$FABRIC_VERSION" || falla "los binarios no son $FABRIC_VERSION"

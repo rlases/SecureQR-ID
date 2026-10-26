@@ -4,7 +4,8 @@ Red propia de **Hyperledger Fabric 2.5 LTS** en Docker para anclar las raíces d
 de la bitácora. Se construye sobre la `test-network` oficial de `fabric-samples` (un
 *orderer* y dos organizaciones con un *peer* cada una) con **versiones fijadas** en
 [`versiones.env`](versiones.env): Fabric 2.5.16, Fabric CA 1.5.22 y un commit concreto de
-`fabric-samples`. Nunca «latest».
+`fabric-samples`. Nunca «latest». `install-fabric.sh` se verifica contra su SHA-256 antes de
+ejecutarlo.
 
 Requiere Docker, Go (solo para empaquetar el contrato), `git`, `curl` y unos 4 GB de RAM
 libres. Todo lo generado vive en `$SQRID_FABRIC_HOME` (por defecto `~/secureqr-fabric`),
@@ -65,3 +66,9 @@ imagen `fabric-ccenv:2.5.16`, que compila el contrato dentro del *peer*, trae Go
 ```bash
 cd anchor/chaincode && go test ./...
 ```
+
+**Gobernanza.** Cualquier identidad del canal puede invocar `registrarRaiz`; no hay control
+de acceso por rol en el contrato. En el piloto los autores operan la red completa
+(ADR-0017), así que no cambia el modelo de amenazas, pero se declara en el documento de
+grado junto a la nota de que operar la red no protege contra quien la opera (de eso se
+encarga el sellado en OpenTimestamps).
