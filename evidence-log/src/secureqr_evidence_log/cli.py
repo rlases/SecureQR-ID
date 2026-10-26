@@ -325,10 +325,12 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
         if not anchor_command:
             print("Error: --anchor-command está vacío o mal formado.", file=sys.stderr)
             return EXIT_USAGE
+        alerta_cabeza = False
         if args.head_file:
-            # Antes de fijar el lote, para que la cabeza se ancle en esta misma corrida. Un
-            # archivo ausente no detiene el anclaje de los pasos; una cabeza inválida o que
-            # retrocede es una alerta.
+            # Antes de fijar el lote, para que la cabeza se ancle en esta misma corrida. Una
+            # cabeza ausente, inválida o que retrocede NUNCA detiene el anclaje de los pasos
+            # del punto de control, que es la garantía principal (ADR-0003, ADR-0017): se
+            # informa y, si es inválida o retrocede, el ciclo termina en alerta tras anclar.
             try:
                 commit_head(log, load_head(Path(args.head_file)), args.verifier_id, clock())
             except CommitmentError as exc:
@@ -336,9 +338,9 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
                     print(f"sin cabeza de asignaciones: {exc}", file=sys.stderr)
                 else:
                     print(f"ALERTA en la cabeza de asignaciones: {exc}", file=sys.stderr)
-                    return EXIT_ALERT
+                    alerta_cabeza = True
         try:
-            return run_cycle(
+            codigo = run_cycle(
                 log,
                 Path(args.workdir),
                 anchor_command,
@@ -347,6 +349,7 @@ def main(argv: Sequence[str] | None = None, *, clock: Callable[[], float] = time
                 timeout_seconds=args.timeout_seconds,
                 clock=clock,
             )
+            return EXIT_ALERT if alerta_cabeza and codigo == EXIT_OK else codigo
         finally:
             if args.status_file:
                 _write_status_file(log, Path(args.status_file), clock())

@@ -110,13 +110,40 @@ class TestCiclo:
         _, _, tmp = entorno
         assert _cycle(entorno, "--head-file", str(tmp / "no-existe.json")) == EXIT_OK
 
-    def test_cabeza_que_retrocede_es_alerta_del_ciclo(self, entorno):
-        _, _, tmp = entorno
+    def test_cabeza_que_retrocede_es_alerta_pero_igual_ancla_los_pasos(self, entorno):
+        db, _, tmp = entorno
         cabeza = tmp / "cabeza.json"
         cabeza.write_text(json.dumps(_cabeza(9, H1)))
         assert _cycle(entorno, "--head-file", str(cabeza)) == EXIT_OK
+        # Llegan pasos nuevos del punto de control y la cabeza retrocede (por ejemplo, se
+        # restauró un respaldo anterior de la base de mi-app-qr).
+        log = EvidenceLog(str(db))
+        for i in range(3):
+            log.append_event(f"cred-nuevo-{i}", "verifier-A", 2000.0 + i, "aceptado")
+        log.close()
         cabeza.write_text(json.dumps(_cabeza(3, H2)))
         assert _cycle(entorno, "--head-file", str(cabeza)) == EXIT_ALERT
+        log = EvidenceLog(str(db))
+        try:
+            # Los pasos nuevos sí quedaron anclados; la cabeza que retrocede, no se registró.
+            assert log.anchoring_status(NOW).pending_events == 0
+            assert len(log.anchors) == 2
+            assert [e.credential_id for e in log.events if e.decision == DECISION] == [
+                f"asignaciones_cid:9:{H1}"
+            ]
+        finally:
+            log.close()
+
+    def test_cabeza_ilegible_es_alerta_pero_igual_ancla_los_pasos(self, entorno):
+        db, _, tmp = entorno
+        cabeza = tmp / "cabeza.json"
+        cabeza.write_text("{no es json")
+        assert _cycle(entorno, "--head-file", str(cabeza)) == EXIT_ALERT
+        log = EvidenceLog(str(db))
+        try:
+            assert log.anchoring_status(NOW).pending_events == 0
+        finally:
+            log.close()
 
     def test_un_compromiso_registrado_pero_aun_sin_anclar(self, entorno):
         db, _, tmp = entorno

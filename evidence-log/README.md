@@ -108,8 +108,9 @@ también detecta que la tarea programada dejó de correr.
 datos personales). Con `cycle --head-file cabeza.json`, la bitácora la registra como
 evento `compromiso_externo` antes de fijar el lote, así que se ancla en la misma corrida;
 con `--commitments-file compromisos.json` deja, al terminar, la lista de compromisos y si
-ya están anclados, para que `mi-app-qr` compare su historial. Una cabeza que retrocede o
-cambia el hash de una `seq` ya comprometida es una alerta (código 3). También están los
+ya están anclados, para que `mi-app-qr` compare su historial. Una cabeza ilegible, que
+retrocede o que cambia el hash de una `seq` ya comprometida es una alerta (código 3), pero
+**no detiene el anclaje de los pasos**: el lote se ancla igual y la alerta sale al final. También están los
 comandos sueltos `commit-head` y `export-commitments`. Formatos en
 `src/secureqr_evidence_log/compromisos.py`.
 

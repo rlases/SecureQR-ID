@@ -1133,8 +1133,11 @@ bitácora anclada en Fabric (ADR-0017).
   control) y `credential_id = asignaciones_cid:<seq>:<hash>`. Así entra en la misma raíz de
   Merkle que se ancla en esa corrida, sin cambiar el formato del lote ni el contrato de
   `anchor/`. Una cabeza repetida no se vuelve a registrar; una que **retrocede** o que
-  cambia el hash de una `seq` ya comprometida es una **alerta** (código 3), porque eso solo
-  pasa si alguien reescribió o truncó el historial.
+  cambia el hash de una `seq` ya comprometida es una **alerta** (código 3), porque eso
+  pasa si alguien reescribió o truncó el historial (o si se restauró un respaldo anterior
+  de la base de `mi-app-qr`). La alerta **no detiene el anclaje de los pasos** del punto de
+  control, que es la garantía principal: el lote se ancla igual y la alerta se informa al
+  final de la corrida.
 - `evidence-log export-commitments` (o `cycle --commitments-file`) devuelve los
   compromisos y si cada uno ya está anclado. Solo cuenta como anclado si la cadena local
   verifica y la raíz de su lote se recalcula igual a la registrada.
