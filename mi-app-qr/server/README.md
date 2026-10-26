@@ -72,6 +72,19 @@ Rutas bajo `/api/portal`, para el teléfono del titular:
 - `POST /recuperar`: documento + código vinculan un teléfono nuevo, desactivan el anterior
   y renuevan el código. Límite: 5 fallos por documento y 20 por IP cada 15 minutos.
 - `GET /yo`: estado de la credencial del teléfono vinculado.
+- `POST /qr` (issue #85): con el teléfono vinculado, aplica la puerta de emisión
+  (`puedeEmitir`: titular activo, credencial vigente y dentro de las ventanas de su
+  estamento, en la zona `SITE_TIME_ZONE`) y pide el token al servicio local de `issuer/`
+  con el `cid` vigente. Devuelve `{ token, expiraEn, renovarEnSegundos }` (unos 15 s antes
+  de vencer), o `403 { motivo, mensaje }` fuera de horario o con la credencial suspendida.
+  Límite: 6 tokens por minuto por teléfono, en memoria. La página del titular renueva el QR
+  sola y no guarda el token en `localStorage`, historial ni caché.
+
+  Configuración (en el entorno del servidor o de la app de escritorio, que lo hereda):
+  `ISSUER_SERVICE_URL` (solo `http://127.0.0.1:<puerto>` o `http://[::1]:<puerto>`) y
+  `SQRID_ISSUER_SECRET_FILE` (el mismo archivo que usa `secureqr-issuer serve`). Sin ellas
+  el portal funciona, pero responde 503 al pedir el QR. `npm run test:e2e:emision` prueba
+  el flujo contra el servicio real (ver el trabajo `emision-e2e` de CI).
 
 La sesión del titular es la cookie `sqrid_dispositivo` (llave de 256 bits, `HttpOnly`,
 `SameSite=Strict`, `Secure` con HTTPS, solo para `/api/portal`). No usa la sesión del

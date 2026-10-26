@@ -10,6 +10,7 @@ import { createUsersRouter } from './users/routes.js';
 import { createEstamentosRouter } from './estamentos/routes.js';
 import { createPortalRouter, huellaDeCertificado } from './portal/routes.js';
 import { createTitularesRouter } from './titulares/routes.js';
+import type { ClienteEmisor } from './emision/clienteEmisor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIST_PATH = path.resolve(__dirname, '../../client/dist');
@@ -25,6 +26,12 @@ export interface AppDependencies {
   revocadosExportPath?: string;
   // Altas permitidas por IP y hora en el portal del titular (issue #120).
   altaMaxPorIp?: number;
+  // Cliente del servicio local de emisión de issuer/ (#85). Sin él, el portal no da QR.
+  emisor?: ClienteEmisor;
+  // Zona horaria de la sede (SITE_TIME_ZONE), la misma del reseteo trimestral.
+  timeZone?: string;
+  // Tokens por minuto que puede pedir un mismo teléfono.
+  maxTokensPorMinuto?: number;
   // Compromisos anclados de la cabeza de asignaciones que exporta evidence-log/ (#119).
   compromisosPath?: string;
 }
@@ -59,6 +66,9 @@ export function createApp(deps: AppDependencies): Express {
       secureCookies: deps.secureCookies ?? false,
       huella: huellaDeCertificado(deps.certificate),
       altaMaxPorIp: deps.altaMaxPorIp,
+      emisor: deps.emisor,
+      timeZone: deps.timeZone,
+      maxTokensPorMinuto: deps.maxTokensPorMinuto,
     })
   );
 

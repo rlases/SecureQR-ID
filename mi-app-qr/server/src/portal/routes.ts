@@ -6,6 +6,8 @@ import { z } from 'zod';
 import type {
   AltaTitularResponse,
   EstadoPortal,
+  QrNoDisponible,
+  QrTitular,
   InfoAltaPortal,
   RecuperarResponse,
 } from '@mi-app-qr/shared';
@@ -20,6 +22,10 @@ import {
   verifyRecoveryCode,
 } from './credencialesTitular.js';
 import { reservarAlta, reservarIntento } from './limiteIntentos.js';
+import { puedeEmitir, type MotivoEmision } from '../titulares/gestion.js';
+import { DEFAULT_TIME_ZONE } from '../estamentos/horario.js';
+import { EmisorNoDisponibleError, type ClienteEmisor } from '../emision/clienteEmisor.js';
+import { LimiteDispositivo } from '../emision/limiteDispositivo.js';
 
 // Portal del titular (ADR-0016, puntos 2 a 4; issue #84).
 //
@@ -67,6 +73,7 @@ const recuperarSchema = z.object({
 
 interface TitularDeDispositivo {
   titularId: number;
+  dispositivoId: number;
 }
 
 declare module 'express-serve-static-core' {
@@ -99,17 +106,37 @@ export function requireDevice(req: Request, res: Response, next: NextFunction): 
   db(req)
     .prepare('UPDATE dispositivos SET ultimo_uso_en = ? WHERE id = ?')
     .run(new Date().toISOString(), device.dispositivoId);
-  req.titular = { titularId: device.titularId };
+  req.titular = { titularId: device.titularId, dispositivoId: device.dispositivoId };
   next();
 }
+
+// La página pide un token nuevo unos 15 segundos antes de que venza (ADR-0016, punto 6).
+const MARGEN_RENOVACION_S = 15;
+
+// Lo que ve el titular cuando no hay QR. No dice nada de la credencial más allá de lo
+// que el propio titular necesita para saber qué hacer.
+const MOTIVOS_SIN_QR: Record<Exclude<MotivoEmision, 'dentro_de_ventana'>, string> = {
+  fuera_de_ventana: 'Estás fuera de tu horario de ingreso. Vuelve a intentarlo dentro de tu horario.',
+  dia_cerrado: 'Hoy no hay ingreso para tu estamento.',
+  sin_ventanas: 'Tu estamento todavía no tiene horario de ingreso. Acude a un administrador.',
+  sin_estamento_base: 'El registro todavía no está configurado. Acude a un administrador.',
+  titular_no_activo: 'Tu credencial está suspendida. Acude a un administrador del CCAV.',
+  sin_credencial_vigente: 'No tienes una credencial vigente. Acude a un administrador del CCAV.',
+};
 
 export function createPortalRouter(opciones: {
   secureCookies: boolean;
   huella: HuellaCertificado | null;
+  // Cliente del servicio local de emisión de issuer/ (#85). Sin él, no hay QR.
+  emisor?: ClienteEmisor;
+  // Zona horaria de la sede para las ventanas de ingreso.
+  timeZone?: string;
+  maxTokensPorMinuto?: number;
   // Altas por IP en la ventana de `ALTA_VENTANA_MINUTOS` (issue #120).
   altaMaxPorIp?: number;
 }): Router {
   const router = Router();
+  const limite = new LimiteDispositivo(opciones.maxTokensPorMinuto);
   router.use(cookieParser());
   // Nada de lo que responde el portal se guarda en caché ni en el historial (ADR-0012).
   router.use((_req, res, next) => {
@@ -242,6 +269,44 @@ export function createPortalRouter(opciones: {
     setDeviceCookie(res, llave, opciones.secureCookies);
     const body: RecuperarResponse = { codigoRecuperacion: nuevoCodigo };
     return res.json(body);
+  });
+
+  // QR del titular (issue #85): con el teléfono vinculado, aplica la puerta de emisión
+  // (titular activo, credencial vigente, dentro de su horario) y pide el token al
+  // servicio local con el cid vigente. POST para que nada lo guarde ni lo precargue;
+  // el router ya marca todo como no-store.
+  router.post('/qr', requireDevice, async (req, res) => {
+    const decision = puedeEmitir(
+      db(req),
+      req.titular!.titularId,
+      new Date(),
+      opciones.timeZone ?? DEFAULT_TIME_ZONE
+    );
+    if (!decision.permitido || !decision.cid) {
+      const motivo = decision.motivo as keyof typeof MOTIVOS_SIN_QR;
+      const body: QrNoDisponible = { motivo, mensaje: MOTIVOS_SIN_QR[motivo] };
+      return res.status(403).json(body);
+    }
+    if (!opciones.emisor) {
+      return res.status(503).json({ error: 'el servicio de emisión no está configurado' });
+    }
+    if (!limite.reservar(req.titular!.dispositivoId)) {
+      return res.status(429).json({ error: 'demasiadas solicitudes; espera un momento' });
+    }
+    try {
+      const { token, expiresIn } = await opciones.emisor.pedirToken(decision.cid);
+      const body: QrTitular = {
+        token,
+        expiraEn: new Date(Date.now() + expiresIn * 1000).toISOString(),
+        renovarEnSegundos: Math.max(expiresIn - MARGEN_RENOVACION_S, 5),
+      };
+      return res.json(body);
+    } catch (error) {
+      if (error instanceof EmisorNoDisponibleError) {
+        return res.status(503).json({ error: 'no se pudo generar tu QR; inténtalo de nuevo' });
+      }
+      throw error;
+    }
   });
 
   router.get('/yo', requireDevice, (req, res) => {

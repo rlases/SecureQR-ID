@@ -8,6 +8,7 @@ import { exportarRevocados } from './titulares/gestion.js';
 import { aplicarReseteoSiCorresponde } from './titulares/reseteo.js';
 import { anonimizarVencidos } from './titulares/anonimizacion.js';
 import { claveAsignaciones } from './titulares/asignaciones.js';
+import { crearClienteEmisor, leerSecretoEmisor } from './emision/clienteEmisor.js';
 import { escribirCabeza, verificarContraCompromisos } from './titulares/compromiso.js';
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
@@ -54,6 +55,17 @@ async function main(): Promise<void> {
   // sesión se marca `secure`. Sin esas variables (dev/pruebas sin Electron) se
   // sigue sirviendo por HTTP plano, sin romper `npm run dev`.
   const tls = loadTlsOptionsFromEnv();
+
+  // Servicio local de emisión de issuer/ (ADR-0016, punto 6). Sin las dos variables el
+  // portal funciona, pero no entrega QR.
+  const issuerUrl = process.env.ISSUER_SERVICE_URL;
+  const issuerSecretFile = process.env.SQRID_ISSUER_SECRET_FILE;
+  const emisor =
+    issuerUrl && issuerSecretFile
+      ? crearClienteEmisor({ url: issuerUrl, secreto: leerSecretoEmisor(issuerSecretFile) })
+      : undefined;
+  if (!emisor) console.warn('Sin ISSUER_SERVICE_URL y SQRID_ISSUER_SECRET_FILE: el portal no entregará QR.');
+
   const app = createApp({
     db,
     sessionSecret,
@@ -61,6 +73,8 @@ async function main(): Promise<void> {
     certificate: tls?.cert,
     revocadosExportPath: process.env.REVOCADOS_EXPORT_PATH,
     altaMaxPorIp: leerAltaMaxPorIp(process.env.ALTA_MAX_POR_IP),
+    emisor,
+    timeZone: process.env.SITE_TIME_ZONE,
     compromisosPath: process.env.ASIGNACIONES_COMPROMISOS_PATH,
   });
 
