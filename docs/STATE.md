@@ -19,9 +19,34 @@ vigente de abajo distingue implementación en ramas, integración y pruebas.
 
 ## Estado vigente — 2026-10-26
 
-### Cierre de la sesión de Jhunier — 2026-10-26 (tarde, hora UTC)
+### Sesión de Duverney — 2026-10-26 (tarde, hora UTC)
 
 Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**Revisado de Jhunier:** #143 (licencia y filtro de módulos en `ci.yml`) fusionado sin
+revisión cruzada; el repositorio es público y el CI volvió a arrancar (verde en `main`
+desde `c4ef6ac`). Duverney revisó #143 ya fusionado: la licencia y el filtro de `ci.yml`
+están bien. El disparador de la integración con Fabric no cubría las dependencias de
+`cli.ts` ni de `cli.py`, y lo corrige #149. #144 y #148 quedaron aprobados y fusionados por
+Duverney: con #148 se aceptan las decisiones conjuntas de abajo.
+
+**Nuevo: #145 y #146**, revisado por Jhunier. A pedido suyo, ADR-0018 suma el punto 6:
+borrado criptográfico de los respaldos al cierre del piloto (se destruye la identidad de
+`age`), para que no sobrevivan a la anonimización de ADR-0016, punto 10:
+
+- **ADR-0018 (Propuesta):** cifrado de disco completo (LUKS2 o BitLocker, con frase de
+  paso del custodio) y respaldo diario cifrado con `age` hacia una clave pública. Cierra
+  el pendiente de respaldo de ADR-0008.
+- `infra/respaldo/respaldar-datos.sh`, `restaurar-datos.sh` y `probar-respaldo.sh`;
+  trabajo `respaldo-test` en CI.
+- Guía del CCAV: §0 (cifrado del disco), §3 (identidad de respaldo y frase del disco),
+  §7 (cron diario), §11 (respaldo y restauración) y filas nuevas del registro.
+- `THREAT-MODEL.md`: sección «Datos en reposo del servidor del CCAV».
+
+**Pendiente en la sede (Duverney):** instalar el sistema con el disco cifrado, generar la
+identidad de respaldo en el equipo del custodio y seguir la guía completa (#133).
+
+### Cierre de la sesión de Jhunier — 2026-10-26 (tarde, hora UTC)
 
 **Revisados, aprobados y fusionados por Jhunier:**
 
@@ -45,12 +70,16 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
   - la licencia nueva respalda legalmente, pero no impide la copia.
 - **#144** corrige el filtro: con `always()`, un flujo cancelado por concurrencia corría igual las doce suites. Pasa a `!cancelled()`.
 
-**Pendiente (decisiones conjuntas):**
+**Decisiones conjuntas propuestas por Jhunier** (enmienda de 2026-10-26 a ADR-0016). **Aceptadas**: Duverney aprobó #148:
 
-- qué hacer con el texto libre de `cambios_configuracion.motivo` antes del cierre del piloto;
-- el tag `v0.1.0`;
-- el certificado para los teléfonos;
-- los pendientes del documento de grado.
+- **Texto libre de `cambios_configuracion`:** se anonimiza al cierre y por plazo, igual que `registros.motivo`. Implementación en **#147, asignado a Duverney** por la regla de reparto.
+- **Certificado del portal:** en el piloto sigue la huella SHA-256 publicada; el dominio con Let's Encrypt se reevalúa después.
+- **Tags de fase** (`ROADMAP.md`):
+  - `v0.1.0` en `690bfcc`, el cierre de la Fase 2 (#53, 2026-09-23);
+  - `v0.2.0` en `main`, al cierre de la Fase 3, con los cinco módulos probados y el anclaje real en Fabric.
+  - Los crea Jhunier a mano, porque el proxy de la sesión no permite escribir referencias.
+
+**Pendiente:** los pendientes del documento de grado.
 
 ### Sesión de Duverney — 2026-10-26 (mañana, hora UTC)
 

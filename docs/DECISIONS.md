@@ -292,7 +292,7 @@ Detalle de la implementación:
 - Descubrimiento del servidor por los demás puestos: IP fija, nombre en la red o
   configuración manual.
 - Estrategia de respaldo del almacenamiento (el motor en sí ya se resolvió de facto,
-  ver nota abajo).
+  ver nota abajo). Propuesta en ADR-0018 (2026-10-26).
 
 (El catálogo de roles, que estaba pendiente aquí, se resolvió en ADR-0009. El motor de
 almacenamiento también quedó resuelto de facto: SQLite embebido vía `better-sqlite3`, ya
@@ -1161,6 +1161,39 @@ cuentan en los lotes, y se distinguen por su decisión.
   (#93).
 - Sigue el límite de proceso por archivos (ADR-0005): ni Python importa Node ni al revés.
 
+**Enmienda (2026-10-26) — Texto libre del historial de cambios y certificado del portal.**
+Cierra dos puntos que quedaban abiertos. Decisión conjunta: la propone Jhunier y queda
+aceptada cuando Duverney apruebe el PR que la trae.
+
+**1. Texto libre en `cambios_configuracion`.** Las notas y los motivos libres que escribe
+el `admin` (por ejemplo, la `nota` al resolver un alta en revisión, o el motivo de una
+revocación) pueden contener datos personales. Hoy no se anonimizan, porque la tabla es
+de solo agregar (límite conocido, #108).
+
+**Decisión.** Se anonimizan con la misma regla que `registros.motivo` y `consultas_cid`
+(punto 10):
+
+- al cierre del piloto, y por plazo si el `admin` configuró uno, se eliminan las claves
+  de texto libre (`nota`, `motivo` cuando no es de lista cerrada) dentro de
+  `valor_anterior` y `valor_nuevo`;
+- se conservan `usuario_id`, `entidad`, `entidad_id`, `accion`, `en` y los motivos de
+  lista cerrada;
+- el disparador de solo agregar se reemplaza por uno que admite **solo** esa limpieza: no
+  permite cambiar ninguna otra columna ni agregar contenido.
+
+La interfaz mantiene el aviso de no escribir datos personales, porque hasta el cierre el
+texto sigue ahí.
+
+**2. Certificado del portal del titular.** El «pendiente de decidir» de este ADR se
+cierra así: **en el piloto se sigue con la huella SHA-256 publicada** en el cartel de la
+sede y en la página de alta. Es la mitigación que ya está implementada y no tiene costo.
+El dominio propio con Let's Encrypt (DNS-01) se reevalúa después del piloto, con lo que
+se observe sobre cuántos titulares comparan la huella.
+
+**Implementación.** El punto 1 va en un issue aparte; por la regla de reparto de
+`CLAUDE.md` le toca a Duverney. Incluye pruebas de que el disparador nuevo rechaza
+cualquier otra modificación. El punto 2 no requiere código.
+
 ---
 
 ## ADR-0017 — Conexión de `anchor/` a Hyperledger Fabric y sellado en OpenTimestamps
@@ -1338,3 +1371,112 @@ una semana en aparecer, si entra por un archivo que no dispara el flujo. Lo miti
 - las pruebas unitarias con el doble en memoria, que siguen corriendo en cada PR;
 - que el flujo sigue corriendo en los PR que tocan la red, el contrato o el cliente de Fabric;
 - la ejecución manual antes de anexar la evidencia al documento de grado.
+
+---
+
+## ADR-0018 — Cifrado en reposo y respaldo diario cifrado de las bases del servidor del CCAV
+
+**Estado:** Propuesta (2026-10-26)
+
+**Contexto.** En el servidor del CCAV hay tres almacenes con datos sensibles, todos en
+claro en el disco:
+
+- la base de `mi-app-qr` (`userData/server-data/app.db`), con nombres, documentos y
+  correos de los titulares y el historial `cid` → titular (ADR-0016);
+- la bitácora de `verifier-service` (`evidence.sqlite3`), con el `cid` de cada validación
+  aceptada (ADR-0013);
+- los volúmenes y el material criptográfico de la red Fabric (ADR-0017).
+
+ADR-0008 dejó pendiente la «estrategia de respaldo del almacenamiento» y nunca se cerró.
+`docs/INSTALACION-CCAV.md` respalda la red Fabric y las claves, pero no las dos bases: si
+falla el disco se pierden el registro de credenciales y los eventos que aún no se
+anclaron, y quien se lleve el equipo o el disco lee todo sin necesitar ninguna cuenta.
+
+**Alternativas consideradas.**
+
+- **Cifrar la base desde la aplicación (SQLCipher).** Exige cambiar `better-sqlite3` por
+  una variante con SQLCipher en `mi-app-qr` y otra en Python, y deja abierta la pregunta
+  de dónde vive la clave de un servidor que arranca solo: en el mismo disco no protege
+  nada, y pedirla a mano a cada arranque es lo mismo que el cifrado de disco, solo que
+  para un archivo en vez de todo. Además dejaría fuera la bitácora, los volúmenes de
+  Fabric y los archivos de anclaje.
+- **Cifrado de disco completo.** Cubre los tres almacenes, los temporales y el *swap*, sin
+  tocar código. No protege con el equipo encendido y desbloqueado: contra eso siguen
+  valiendo las cuentas separadas (ADR-0016) y el HMAC del historial (#119).
+- **Respaldo con cifrado simétrico (contraseña).** Cron no puede pedir una contraseña, y
+  dejarla en el servidor equivale a no cifrar frente a quien se lleve el equipo.
+- **Respaldo con cifrado de clave pública.** El servidor solo tiene la clave pública:
+  puede cifrar todos los días sin que nada en él sirva para descifrar.
+
+**Decisión.**
+
+1. **Cifrado de disco completo** del servidor del CCAV, configurado al instalar el sistema
+   operativo y antes de crear cualquier dato: LUKS2 en Linux, BitLocker en Windows. Se
+   desbloquea con **frase de paso** que escribe el custodio al encender el equipo, no con
+   TPM sin PIN: con el desbloqueo automático, quien se lleve el equipo entero lo arranca
+   con el disco abierto. El custodio ya debe estar presente tras cada reinicio para
+   arrancar el emisor (ADR-0016, punto 6), así que no agrega una dependencia nueva. La
+   frase de paso y la clave de recuperación van al gestor de Jhunier, como las demás
+   contraseñas (ADR-0016).
+2. **Respaldo diario cifrado** con `infra/respaldo/respaldar-datos.sh`, desde cron con la
+   cuenta `secureqr`:
+   - copia en caliente las dos bases con la API de respaldo de SQLite (consistente
+     aunque la app esté escribiendo) y comprueba cada copia con `PRAGMA integrity_check`
+     antes de cifrarla;
+   - agrega los JSON de la carpeta de anclaje (cabeza, compromisos, estado) y un
+     `SHA256SUMS`;
+   - cifra el paquete con **`age`** (formato abierto, X25519 y ChaCha20-Poly1305; no se
+     implementa nada propio) hacia una o más claves públicas. La identidad privada la
+     genera y guarda el custodio fuera del servidor, cifrada con su propia frase de paso,
+     con copia en el medio externo de claves; la frase, en el gestor de Jhunier;
+   - deja el respaldo en `/var/backups/secureqr-id` (en el disco cifrado) y conserva 14
+     días. **Una vez por semana**, el custodio copia los respaldos al medio externo,
+     junto con el de Fabric (ADR-0017), que ya va en un medio cifrado.
+3. **Nunca en el mismo respaldo que las claves.** El script no toca `server-secrets.json`
+   (`ASIGNACIONES_KEY`), ni el PEM de emisión, ni el secreto compartido. Las dos copias
+   viajan en medios distintos (ADR-0016, #119).
+4. **Restaurar es un paso manual.** `infra/respaldo/restaurar-datos.sh` descifra en una
+   carpeta nueva y comprueba sumas e integridad; reemplazar las bases en uso se hace con
+   `mi-app-qr` y `verifier-service` detenidos. Restaurar `app.db` hace retroceder la
+   cabeza de asignaciones: el ciclo de anclaje devuelve el código 3 y lo anota, como ya
+   prevé ADR-0016. Restaurar la bitácora a un punto anterior a un lote anclado deja un
+   rango anclado sin sus eventos locales: se anota en `docs/STATE.md` y no se vuelve a
+   anclar ese rango.
+5. **Prueba.** `infra/respaldo/probar-respaldo.sh` corre en CI (`respaldo-test`): cifra,
+   comprueba que no queda texto en claro, que una clave ajena no descifra, que una
+   escritura sin confirmar no entra en la copia, que `server-secrets.json` nunca entra y
+   que la conservación solo borra respaldos viejos.
+6. **Los respaldos no sobreviven a la anonimización (ADR-0016, punto 10).** Cada
+   respaldo guarda `app.db` con nombres, documentos y correos, y las copias del medio
+   externo no tienen límite de tiempo. Sin una regla, quedarían datos que la
+   autorización de tratamiento dice que se eliminan (Ley 1581 de 2012). Para eso se usa
+   **borrado criptográfico**: como todo respaldo está cifrado hacia la identidad de
+   `age`, destruirla vuelve ilegibles todas las copias de una vez, sin tener que
+   localizarlas una por una.
+   - **Al cierre del piloto**, primero se comprueba que la anonimización de las bases en
+     uso terminó. Después, el custodio destruye la identidad privada de `age` (el
+     archivo y su copia en el medio de claves) y su frase de paso del gestor de Jhunier,
+     y borra los respaldos del servidor. Queda anotado en el registro de ejecución de la
+     guía: fecha, quién y qué se destruyó. Lo mismo vale para una base dañada que se haya
+     guardado aparte al restaurar.
+   - **Si el `admin` configura un plazo de conservación**, los respaldos del medio
+     externo no se guardan más tiempo que ese plazo. Si eso no es práctico, la identidad
+     de `age` se rota en cada periodo y se destruye la del periodo vencido. Así una copia
+     vieja no conserva lo que la base ya anonimizó.
+   - **Restaurar un respaldo anterior a una anonimización** obliga a correr de nuevo la
+     anonimización antes de reabrir el servicio.
+
+**Consecuencias.**
+
+- Cierra el pendiente de respaldo de ADR-0008.
+- Destruir la identidad de `age` es irreversible: después del cierre no se puede
+  restaurar ningún respaldo, ni siquiera para una auditoría. Se acepta, porque es lo
+  que exige la autorización de tratamiento. La bitácora no se pierde, porque su
+  integridad la prueban las raíces ancladas en Fabric y el sello en Bitcoin, no los
+  respaldos.
+- El servidor del CCAV necesita `age` (paquete de Debian y Ubuntu).
+- Un reinicio sin el custodio deja el servidor detenido en la pantalla de desbloqueo,
+  no solo sin emisor. Se acepta: en el piloto, sin custodio tampoco hay QR.
+- Riesgo residual: con el equipo encendido, el cifrado de disco no protege. Y se pueden
+  perder hasta 24 horas de altas y eventos entre un respaldo y el siguiente; los eventos
+  anclados en ese lapso siguen comprobables en Fabric, aunque la copia local se pierda.
