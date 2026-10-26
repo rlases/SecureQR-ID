@@ -1413,10 +1413,34 @@ anclaron, y quien se lleve el equipo o el disco lee todo sin necesitar ninguna c
    comprueba que no queda texto en claro, que una clave ajena no descifra, que una
    escritura sin confirmar no entra en la copia, que `server-secrets.json` nunca entra y
    que la conservación solo borra respaldos viejos.
+6. **Los respaldos no sobreviven a la anonimización (ADR-0016, punto 10).** Cada
+   respaldo guarda `app.db` con nombres, documentos y correos, y las copias del medio
+   externo no tienen límite de tiempo. Sin una regla, quedarían datos que la
+   autorización de tratamiento dice que se eliminan (Ley 1581 de 2012). Para eso se usa
+   **borrado criptográfico**: como todo respaldo está cifrado hacia la identidad de
+   `age`, destruirla vuelve ilegibles todas las copias de una vez, sin tener que
+   localizarlas una por una.
+   - **Al cierre del piloto**, primero se comprueba que la anonimización de las bases en
+     uso terminó. Después, el custodio destruye la identidad privada de `age` (el
+     archivo y su copia en el medio de claves) y su frase de paso del gestor de Jhunier,
+     y borra los respaldos del servidor. Queda anotado en el registro de ejecución de la
+     guía: fecha, quién y qué se destruyó. Lo mismo vale para una base dañada que se haya
+     guardado aparte al restaurar.
+   - **Si el `admin` configura un plazo de conservación**, los respaldos del medio
+     externo no se guardan más tiempo que ese plazo. Si eso no es práctico, la identidad
+     de `age` se rota en cada periodo y se destruye la del periodo vencido. Así una copia
+     vieja no conserva lo que la base ya anonimizó.
+   - **Restaurar un respaldo anterior a una anonimización** obliga a correr de nuevo la
+     anonimización antes de reabrir el servicio.
 
 **Consecuencias.**
 
 - Cierra el pendiente de respaldo de ADR-0008.
+- Destruir la identidad de `age` es irreversible: después del cierre no se puede
+  restaurar ningún respaldo, ni siquiera para una auditoría. Se acepta, porque es lo
+  que exige la autorización de tratamiento. La bitácora no se pierde, porque su
+  integridad la prueban las raíces ancladas en Fabric y el sello en Bitcoin, no los
+  respaldos.
 - El servidor del CCAV necesita `age` (paquete de Debian y Ubuntu).
 - Un reinicio sin el custodio deja el servidor detenido en la pantalla de desbloqueo,
   no solo sin emisor. Se acepta: en el piloto, sin custodio tampoco hay QR.

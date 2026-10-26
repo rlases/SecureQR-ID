@@ -349,6 +349,26 @@ Deja las bases comprobadas en una carpeta nueva; no toca las que están en uso.
    devuelve el código 3 porque la cabeza de asignaciones retrocedió: es lo esperado.
 4. Anota en `docs/STATE.md` la fecha, el respaldo usado y, si restauraste la bitácora,
    qué rango ya anclado quedó sin eventos locales.
+5. **Si el respaldo es anterior a una anonimización** (al cierre o por plazo), vuelve a
+   correr la anonimización **antes** de reabrir el servicio (ADR-0016, punto 10).
+
+**Respaldos y anonimización (ADR-0018, punto 6).** Los respaldos guardan nombres,
+documentos y correos, así que no pueden durar más que la base anonimizada:
+
+- **Con un plazo de conservación configurado,** no guardes en el medio externo
+  respaldos más viejos que ese plazo. Si no es práctico, rota la identidad de `age` en
+  cada periodo (identidad nueva, pública nueva en `/etc/secureqr-id/respaldo.age.pub`) y
+  destruye la del periodo vencido.
+- **Al cierre del piloto**, en este orden:
+  1. comprueba que la anonimización de las bases en uso terminó;
+  2. el custodio destruye `respaldo.age.key.age` y su copia en el medio de claves
+     (`shred -u` o formateo del medio), y borra su frase de paso del gestor de Jhunier;
+  3. borra `/var/backups/secureqr-id/*.age` y cualquier base dañada guardada aparte al
+     restaurar;
+  4. anótalo en el registro de ejecución: fecha, quién y qué se destruyó.
+
+  Desde ese momento ningún respaldo, en el servidor ni en el medio externo, se puede
+  descifrar. Es irreversible y es lo que se busca: borrado criptográfico.
 
 ---
 
@@ -373,3 +393,4 @@ Complétalo la primera vez que se siga esta guía en el servidor del CCAV. Con e
 | §0 Disco cifrado comprobado (`lsblk -f` o `manage-bde`) | | | |
 | §11 Primer respaldo diario cifrado | | | |
 | §11 Prueba de restauración | | | |
+| §11 Cierre: anonimización comprobada e identidad de `age` destruida (qué y quién) | | | |

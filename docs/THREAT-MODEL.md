@@ -94,6 +94,7 @@ mismo equipo servidor que `mi-app-qr/`.
 | Robo o filtración de un respaldo | Lectura de los datos personales respaldados | Cifrado con `age` hacia claves públicas; la identidad privada no está en el servidor |
 | Respaldo de la base junto con la clave HMAC | Reescribir el historial `cid` → titular sin que el HMAC lo note | El script nunca incluye `server-secrets.json`; la clave va en otro medio (ADR-0016) |
 | Restaurar un respaldo anterior | Historial que retrocede; eventos anclados sin copia local | El ciclo devuelve el código 3 y lo anota; se registra en `docs/STATE.md` y el rango no se vuelve a anclar |
+| Respaldos que sobreviven a la anonimización | Datos personales que la autorización de tratamiento dice que se eliminan siguen en copias (Ley 1581) | Borrado criptográfico: al cierre, el custodio destruye la identidad de `age` y su frase, y quedan ilegibles todas las copias; con plazo configurado, los respaldos externos no duran más que el plazo o se rota la identidad; un respaldo anterior a una anonimización se vuelve a anonimizar antes de reabrir |
 
 Riesgo residual: con el equipo encendido y desbloqueado, el cifrado de disco no protege;
 contra eso quedan las cuentas separadas y el HMAC del historial. Entre dos respaldos se

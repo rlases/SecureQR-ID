@@ -27,8 +27,9 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 revisión cruzada; el repositorio es público y el CI volvió a arrancar (verde en `main`
 desde `c4ef6ac`). #144 aprobado y fusionado por Duverney.
 
-**Nuevo: #145 y #146.** Duverney lo fusionó sin esperar la revisión cruzada para ir a
-las pruebas en la sede. **Jhunier debe revisarlo después** y aceptar o enmendar ADR-0018:
+**Nuevo: #145 y #146**, revisado por Jhunier. A pedido suyo, ADR-0018 suma el punto 6:
+borrado criptográfico de los respaldos al cierre del piloto (se destruye la identidad de
+`age`), para que no sobrevivan a la anonimización de ADR-0016, punto 10:
 
 - **ADR-0018 (Propuesta):** cifrado de disco completo (LUKS2 o BitLocker, con frase de
   paso del custodio) y respaldo diario cifrado con `age` hacia una clave pública. Cierra
