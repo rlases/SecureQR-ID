@@ -1361,8 +1361,10 @@ mano. En los PR solo corre si cambia algo que toca la red real:
 - el cliente de Fabric y sus dependencias (`anchor/src/` y el `package.json` de `anchor/`);
 - los comandos del ciclo y lo que importan (`evidence-log/src/` y su `pyproject.toml`).
 
-**Por qué.** El repositorio es privado y sus minutos de Actions son limitados (3000 al
-mes). En octubre de 2026 se agotaron y el CI quedó detenido varios días. En el mismo
+**Por qué.** Cuando se tomó esta decisión el repositorio era privado y sus minutos de
+Actions eran limitados (3000 al mes). En octubre de 2026 se agotaron y el CI quedó
+detenido varios días. Después el repositorio pasó a público y Actions dejó de tener
+límite, pero el ahorro se mantiene: cada corrida de la integración tarda varios minutos. En el mismo
 cambio, `ci.yml` corre cada suite solo cuando cambia su módulo o algo de lo que depende.
 
 **Consecuencia.** Una regresión que solo se vea contra la red real puede tardar hasta

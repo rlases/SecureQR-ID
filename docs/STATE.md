@@ -5,15 +5,12 @@
 > este.
 
 **Última actualización:** 2026-10-26
-**Fase actual:** Fase 3 de `ROADMAP.md` (desarrollo tecnológico) en curso — la Fase 2
-(diseño) ya cumple sus tres criterios de cierre: ADR-0005 aceptada, ADR-0007 aceptada,
-`SQRID-1.md` dejó de ser borrador (ADR-0010) y el número de objetivos específicos quedó
-unificado en tres (issue #4). Nadie ha puesto el tag `v0.1.0` que `ROADMAP.md` pide al
-cerrar cada fase — pendiente, decisión conjunta, no depende de código. De los cinco
-módulos de Fase 3 (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`)
-el anclaje real de `anchor/` ya corre contra Fabric 2.5 (#125 y #126); falta instalarlo
-en el servidor del CCAV. El resumen
-vigente de abajo distingue implementación en ramas, integración y pruebas.
+**Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y piloto). Fases cerradas:
+
+- **Fase 2 (diseño)**, con tag `v0.1.0` en `690bfcc`: ADR-0005 y ADR-0007 aceptadas, `SQRID-1.md` sin borrador (ADR-0010) y objetivos unificados en tres (#4).
+- **Fase 3 (desarrollo tecnológico)**, con tag `v0.2.0`: los cinco módulos (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`) implementados y probados en laboratorio, incluido el anclaje real contra Fabric 2.5 (#125, #126; prueba de integración en verde, ADR-0017).
+
+Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vigente de abajo distingue implementación, integración y pruebas.
 
 ---
 
