@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-26
+**Última actualización:** 2026-10-27
 **Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y piloto). Fases cerradas:
 
 - **Fase 2 (diseño)**, con tag `v0.1.0` en `690bfcc`: ADR-0005 y ADR-0007 aceptadas, `SQRID-1.md` sin borrador (ADR-0010) y objetivos unificados en tres (#4).
@@ -13,6 +13,41 @@
 Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vigente de abajo distingue implementación, integración y pruebas.
 
 ---
+
+## Estado vigente — 2026-10-27
+
+### Sesión de Jhunier — 2026-10-27 (madrugada, hora UTC)
+
+Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+**ADR-0019 (Propuesta, necesita la aprobación de Duverney):** prueba controlada del
+objetivo 3. Es la batería de ataques que pide la Fase 4 y la que da la tasa de detección
+de credenciales inválidas, la métrica principal:
+
+- carpeta nueva `evaluation/`, que ataca el sistema armado solo por sus interfaces públicas;
+- catálogo F (falsificación), R (reemplazo), P (repetición), V (revocación) y M (manipulación interna), más un grupo de control para medir el falso rechazo y el tiempo de validación;
+- brazo tradicional contra `baseline-o3`;
+- la captura de pantalla dentro de los 60 s queda fuera de la tasa y se declara como riesgo residual.
+
+**Lote nuevo (#151–#157), todo para Duverney por la regla de reparto.** Carga acumulada
+en PR fusionados en `main` (búsqueda de GitHub, 2026-10-27): **Jhunier 59, Duverney 35**.
+La diferencia, 24, es mayor que el lote, así que quien lleva menos lo recibe completo:
+
+| Issue | Pieza |
+|---|---|
+| #151 | `evaluation/`: entorno aislado, ejecutor, grupo de control e informe |
+| #152 | Casos F y R |
+| #153 | Casos P y V |
+| #154 | Casos M (bitácora, Fabric, `asignaciones_cid`) |
+| #155 | Brazo tradicional contra `baseline-o3` |
+| #156 | CI: `evaluation-test` y corrida completa a mano |
+| #157 | `docs/PROTOCOLO-PILOTO.md` (medición de campo) |
+
+Ningún issue de #151 a #157 se empieza antes de aceptar ADR-0019. A Duverney ya le quedan
+abiertos #133 y #147.
+
+**Jhunier:** revisión cruzada del lote. El tag `v0.2.0` sigue sin crearse; va sobre
+`main` en `c9885e8` o después.
 
 ## Estado vigente — 2026-10-26
 
