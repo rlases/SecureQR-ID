@@ -108,11 +108,15 @@ clave de emisión. Ver "Relación con el prototipo existente" en `docs/ARCHITECT
 - **Reparto de trabajo nuevo entre Jhunier y Duverney: se nivela la carga acumulada.**
   Cada vez que aparezca un lote de trabajo nuevo (issues, frentes de una iniciativa),
   mira primero la carga acumulada de cada autor (PR fusionados en `main`) y reparte el
-  lote de forma que se acorte la diferencia: quien lleva menos recibe más, hasta emparejar.
-  Cuando la carga acumulada ya esté pareja, el lote se reparte mitad y mitad, y lo
-  indivisible que sobre va a quien tenga menos carga. El desbalance y el reparto de cada
-  lote se documentan en `docs/STATE.md`, para que quede visible por qué se asignó así.
-  (Cambio de 2026-10-26: antes la regla era carga pareja sin mirar lo acumulado.)
+  lote de forma que se acorte la diferencia: mientras haya desbalance, quien lleva menos
+  recibe **tres de cada cuatro** piezas y quien lleva más, una. Así los dos siguen
+  trabajando y la diferencia se cierra para el final del proyecto. Cuando la carga
+  acumulada ya esté pareja, el lote se reparte mitad y mitad, y lo indivisible que sobre
+  va a quien tenga menos carga. El desbalance y el reparto de cada lote se documentan en
+  `docs/STATE.md`, para que quede visible por qué se asignó así.
+  (Cambio de 2026-10-26: antes la regla era carga pareja sin mirar lo acumulado.
+  Cambio de 2026-10-27: proporción fija de 3 a 1, en lugar de darle el lote entero a
+  quien lleva menos.)
 
 ## Trampas conocidas
 

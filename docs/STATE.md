@@ -29,25 +29,27 @@ de credenciales inválidas, la métrica principal:
 - brazo tradicional contra `baseline-o3`;
 - la captura de pantalla dentro de los 60 s queda fuera de la tasa y se declara como riesgo residual.
 
-**Lote nuevo (#151–#157), todo para Duverney por la regla de reparto.** Carga acumulada
-en PR fusionados en `main` (búsqueda de GitHub, 2026-10-27): **Jhunier 59, Duverney 35**.
-La diferencia, 24, es mayor que el lote, así que quien lleva menos lo recibe completo:
+**Lote nuevo (#151–#157), repartido 3 a 1.** Carga acumulada en PR fusionados en `main`
+(búsqueda de GitHub, 2026-10-27): **Jhunier 59, Duverney 35**. A pedido de Jhunier, la regla
+de `CLAUDE.md` pasa a una proporción fija: mientras haya desbalance, quien lleva menos
+recibe tres de cada cuatro piezas. Así los dos siguen trabajando y la diferencia se cierra
+para el final del proyecto. Sobre siete piezas salen cinco para Duverney y dos para Jhunier:
 
-| Issue | Pieza |
-|---|---|
-| #151 | `evaluation/`: entorno aislado, ejecutor, grupo de control e informe |
-| #152 | Casos F y R |
-| #153 | Casos P y V |
-| #154 | Casos M (bitácora, Fabric, `asignaciones_cid`) |
-| #155 | Brazo tradicional contra `baseline-o3` |
-| #156 | CI: `evaluation-test` y corrida completa a mano |
-| #157 | `docs/PROTOCOLO-PILOTO.md` (medición de campo) |
+| Issue | Pieza | Asignado |
+|---|---|---|
+| #151 | `evaluation/`: entorno aislado, ejecutor, grupo de control e informe | Duverney |
+| #152 | Casos F y R | Duverney |
+| #153 | Casos P y V | Duverney |
+| #154 | Casos M (bitácora, Fabric, `asignaciones_cid`) | Duverney |
+| #155 | Brazo tradicional contra `baseline-o3` | Jhunier |
+| #156 | CI: `evaluation-test` y corrida completa a mano | Duverney |
+| #157 | `docs/PROTOCOLO-PILOTO.md` (medición de campo) | Jhunier |
 
 Ningún issue de #151 a #157 se empieza antes de aceptar ADR-0019. A Duverney ya le quedan
 abiertos #133 y #147.
 
-**Jhunier:** revisión cruzada del lote. El tag `v0.2.0` sigue sin crearse; va sobre
-`main` en `c9885e8` o después.
+**Jhunier:** #155 y #157 cuando se acepte ADR-0019, y la revisión cruzada del resto del
+lote. El tag `v0.2.0` sigue sin crearse; va sobre `main` en `c9885e8` o después.
 
 ## Estado vigente — 2026-10-26
 
