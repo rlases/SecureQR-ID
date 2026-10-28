@@ -13,9 +13,9 @@ describe('contrato de resultados de #151', () => {
   });
 
   it('exporta las nueve columnas en el orden del CSV Python y escapa motivos', () => {
-    const csv = csvComun([{ ...base, caso: 'F', motivo: 'dato,"sintético"\nnuevo' }]);
-    expect(csv.split('\n')[0]).toBe('brazo,caso,clase,repeticion,malicioso,decision,motivo,motivo_correcto,ms');
-    expect(csv).toContain('tradicional,F,F,1,True,aceptado,"dato,""sintético""\nnuevo",,1.235');
-    expect(csvComun([base])).toContain('tradicional,control,control,1,False,aceptado,,,1.235');
+    const csv = csvComun([{ ...base, caso: 'F', variante: 'identidad_inventada', motivo: 'dato,"sintético"\nnuevo' }]);
+    expect(csv.split('\n')[0]).toBe('brazo,caso,clase,repeticion,variante,malicioso,decision,motivo,motivo_correcto,ms');
+    expect(csv).toContain('tradicional,F,F,1,identidad_inventada,True,aceptado,"dato,""sintético""\nnuevo",,1.235');
+    expect(csvComun([base])).toContain('tradicional,control,control,1,vigente,False,aceptado,,,1.235');
   });
 });

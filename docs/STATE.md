@@ -22,12 +22,12 @@ Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vig
 aquellos arreglos ni investigar el fixture de reseteo: el cierre posterior de Duverney
 documenta su corrección. Los issues actuales de Jhunier son #155 y #157, en **#159**.
 
-**#159 se apila sobre #160 (#151)**, porque el brazo tradicional y su comparador
+**#159 se apila sobre #162 (pila #160–#162; #151–#153)**, porque el brazo tradicional y su comparador
 necesitan el contrato del ejecutor Python. Se conserva el contenido previo del protocolo,
 incluidas la tolerancia `exp + SQRID_CLOCK_SKEW_SECONDS` y la copia de integridad.
 
 - El brazo tradicional conserva `tradicional.csv` para el detalle de variantes y
-  añade `resultados.csv/json` con las nueve columnas exactas de
+  añade `resultados.csv/json` con las diez columnas exactas (incluida `variante`, añadida en #161) de
   `secureqr_evaluation.ejecutor.Fila`. Los motivos internos no disponibles quedan
   nulos; no se inventa equivalencia con códigos de seguridad.
 - `--control` separa los 1000 controles de los 200 intentos de cada clase
@@ -38,26 +38,36 @@ incluidas la tolerancia `exp + SQRID_CLOCK_SKEW_SECONDS` y la copia de integrida
   aplicables al tradicional; no se equiparan globales con distinto catálogo ni los
   tiempos del parser y de HTTP.
 - Flujo `evaluation-baseline.yml`: checkout con tags, instalación bloqueada de
-  Node, 13 pruebas, typecheck y ocho pruebas Python del contrato. Complementa el
+  Node, 13 pruebas, typecheck y nueve pruebas Python del contrato. Complementa el
   trabajo general de batería/artefactos de #156 (Duverney), sin sustituirlo.
 - El procedimiento de integridad de #157 abre el origen en solo lectura, respalda
   con SQLite y cierra conexiones; no declara válida una base inexistente o vacía.
 
-**Verificación local:** 13/13 de Node, typecheck correcto, 8/8 de comparación contra
-el ejecutor real de #160 (`4b37dc8`). Se usaron Vitest/TypeScript coincidentes con
+**Verificación local:** 13/13 de Node (también con Node 22.16), typecheck correcto, 9/9 de comparación contra
+el ejecutor real de #162 (`ab82121`), incluida una exportación Node leída por Python. Se usaron Vitest/TypeScript coincidentes con
 el lock; tsx local 4.23.12 frente a 4.23.15 del lock, que valida el CI. El parser y
 su commit de prueba se reconstruyeron desde los objetos originales de GitHub,
 comprobando sus SHA: `baseline-o3 = 1b4498af0d2a76ceeadce0a114c40d9d758c7aab`.
 La corrida de 1600 presentaciones produjo 600/600 ataques aceptados (detección 0 %)
 y 0/1000 controles rechazados; no son resultados del piloto ni del brazo SecureQR-ID.
-Las 1600 filas fueron leídas directamente por Fila/resumir de #160, con separación
+Las 1600 filas se exportaron también con el contrato final de #162 y se compararon con el servicio real, con separación
 correcta de ataques y control. Procedimiento de integridad probado con origen válido,
 ruta ausente y base vacía.
 
-**Pendiente:** comprobar CI de los commits nuevos, revisión cruzada de Duverney
-sobre #159 y su dependencia #160, retomar las revisiones de #160–#162 y completar
-#154/#156 (Duverney). La corrida real de ambos brazos y el piloto no se declaran
-completados. Se conservan #133 (servidor del CCAV) y el reparto vigente de 3 a 1.
+**Revisión adicional:** 32/32 pruebas de la pila #160–#162 contra el servicio real.
+Corrida reducida: 140 ataques F/R/P/V rechazados por el motivo esperado y 100 controles
+aceptados. La comparación real muestra F 40/40, P 50/50 y V 20/20 detectados por
+SecureQR-ID, frente a 0/200 por clase en el tradicional. Son validaciones de laboratorio
+sobre las fuentes fijadas; sus metadatos locales sin checkout completo no se citan como
+resultado formal del documento de grado. Falta M y la corrida completa de #156.
+
+**Durante la revisión #160 se integró en main** (3ffc936); #161/#162 recibieron esa
+base sin cambiar el árbol probado. Se conserva la integración ordenada y no se fusiona
+el PR propio #159.
+
+**Pendiente:** CI del head final y revisión cruzada de Duverney sobre #159;
+completar #154/#156 (Duverney), instalación y piloto. La corrida de tamaño completo y
+el piloto no se declaran completados. Se conservan #133 (servidor del CCAV) y el reparto vigente de 3 a 1.
 No se fusionan PR propios ni se cierran #155/#157 antes de la revisión/integración.
 
 

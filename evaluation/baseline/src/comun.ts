@@ -3,7 +3,7 @@ import type { Fila } from './casos.js';
 // Contrato de secureqr_evaluation.ejecutor.Fila (#151): intercambio por archivos,
 // sin importar código Python en Node ni cambiar el catálogo del brazo tradicional.
 export const COLUMNAS_COMUNES = [
-  'brazo', 'caso', 'clase', 'repeticion', 'malicioso', 'decision', 'motivo', 'motivo_correcto', 'ms',
+  'brazo', 'caso', 'clase', 'repeticion', 'variante', 'malicioso', 'decision', 'motivo', 'motivo_correcto', 'ms',
 ] as const;
 
 export function filasComunes(filas: readonly Fila[]) {
@@ -12,6 +12,7 @@ export function filasComunes(filas: readonly Fila[]) {
     caso: f.caso,
     clase: f.caso,
     repeticion: f.repeticion,
+    variante: f.variante,
     malicioso: f.caso !== 'control',
     decision: f.decision,
     motivo: f.motivo || null,

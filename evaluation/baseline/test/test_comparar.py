@@ -1,8 +1,11 @@
 import importlib.util
 import json
+import csv
+import subprocess
 from pathlib import Path
 
 import pytest
+from secureqr_evaluation.ejecutor import COLUMNAS, Fila
 
 spec = importlib.util.spec_from_file_location("comparar_brazos", Path(__file__).parents[1] / "comparar.py")
 modulo = importlib.util.module_from_spec(spec)
@@ -10,7 +13,7 @@ spec.loader.exec_module(modulo)
 
 
 def fila(brazo, clase="F", decision="aceptado"):
-    return dict(brazo=brazo, caso=clase, clase=clase, repeticion=1, malicioso=clase != "control",
+    return dict(brazo=brazo, caso=clase, clase=clase, repeticion=1, variante=None, malicioso=clase != "control",
                 decision=decision, motivo=None, motivo_correcto=None, ms=1.0)
 
 
@@ -51,3 +54,19 @@ def test_no_cuenta_un_intento_duplicado_dos_veces(tmp_path):
     entrada.write_text(json.dumps([fila("tradicional"), fila("tradicional")]))
     with pytest.raises(ValueError, match="duplicado"):
         modulo.cargar(entrada, "tradicional")
+
+
+def test_la_cli_node_exporta_el_contrato_real_de_python(tmp_path):
+    baseline = Path(__file__).parents[1]
+    salida = tmp_path / "tradicional"
+    subprocess.run([
+        "node", "--import", "tsx", "src/cli.ts", "--salida", str(salida),
+        "--intentos", "1", "--control", "1", "--repo", str(baseline.parents[1]),
+    ], cwd=baseline, check=True, capture_output=True, text=True)
+    with (salida / "resultados.csv").open() as archivo:
+        lector = csv.DictReader(archivo)
+        assert lector.fieldnames == COLUMNAS
+        assert len(list(lector)) == 4
+    filas = modulo.cargar(salida / "resultados.json", "tradicional")
+    assert len(filas) == 4
+    assert set(filas[0].como_dict()) == set(Fila.__dataclass_fields__)

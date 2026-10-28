@@ -37,8 +37,8 @@ registro se guarda.
 **Salida**, en la carpeta indicada:
 
 - `resultados.json` y `resultados.csv`: una fila por presentación con el contrato
-  de `secureqr_evaluation.ejecutor.Fila` de #151:
-  `brazo,caso,clase,repeticion,malicioso,decision,motivo,motivo_correcto,ms`.
+  de `secureqr_evaluation.ejecutor.Fila` de #151, ampliado con `variante` en #152:
+  `brazo,caso,clase,repeticion,variante,malicioso,decision,motivo,motivo_correcto,ms`.
   `caso`/`clase` conservan F, P, V y `control`; `malicioso` separa el control de los
   ataques. `motivo_correcto` es nulo porque el parser tradicional no tiene un
   registro interno de códigos de seguridad comparable al del verificador;
@@ -52,7 +52,7 @@ registro se guarda.
 
 ## Informe de ambos brazos
 
-Requiere el paquete Python `evaluation/` de #151 instalado con sus dependencias
+Requiere el paquete Python `evaluation/` de la pila #160–#162 instalado con sus dependencias
 (ver `evaluation/README.md`). Desde la raíz del repositorio, después de ejecutar
 los dos brazos:
 

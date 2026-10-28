@@ -29,10 +29,15 @@ class Caso:
     descripcion: str
     malicioso: bool
     motivos_esperados: frozenset[str]
-    intentar: Callable[[Entorno, random.Random], Presentacion]
+    # (entorno, generador del caso, número de intento desde 0) → lo observado.
+    intentar: Callable[[Entorno, random.Random, int], Presentacion]
+    # Antes del primer intento (con el total de intentos) y después del último: para
+    # casos que cambian el estado del entorno y deben dejarlo como estaba.
+    preparar: Callable[[Entorno, int], None] | None = None
+    terminar: Callable[[Entorno], None] | None = None
 
 
-def _control(entorno: Entorno, rng: random.Random) -> Presentacion:
+def _control(entorno: Entorno, rng: random.Random, i: int) -> Presentacion:
     cid = create_credential_id()
     return entorno.verificar(entorno.emisor().issue_token(cid))
 
@@ -75,3 +80,7 @@ def seleccionar(ids: str) -> list[Caso]:
             )
     unicos = list(dict.fromkeys(elegidos))
     return sorted((CASOS[i] for i in unicos), key=lambda c: c.id != CONTROL)
+
+
+# Cada clase del catálogo registra sus casos al importarse.
+from . import casos_fr, casos_pv  # noqa: E402,F401
