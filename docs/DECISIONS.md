@@ -1361,8 +1361,10 @@ mano. En los PR solo corre si cambia algo que toca la red real:
 - el cliente de Fabric y sus dependencias (`anchor/src/` y el `package.json` de `anchor/`);
 - los comandos del ciclo y lo que importan (`evidence-log/src/` y su `pyproject.toml`).
 
-**Por qué.** El repositorio es privado y sus minutos de Actions son limitados (3000 al
-mes). En octubre de 2026 se agotaron y el CI quedó detenido varios días. En el mismo
+**Por qué.** Cuando se tomó esta decisión el repositorio era privado y sus minutos de
+Actions eran limitados (3000 al mes). En octubre de 2026 se agotaron y el CI quedó
+detenido varios días. Después el repositorio pasó a público y Actions dejó de tener
+límite, pero el ahorro se mantiene: cada corrida de la integración tarda varios minutos. En el mismo
 cambio, `ci.yml` corre cada suite solo cuando cambia su módulo o algo de lo que depende.
 
 **Consecuencia.** Una regresión que solo se vea contra la red real puede tardar hasta
@@ -1480,3 +1482,146 @@ anclaron, y quien se lleve el equipo o el disco lee todo sin necesitar ninguna c
 - Riesgo residual: con el equipo encendido, el cifrado de disco no protege. Y se pueden
   perder hasta 24 horas de altas y eventos entre un respaldo y el siguiente; los eventos
   anclados en ese lapso siguen comprobables en Fabric, aunque la copia local se pierda.
+
+---
+
+## ADR-0019 — Prueba controlada del objetivo 3: batería de ataques reproducible
+
+**Estado:** Propuesta (2026-10-27, Jhunier; necesita la aprobación de Duverney)
+
+**Contexto.** La Fase 4 de `ROADMAP.md` exige una «batería de ataques (repetición,
+falsificación, reemplazo, manipulación interna)». El objetivo específico 3 la convierte
+en una prueba controlada con una métrica principal, la **tasa de detección de
+credenciales inválidas**, y dos complementarias: el **tiempo promedio de validación** y
+la **integridad verificable de los registros**. La comparación es contra un esquema
+tradicional, que el proyecto ya fijó: la etiqueta `baseline-o3` (ADR-0016, punto 11).
+
+Hoy cada módulo prueba sus controles por separado (por ejemplo, `verifier/` rechaza un
+nonce repetido en sus pruebas unitarias), pero no hay:
+
+- un catálogo único de ataques;
+- un ejecutor que los lance contra el sistema completo;
+- un resultado que pueda citarse en el documento de grado.
+
+Sin eso, la métrica principal no se puede calcular.
+
+**Alternativas consideradas.**
+
+- **Reunir los resultados de las pruebas unitarias.** Prueban cada función con dobles,
+  no el sistema que se despliega. Una prueba unitaria en verde no demuestra que el
+  servicio armado rechace el ataque, y su conteo no es una tasa de detección.
+- **Solo pruebas manuales en el punto de control.** Son necesarias para el piloto, pero
+  no se pueden repetir igual en cada versión, y su tamaño lo limita el tiempo de las
+  personas, no el del equipo.
+- **Herramientas genéricas de *pentesting* (ZAP, Burp).** Sirven para el servidor web,
+  pero no conocen SQRID/1. No generan un token con un campo alterado y la firma original,
+  ni una firma válida hecha con una clave ajena.
+- **Batería propia que ataca el sistema armado por sus interfaces públicas.** Es
+  repetible, se versiona con el código y mide lo mismo en los dos brazos.
+
+**Decisión.**
+
+1. **Carpeta nueva `evaluation/`**, un paquete Python propio con su entorno virtual
+   (patrón de ADR-0005). No es un módulo del protocolo: no firma, no valida y no agrega
+   reglas. Ataca el sistema solo por sus interfaces públicas:
+   - HTTP de `verifier-service` (`POST /api/verify`);
+   - HTTP del servidor de `mi-app-qr` (`GET /api/titulares/integridad`), solo para M3;
+   - la CLI de `evidence-log` y la de `anchor`;
+   - para el brazo tradicional, la función de lectura de `baseline-o3` (punto 4).
+
+   Para fabricar tokens usa `issuer/` como librería, igual que las pruebas de
+   interoperabilidad de `verifier/`. Toda la criptografía viene de `cryptography`; no se
+   implementa nada propio.
+2. **Entorno aislado por corrida.** Cada corrida crea en una carpeta temporal:
+   - claves de emisión y de revocación **de prueba**, generadas en ese momento;
+   - la lista de revocación firmada;
+   - las dos bases SQLite;
+   - un `verifier-service` real en `127.0.0.1`, arrancado con `uvicorn`.
+
+   Nunca usa la clave institucional ni datos del servidor del CCAV. Los titulares son
+   sintéticos: un `cid` aleatorio, sin nombres ni documentos reales. Contra la red Fabric
+   real solo corre la clase M (punto 3), con el mismo flujo de `fabric-integracion.yml`.
+3. **Catálogo de ataques.** Cada caso tiene un identificador estable, que el documento de
+   grado cita tal cual. Todo caso malicioso debe terminar en **rechazo**, y en la clase M,
+   en una alteración **detectada**:
+
+   | Clase | Caso | Qué se presenta |
+   |---|---|---|
+   | F — Falsificación | F1 | Bytes aleatorios con la forma de SQRID/1 |
+   | | F2 | Token válido con un bit de la firma cambiado |
+   | | F3 | Token válido con un campo firmado alterado (`cid`, `exp`, `iat`, `nonce`, `kid`), sin volver a firmar |
+   | | F4 | Firma con `s` alto (maleabilidad ECDSA) |
+   | R — Reemplazo | R1 | Token bien formado, firmado con una clave P-256 ajena y un `kid` de confianza |
+   | | R2 | El mismo, con un `kid` desconocido |
+   | | R3 | Firma válida de la clave de **revocación** presentada como de emisión (ADR-0014) |
+   | P — Repetición | P1 | El mismo token aceptado, presentado otra vez |
+   | | P2 | Dos presentaciones simultáneas del mismo token: se acepta como mucho una |
+   | | P3 | Token presentado después de `exp` más la tolerancia de reloj |
+   | | P4 | Token con `iat` en el futuro, más allá de la tolerancia |
+   | | P5 | Repetición después de reiniciar `verifier-service` (los nonces persisten) |
+   | V — Credencial revocada | V1 | Token válido de un `cid` incluido en la lista firmada |
+   | | V2 | Cualquier token mientras la lista vigente está vencida |
+   | M — Manipulación interna | M1 | Editar, borrar o reordenar un evento en la base de la bitácora: `verify_chain()` lo detecta |
+   | | M2 | Reescribir la bitácora completa y recalcular la cadena después de anclarla: la raíz ya no coincide con Fabric (`anchor verificar`) |
+   | | M3 | Alterar `asignaciones_cid` sin conocer `ASIGNACIONES_KEY`: el HMAC y la cabeza comprometida lo detectan (`/api/titulares/integridad`, #119) |
+
+   **Grupo de control:** tokens legítimos, emitidos y presentados una sola vez dentro de
+   su vigencia. Sirven para medir el **falso rechazo** y el tiempo de validación, porque
+   una tasa de detección del 100 % no vale si también se rechaza a los titulares
+   legítimos.
+4. **Brazo tradicional (`baseline-o3`).** Se ejecuta la misma intención de ataque contra
+   la lectura de QR de la línea base: la función `parseQrUrlData`, en un `git worktree`
+   de la etiqueta, con Node y un DOM de pruebas. Se cuenta como **aceptado** todo QR que
+   la línea base lee como válido.
+   - Solo aplican las clases F (un texto con nombre y documento inventados), P (el mismo
+     texto otra vez) y V (el carné de alguien retirado).
+   - R no tiene equivalente porque la línea base no firma, y M tampoco porque no tiene
+     bitácora encadenada. En la tabla de resultados aparecen como «no aplica», no como
+     rechazos.
+
+   La etiqueta no se modifica: el código de prueba vive en `evaluation/baseline/`.
+5. **Métricas y salida.** Cada corrida escribe en una carpeta de resultados:
+   - `resultados.json` y `resultados.csv`, con una fila por intento: brazo, caso,
+     repetición, decisión pública, código de motivo interno y milisegundos;
+   - `entorno.json`, con el commit, las versiones, el sistema operativo, la semilla y la
+     fecha.
+
+   El informe calcula:
+   - la **tasa de detección** = rechazos ÷ intentos maliciosos, por clase y global, con
+     su **intervalo de Wilson al 95 %**;
+   - la **tasa de falso rechazo** del grupo de control;
+   - el **tiempo de validación** (media, mediana, p95), medido del lado del cliente sobre
+     el grupo de control;
+   - para M, cuántas alteraciones se detectaron.
+
+   El código de motivo (`signature`, `replay`, `expired`, …) sale del registro interno
+   del servicio y solo va al informe. La respuesta pública sigue siendo genérica
+   (ADR-0012). Que un rechazo llegue **por el motivo correcto** también se comprueba: un
+   F3 rechazado por `token_format` en lugar de `signature` indica un error de la batería.
+6. **Tamaño y semilla.** Por defecto, 200 intentos por caso y 1000 tokens de control.
+   Así, una detección de 200 sobre 200 da un límite inferior de Wilson de alrededor del
+   98 %. La semilla es fija para el informe del documento de grado y se registra en
+   `entorno.json`.
+7. **CI.** Un trabajo `evaluation-test` corre una versión reducida (10 intentos por caso)
+   en cada PR que toque `evaluation/` o los módulos que ataca. La corrida completa se
+   lanza a mano (`workflow_dispatch`) y guarda los resultados como artefacto, igual que
+   la evidencia de Fabric (ADR-0017).
+8. **Relación con el piloto.** La batería es la prueba **controlada de laboratorio**. La
+   medición de campo con participantes (tiempo de registro, intentos de suplantación en
+   la sede) sigue un protocolo aparte, `docs/PROTOCOLO-PILOTO.md`. Ese protocolo reutiliza
+   los identificadores de los casos para los intentos que se hagan a mano en el punto de
+   control, con participantes que dieron su consentimiento y nunca con terceros.
+
+**Consecuencias.**
+
+- La métrica principal se puede recalcular en cualquier commit, y el documento de grado
+  cita resultados con su commit y su semilla.
+- **La batería no prueba más de lo que dice.** La captura del QR en la pantalla del
+  titular, presentada antes que él, se **acepta** por diseño dentro de la ventana de 60 s
+  (THREAT-MODEL, «Captura del QR en la pantalla del titular»). P2 solo comprueba que el
+  mismo token no entre dos veces. La primera presentación, legítima o no, queda fuera de
+  la tasa y se declara como riesgo residual, sin maquillarla.
+- El brazo tradicional mide la lectura de la línea base, no la vigilancia humana en la
+  portería. Así se declara en el documento de grado.
+- Se agrega una carpeta de primer nivel. `ARCHITECTURE.md` y la tabla de módulos de
+  `CLAUDE.md` la nombran como herramienta de evaluación, no como módulo.
