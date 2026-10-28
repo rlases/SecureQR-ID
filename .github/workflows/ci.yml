@@ -324,9 +324,10 @@ jobs:
       - run: python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ".[test]"
       - run: python -m pytest
 
-  # Batería de ataques (ADR-0019): pruebas del paquete, que arrancan un verifier-service
-  # real en 127.0.0.1 y, para M3, el servidor de mi-app-qr. M2 necesita Fabric y aquí se
-  # omite. La versión reducida de la batería se agrega en #156.
+  # Batería de ataques (ADR-0019, punto 7): pruebas del paquete y una versión reducida de
+  # la batería (10 intentos por caso), contra un verifier-service real en 127.0.0.1 y,
+  # para M3, el servidor de mi-app-qr. M2 necesita Fabric y solo corre en la corrida
+  # completa, que se lanza a mano (evaluacion.yml).
   evaluation-test:
     name: evaluation — tests
     needs: cambios
@@ -362,6 +363,18 @@ jobs:
 
       - run: python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ../verifier-service -e ".[test]"
       - run: python -m pytest -rs
+
+      - name: Batería reducida (sin M2)
+        run: secureqr-eval run --intentos 10 --control 100 --salida "$RUNNER_TEMP/evaluacion"
+
+      - name: Guardar el informe si falló
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluacion-reducida-${{ github.run_id }}
+          path: ${{ runner.temp }}/evaluacion
+          if-no-files-found: ignore
+          retention-days: 14
 
   anchor-test:
     name: anchor — tests

@@ -17,7 +17,10 @@ def wilson(exitos: int, total: int, z: float = Z_95) -> tuple[float, float] | No
     denominador = 1 + z * z / total
     centro = (p + z * z / (2 * total)) / denominador
     margen = z * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denominador
-    return max(0.0, centro - margen), min(1.0, centro + margen)
+    # En los extremos la fórmula deja un residuo de coma flotante; el límite es exacto.
+    bajo = 0.0 if exitos == 0 else max(0.0, centro - margen)
+    alto = 1.0 if exitos == total else min(1.0, centro + margen)
+    return bajo, alto
 
 
 def percentil(valores: list[float], q: float) -> float:
