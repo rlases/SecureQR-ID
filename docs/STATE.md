@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-27
+**Última actualización:** 2026-10-28
 **Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y piloto). Fases cerradas:
 
 - **Fase 2 (diseño)**, con tag `v0.1.0` en `690bfcc`: ADR-0005 y ADR-0007 aceptadas, `SQRID-1.md` sin borrador (ADR-0010) y objetivos unificados en tres (#4).
@@ -22,7 +22,12 @@ Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
 
 - **ADR-0019 aceptada** (#150, aprobada por Duverney). Empieza el lote #151–#157.
 - **#147 cerrado** (#158, revisado por Jhunier): el cierre del piloto y el plazo de conservación quitan la `nota` y el `motivo` libre de `cambios_configuracion`; el disparador solo admite esa limpieza.
-- **#151 en PR:** paquete `evaluation/` con entorno aislado, ejecutor, grupo de control e informe (`secureqr-eval run`). El catálogo solo tiene el grupo de control; los casos F/R, P/V y M llegan en #152, #153 y #154, apilados sobre este PR. El trabajo `evaluation-test` de CI corre por ahora las pruebas del paquete; #156 le agrega la versión reducida de la batería y la corrida completa a mano.
+- **#151 a #154 cerrados, #156 cerrado con este cambio** (#160 a #164, revisados por Jhunier y fusionados en orden). `evaluation/` tiene el entorno aislado, el ejecutor, el grupo de control, el informe y los 17 casos F, R, P, V y M. El trabajo `evaluation-test` de CI corre las pruebas del paquete y una batería reducida (10 intentos por caso, 100 controles); `evaluacion.yml` corre la batería completa a mano, con una red Fabric efímera.
+- **Corrida completa sobre `main`:** [ejecución 40635336117](https://github.com/rlases/SecureQR-ID/actions/runs/40635336117) de `evaluacion.yml`, commit `6ef5cb9`, semilla `20261027`, 200 intentos por caso y 1000 controles. Terminó en verde, así que no hubo rechazos por un motivo distinto del esperado (la CLI sale con 1 si los hay). El informe está en el artefacto `evaluacion-40635336117`, que **vence el 2027-01-26**: hay que descargarlo y guardarlo con el documento de grado (o como asset de una release) antes de esa fecha. Las cifras del capítulo de resultados se citan de ese artefacto.
+- Corrida de verificación previa en el contenedor de desarrollo, con la misma configuración (commit `0c82852`): 3400 de 3400 ataques detectados (IC 95 % de Wilson entre 99,89 % y 100 %), 0 de 1000 falsos rechazos y validación con p95 de 9,96 ms.
+- **Límite declarado de los casos M:** quitar el último eslabón de la cadena no se detecta localmente; solo se detecta contra la raíz anclada en Fabric. Va tal cual al capítulo de resultados.
+- **Cómo se fusionó la pila:** con fusión squash, cada PR apilado quedó en conflicto con `main` después de fusionar el anterior. Hubo que rebasarlo, y GitHub descarta la aprobación cuando cambia la base o el merge-base. Para la próxima pila conviene pedir la aprobación de cada PR justo después de rebasarlo sobre `main`, no antes.
+- Pendientes del lote: #155 (brazo tradicional, Jhunier, PR #159) y #157 (protocolo de campo, Jhunier). Jhunier propuso que `evaluacion.yml` corra también el brazo tradicional con la misma semilla cuando #159 esté en `main`.
 - Decisiones de implementación de #151:
   - el motivo interno se lee de un archivo JSON por líneas: la batería arranca `uvicorn` con `--log-config` sobre los loggers del servicio, sin tocar su código;
   - la vigencia del token es 60 s y la tolerancia de reloj, 30 s; ambas quedan en `entorno.json`;
