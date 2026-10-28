@@ -24,6 +24,7 @@ class Fila:
     caso: str
     clase: str
     repeticion: int
+    variante: str | None
     malicioso: bool
     decision: str
     motivo: str | None
@@ -52,13 +53,13 @@ def ejecutar(
         rng = random.Random(f"{semilla}:{caso.id}")
         total = control if caso.id == CONTROL else intentos
         for repeticion in range(1, total + 1):
-            p = caso.intentar(entorno, rng)
+            p = caso.intentar(entorno, rng, repeticion - 1)
             correcto = None
             if caso.malicioso and not p.aceptado:
                 correcto = p.motivo in caso.motivos_esperados
             filas.append(
                 Fila(
-                    BRAZO, caso.id, caso.clase, repeticion, caso.malicioso,
+                    BRAZO, caso.id, caso.clase, repeticion, p.variante, caso.malicioso,
                     ACEPTADO if p.aceptado else RECHAZADO, p.motivo, correcto, round(p.ms, 3),
                 )
             )
