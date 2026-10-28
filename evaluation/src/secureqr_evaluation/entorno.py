@@ -186,12 +186,20 @@ class Entorno:
         }
 
     def iniciar(self) -> None:
+        rechazo = self.intentar_iniciar()
+        if rechazo is not None:
+            raise EntornoError(f"verifier-service no arrancó.\n{rechazo[-2000:]}")
+
+    def intentar_iniciar(self) -> str | None:
+        """Arranca el servicio. None si quedó listo; si no, lo que escribió al negarse."""
         if self._proceso is not None:
             raise EntornoError("El servicio ya está en marcha.")
         configuracion = self.carpeta / "logging.json"
         configuracion.write_text(json.dumps(configuracion_logging(self.registro)))
         self._puerto = _puerto_libre()
-        salida = open(self.carpeta / "servicio.log", "ab")
+        bitacora_servicio = self.carpeta / "servicio.log"
+        desde = bitacora_servicio.stat().st_size if bitacora_servicio.exists() else 0
+        salida = open(bitacora_servicio, "ab")
         try:
             self._proceso = subprocess.Popen(
                 [
@@ -206,9 +214,13 @@ class Entorno:
             )
         finally:
             salida.close()
-        self._esperar_listo()
+        if self._esperar_listo():
+            return None
+        with bitacora_servicio.open("rb") as archivo:
+            archivo.seek(desde)
+            return archivo.read().decode("utf-8", errors="replace")
 
-    def _esperar_listo(self) -> None:
+    def _esperar_listo(self) -> bool:
         limite = time.monotonic() + ARRANQUE_MAXIMO_SECONDS
         while time.monotonic() < limite:
             assert self._proceso is not None
@@ -219,13 +231,12 @@ class Entorno:
                 conexion.request("GET", "/api/health")
                 if conexion.getresponse().status == 200:
                     conexion.close()
-                    return
+                    return True
             except OSError:
                 pass
             time.sleep(0.1)
         self.detener()
-        cola = (self.carpeta / "servicio.log").read_text(errors="replace")[-2000:]
-        raise EntornoError(f"verifier-service no arrancó.\n{cola}")
+        return False
 
     def detener(self) -> None:
         conexion = getattr(self._local, "conexion", None)
