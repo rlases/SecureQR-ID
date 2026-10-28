@@ -50,7 +50,7 @@ describe('AltaPage', () => {
   it('si el registro no está abierto, lo dice y no muestra el formulario', async () => {
     vi.mocked(apiClient.getInfoAlta).mockResolvedValue({ ...infoAbierta, abierta: false });
     renderPage(<AltaPage />);
-    expect(await screen.findByRole('status')).toHaveTextContent(/todavía no está abierto/);
+    expect(await screen.findByText(/todavía no está abierto/)).toHaveAttribute('role', 'status');
     expect(screen.queryByLabelText('Nombre completo')).not.toBeInTheDocument();
   });
 
@@ -175,6 +175,6 @@ describe('PortalPage', () => {
       estamentoPendiente: false,
     });
     renderPage(<PortalPage />);
-    expect(await screen.findByRole('status')).toHaveTextContent(/suspendida/);
+    expect(await screen.findByText(/suspendida/)).toHaveAttribute('role', 'status');
   });
 });

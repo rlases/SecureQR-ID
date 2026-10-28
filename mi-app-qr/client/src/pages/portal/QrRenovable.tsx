@@ -1,3 +1,4 @@
+import { LoadingState } from '../../components/ui/loader';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { pedirQr } from '../../lib/apiClient';
@@ -75,7 +76,7 @@ export default function QrRenovable({ onSinVinculo }: { onSinVinculo?: () => voi
   }, [pedir]);
 
   if (estado.tipo === 'cargando') {
-    return <p className="text-muted-foreground">Generando tu QR...</p>;
+    return <LoadingState className="text-muted-foreground" label="Generando tu QR..." />;
   }
   if (estado.tipo === 'sin_vinculo') return null;
   if (estado.tipo === 'sin_qr') {

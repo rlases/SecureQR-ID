@@ -1027,16 +1027,6 @@ input:disabled {
   font-size: 11px;
 }
 
-.spin {
-  animation: spin 900ms linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes scan-beam {
   0%,
   100% {

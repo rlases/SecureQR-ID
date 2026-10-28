@@ -1,3 +1,4 @@
+import { LoadingState } from '../components/ui/loader';
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw } from 'lucide-react';
@@ -137,7 +138,7 @@ export default function ConsultaCidPage() {
           Registro de consultas
         </h3>
         {registro.isLoading && (
-          <p className="text-sm text-muted-foreground">Cargando registro de consultas...</p>
+          <LoadingState className="text-sm text-muted-foreground" label="Cargando registro de consultas..." />
         )}
         {registro.isError && (
           <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
