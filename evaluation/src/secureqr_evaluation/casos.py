@@ -35,6 +35,9 @@ class Caso:
     # casos que cambian el estado del entorno y deben dejarlo como estaba.
     preparar: Callable[[Entorno, int], None] | None = None
     terminar: Callable[[Entorno], None] | None = None
+    # Recursos externos que el caso necesita; sin ellos, `todos` lo omite (ADR-0019,
+    # punto 7: M2 corre contra Fabric solo en la corrida completa).
+    requiere: frozenset[str] = frozenset()
 
 
 def _control(entorno: Entorno, rng: random.Random, i: int) -> Presentacion:
@@ -66,10 +69,14 @@ registrar(
 )
 
 
-def seleccionar(ids: str) -> list[Caso]:
-    """`todos` o una lista separada por comas; el control siempre va primero."""
+def seleccionar(ids: str, disponibles: frozenset[str] = frozenset()) -> list[Caso]:
+    """`todos` o una lista separada por comas; el control siempre va primero.
+
+    `todos` omite los casos que requieren algo que no está en `disponibles`; nombrar uno
+    de esos casos sin su recurso es un error.
+    """
     if ids.strip() == "todos":
-        elegidos = list(CASOS)
+        elegidos = [i for i, c in CASOS.items() if c.requiere <= disponibles]
     else:
         elegidos = [i.strip() for i in ids.split(",") if i.strip()]
         desconocidos = [i for i in elegidos if i not in CASOS]
@@ -78,9 +85,13 @@ def seleccionar(ids: str) -> list[Caso]:
                 f"Casos desconocidos: {', '.join(desconocidos) or '(ninguno)'}. "
                 f"Disponibles: {', '.join(CASOS)}."
             )
+        for i in elegidos:
+            faltan = CASOS[i].requiere - disponibles
+            if faltan:
+                raise ValueError(f"{i} necesita {', '.join(sorted(faltan))}: usa --con-fabric.")
     unicos = list(dict.fromkeys(elegidos))
     return sorted((CASOS[i] for i in unicos), key=lambda c: c.id != CONTROL)
 
 
 # Cada clase del catálogo registra sus casos al importarse.
-from . import casos_fr, casos_pv  # noqa: E402,F401
+from . import casos_fr, casos_m, casos_pv  # noqa: E402,F401
