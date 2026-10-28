@@ -1570,9 +1570,12 @@ Sin eso, la métrica principal no se puede calcular.
    una tasa de detección del 100 % no vale si también se rechaza a los titulares
    legítimos.
 4. **Brazo tradicional (`baseline-o3`).** Se ejecuta la misma intención de ataque contra
-   la lectura de QR de la línea base: la función `parseQrUrlData`, en un `git worktree`
-   de la etiqueta, con Node y un DOM de pruebas. Se cuenta como **aceptado** todo QR que
-   la línea base lee como válido.
+   la lectura de QR de la línea base: la función `parseQrTextData`, en un `git worktree`
+   de la etiqueta, con Node. Es la que usa la pantalla de registro (`RegistrosPage`) con
+   el texto del carné; `parseQrUrlData` existe en el mismo archivo, pero la pantalla no
+   la usa. Se cuenta como **aceptado** todo QR que la línea base lee como válido. Que el
+   documento ya tenga una entrada abierta no es un rechazo: la pantalla solo pide
+   confirmar, y el registro se guarda.
    - Solo aplican las clases F (un texto con nombre y documento inventados), P (el mismo
      texto otra vez) y V (el carné de alguien retirado).
    - R no tiene equivalente porque la línea base no firma, y M tampoco porque no tiene
