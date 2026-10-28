@@ -65,7 +65,15 @@ resultado formal del documento de grado. Falta M y la corrida completa de #156.
 base sin cambiar el árbol probado. Se conserva la integración ordenada y no se fusiona
 el PR propio #159.
 
-**Pendiente:** CI del head final y revisión cruzada de Duverney sobre #159;
+**CI de los cambios funcionales verificado** sobre `31671dc`: flujo general
+[40628298156](https://github.com/rlases/SecureQR-ID/actions/runs/40628298156) y flujo del
+brazo tradicional [40628299164](https://github.com/rlases/SecureQR-ID/actions/runs/40628299164),
+ambos correctos. Se publicaron aprobaciones técnicas de #161 (`27c6b26`) y #162
+(`b2540d3`) tras comprobar la igualdad de sus árboles con las fuentes probadas.
+Esta última constancia solo cambia documentación; consultar las comprobaciones
+vigentes al integrar.
+
+**Pendiente:** revisión cruzada de Duverney sobre #159;
 completar #154/#156 (Duverney), instalación y piloto. La corrida de tamaño completo y
 el piloto no se declaran completados. Se conservan #133 (servidor del CCAV) y el reparto vigente de 3 a 1.
 No se fusionan PR propios ni se cierran #155/#157 antes de la revisión/integración.
