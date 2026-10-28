@@ -74,7 +74,24 @@ malicioso debe terminar en rechazo, y por uno de sus motivos esperados.
 | R1 | Token firmado con una clave P-256 ajena y el `kid` de confianza | `signature` |
 | R2 | El mismo, con el `kid` de la clave ajena | `signature` |
 | R3 | Firma válida de la clave de revocación, con su `kid` (ADR-0014) | `signature` |
+| P1 | El mismo token, ya aceptado, presentado otra vez | `replay` |
+| P2 | Dos presentaciones simultáneas del mismo token: se acepta como mucho una | `replay` en la otra |
+| P3 | Token emitido de modo que `exp` más la tolerancia ya pasó | `expired` |
+| P4 | Token con `iat` en el futuro, más allá de la tolerancia | `not_yet_valid` |
+| P5 | Token aceptado, `verifier-service` reiniciado y el token otra vez (los nonces persisten) | `replay` |
+| V1 | Token válido de un `cid` incluido en la lista firmada | `revoked` |
+| V2 | Token válido con la lista vigente vencida (el servicio arranca con ella) | `revocation_unavailable` |
 
 Los tokens maliciosos se fabrican con `cryptography` y el formato publicado en
-`docs/SQRID-1.md` (`sqrid.py`); la batería no importa `verifier/`. P y V llegan en #153 y
-M en #154; el brazo tradicional contra `baseline-o3`, en #155.
+`docs/SQRID-1.md` (`sqrid.py`); la batería no importa `verifier/`.
+
+- P3 y P4 controlan el tiempo con la emisión (`iat`/`exp`), nunca con el reloj del
+  sistema.
+- P2 solo comprueba que el mismo token no entre dos veces. Una captura presentada antes
+  que el titular dentro de la vigencia se acepta por diseño y queda fuera de la tasa:
+  es riesgo residual (ADR-0019, consecuencias). Si ninguna de las dos presentaciones
+  entra, el intento se marca con el motivo `ninguna_aceptada`, que cuenta como error.
+- V1 y V2 cambian la lista del entorno y la restauran al terminar, así que el orden de
+  los casos no altera los demás.
+
+M llega en #154; el brazo tradicional contra `baseline-o3`, en #155.

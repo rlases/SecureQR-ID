@@ -43,6 +43,8 @@ REVOCATION_MAX_AGE_SECONDS = 24 * 3600
 REVOCATION_REFRESH_SECONDS = 1
 VERIFIER_ID = "evaluacion-secureqr-id"
 ARRANQUE_MAXIMO_SECONDS = 30.0
+# Eventos con los que verifier/ registra un rechazo y su `reason_code`.
+EVENTOS_DE_RECHAZO = frozenset({"verification_rejected", "verification_http_rejected"})
 
 
 class EntornoError(Exception):
@@ -85,6 +87,7 @@ class Entorno:
         self.base_bitacora = self.carpeta / "estado" / "bitacora.sqlite3"
         self.registro = self.carpeta / "registro-servicio.jsonl"
         self._password = secrets.token_urlsafe(32)
+        self._iat_lista = -1
 
         self.emision_privada, self.kid_emision = self._par_de_claves(
             "emision", self.claves_emision
@@ -100,6 +103,8 @@ class Entorno:
         self._local = threading.local()
         self._registro_lock = threading.Lock()
         self._registro_leido = 0
+        # Estado que un caso deja entre su preparación, sus intentos y su cierre.
+        self.estado: dict[str, object] = {}
 
     # --- Material de prueba -------------------------------------------------------------
 
@@ -130,16 +135,30 @@ class Entorno:
         return Issuer(self.emision_privada, self._password, ttl, clock=reloj)
 
     def escribir_lista(self, revocados: list[str], *, emitida_en: int | None = None) -> None:
-        """Firma y guarda la lista con la clave de revocación de prueba (reemplazo atómico)."""
+        """Firma y guarda la lista con la clave de revocación de prueba (reemplazo atómico).
+
+        Sin `emitida_en`, el `iat` es el segundo anterior y siempre mayor que el de la
+        lista previa: el servicio solo instala una lista más reciente (ADR-0015).
+        """
+        if emitida_en is None:
+            emitida_en = int(time.time()) - 1
+            while emitida_en <= self._iat_lista:
+                time.sleep(0.1)
+                emitida_en = int(time.time()) - 1
         firmada = sign_revocation_list(
             self.cargar_privada(self.revocacion_privada),
             self.kid_revocacion,
             revocados,
-            int(time.time()) - 1 if emitida_en is None else emitida_en,
+            emitida_en,
         )
         temporal = self.lista_revocacion.with_suffix(".tmp")
         temporal.write_bytes(firmada)
         temporal.replace(self.lista_revocacion)
+        self._iat_lista = emitida_en
+
+    def esperar_recarga(self) -> None:
+        """Deja pasar el intervalo de recarga: la próxima consulta lee la lista nueva."""
+        time.sleep(REVOCATION_REFRESH_SECONDS + 0.2)
 
     # --- Servicio -------------------------------------------------------------------------
 
@@ -271,9 +290,11 @@ class Entorno:
             self._registro_leido += len(completo)
         motivos = []
         for linea in completo.splitlines():
-            codigo = json.loads(linea).get("reason_code")
-            if codigo:
-                motivos.append(codigo)
+            registro = json.loads(linea)
+            # Solo los rechazos de una verificación; la recarga de la lista registra
+            # sus propios códigos (`list_rollback`, …), que no son el motivo.
+            if registro.get("evento") in EVENTOS_DE_RECHAZO and registro.get("reason_code"):
+                motivos.append(registro["reason_code"])
         return motivos
 
     def verificar(self, token: str) -> Presentacion:

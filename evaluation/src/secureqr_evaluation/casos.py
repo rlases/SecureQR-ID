@@ -31,6 +31,10 @@ class Caso:
     motivos_esperados: frozenset[str]
     # (entorno, generador del caso, número de intento desde 0) → lo observado.
     intentar: Callable[[Entorno, random.Random, int], Presentacion]
+    # Antes del primer intento (con el total de intentos) y después del último: para
+    # casos que cambian el estado del entorno y deben dejarlo como estaba.
+    preparar: Callable[[Entorno, int], None] | None = None
+    terminar: Callable[[Entorno], None] | None = None
 
 
 def _control(entorno: Entorno, rng: random.Random, i: int) -> Presentacion:
@@ -79,4 +83,4 @@ def seleccionar(ids: str) -> list[Caso]:
 
 
 # Cada clase del catálogo registra sus casos al importarse.
-from . import casos_fr  # noqa: E402,F401
+from . import casos_fr, casos_pv  # noqa: E402,F401
