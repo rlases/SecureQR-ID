@@ -47,3 +47,8 @@ def test_resumen_por_clase_global_falso_rechazo_y_motivos_incorrectos() -> None:
     assert r["deteccion_por_clase"]["P"]["tasa"] == 1.0
     assert r["falso_rechazo"]["tasa"] == 0.5
     assert r["motivos_incorrectos"] == [{"caso": "P1", "repeticion": 1, "motivo": "token_format"}]
+
+
+def test_wilson_da_limites_exactos_en_los_extremos() -> None:
+    assert wilson(0, 1000)[0] == 0.0
+    assert wilson(200, 200)[1] == 1.0
