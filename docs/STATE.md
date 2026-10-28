@@ -14,6 +14,66 @@ Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vig
 
 ---
 
+## Estado vigente — 2026-10-28
+
+### Reanudación de Jhunier — 2026-10-27 (noche, Colombia)
+
+**Los pendientes antiguos de #102–#115 ya están integrados.** No volver a distribuir
+aquellos arreglos ni investigar el fixture de reseteo: el cierre posterior de Duverney
+documenta su corrección. Los issues actuales de Jhunier son #155 y #157, en **#159**.
+
+**#159 se apila sobre #160 (#151)**, porque el brazo tradicional y su comparador
+necesitan el contrato del ejecutor Python. Se conserva el contenido previo del protocolo,
+incluidas la tolerancia `exp + SQRID_CLOCK_SKEW_SECONDS` y la copia de integridad.
+
+- El brazo tradicional conserva `tradicional.csv` para el detalle de variantes y
+  añade `resultados.csv/json` con las nueve columnas exactas de
+  `secureqr_evaluation.ejecutor.Fila`. Los motivos internos no disponibles quedan
+  nulos; no se inventa equivalencia con códigos de seguridad.
+- `--control` separa los 1000 controles de los 200 intentos de cada clase
+  maliciosa. La semilla por defecto es 20261027, alineada con #151.
+- `evaluation/baseline/comparar.py` usa `resumir` de #151 para presentar F/P/V
+  lado a lado, falso rechazo e intervalos de Wilson. Guarda los hash de las entradas;
+  rechaza datos inconsistentes/duplicados y no sobrescribe evidencia. R/M son no
+  aplicables al tradicional; no se equiparan globales con distinto catálogo ni los
+  tiempos del parser y de HTTP.
+- Flujo `evaluation-baseline.yml`: checkout con tags, instalación bloqueada de
+  Node, 13 pruebas, typecheck y ocho pruebas Python del contrato. Complementa el
+  trabajo general de batería/artefactos de #156 (Duverney), sin sustituirlo.
+- El procedimiento de integridad de #157 abre el origen en solo lectura, respalda
+  con SQLite y cierra conexiones; no declara válida una base inexistente o vacía.
+
+**Verificación local:** 13/13 de Node, typecheck correcto, 8/8 de comparación contra
+el ejecutor real de #160 (`4b37dc8`). Se usaron Vitest/TypeScript coincidentes con
+el lock; tsx local 4.23.12 frente a 4.23.15 del lock, que valida el CI. El parser y
+su commit de prueba se reconstruyeron desde los objetos originales de GitHub,
+comprobando sus SHA: `baseline-o3 = 1b4498af0d2a76ceeadce0a114c40d9d758c7aab`.
+La corrida de 1600 presentaciones produjo 600/600 ataques aceptados (detección 0 %)
+y 0/1000 controles rechazados; no son resultados del piloto ni del brazo SecureQR-ID.
+Las 1600 filas fueron leídas directamente por Fila/resumir de #160, con separación
+correcta de ataques y control. Procedimiento de integridad probado con origen válido,
+ruta ausente y base vacía.
+
+**Pendiente:** comprobar CI de los commits nuevos, revisión cruzada de Duverney
+sobre #159 y su dependencia #160, retomar las revisiones de #160–#162 y completar
+#154/#156 (Duverney). La corrida real de ambos brazos y el piloto no se declaran
+completados. Se conservan #133 (servidor del CCAV) y el reparto vigente de 3 a 1.
+No se fusionan PR propios ni se cierran #155/#157 antes de la revisión/integración.
+
+
+
+### Sesión de Duverney — 2026-10-28 (madrugada, hora UTC)
+
+Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+- **ADR-0019 aceptada** (#150, aprobada por Duverney). Empieza el lote #151–#157.
+- **#147 cerrado** (#158, revisado por Jhunier): el cierre del piloto y el plazo de conservación quitan la `nota` y el `motivo` libre de `cambios_configuracion`; el disparador solo admite esa limpieza.
+- **#151 en PR:** paquete `evaluation/` con entorno aislado, ejecutor, grupo de control e informe (`secureqr-eval run`). El catálogo solo tiene el grupo de control; los casos F/R, P/V y M llegan en #152, #153 y #154, apilados sobre este PR. El trabajo `evaluation-test` de CI corre por ahora las pruebas del paquete; #156 le agrega la versión reducida de la batería y la corrida completa a mano.
+- Decisiones de implementación de #151:
+  - el motivo interno se lee de un archivo JSON por líneas: la batería arranca `uvicorn` con `--log-config` sobre los loggers del servicio, sin tocar su código;
+  - la vigencia del token es 60 s y la tolerancia de reloj, 30 s; ambas quedan en `entorno.json`;
+  - la semilla fija del informe es `20261027`. Elige las variantes de cada caso; las claves y los nonces siguen saliendo del CSPRNG, así que dos corridas con la misma semilla no producen los mismos bytes.
+
 ## Estado vigente — 2026-10-27
 
 ### Sesión de Jhunier — 2026-10-27 (madrugada, hora UTC)
@@ -49,7 +109,7 @@ Ningún issue de #151 a #157 se empieza antes de aceptar ADR-0019. A Duverney ya
 abiertos #133 y #147.
 
 **Jhunier:** #155 y #157 cuando se acepte ADR-0019, y la revisión cruzada del resto del
-lote. El tag `v0.2.0` sigue sin crearse; va sobre `main` en `c9885e8` o después.
+lote. ~~El tag `v0.2.0` sigue sin crearse.~~ Corrección (2026-10-28): el tag `v0.2.0` ya existe, sobre `c9885e8`.
 
 ## Estado vigente — 2026-10-26
 

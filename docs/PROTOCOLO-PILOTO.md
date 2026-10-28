@@ -171,11 +171,43 @@ Al cierre del postest, sobre la bitácora del punto de control:
    base, para no abrir con escritura la que usa el servicio:
 
    ```bash
-   sqlite3 /var/lib/secureqr-id/evidence.sqlite3 ".backup /tmp/evidence-cierre.sqlite3"
-   /opt/secureqr-id/.venv/bin/python -c "from secureqr_evidence_log.evidence_log import EvidenceLog; print('verify_chain:', EvidenceLog('/tmp/evidence-cierre.sqlite3').verify_chain())"
+   DIR_INTEGRIDAD=$(mktemp -d)
+   /opt/secureqr-id/.venv/bin/python - /var/lib/secureqr-id/evidence.sqlite3 "$DIR_INTEGRIDAD/evidence-cierre.sqlite3" <<'PY'
+   import sqlite3
+   import sys
+   from pathlib import Path
+   from secureqr_evidence_log.evidence_log import EvidenceLog
+
+   origen, copia = (Path(p).resolve() for p in sys.argv[1:])
+   if not origen.is_file() or copia.exists():
+       raise SystemExit('Se requiere la base existente y un destino nuevo.')
+   lectura = sqlite3.connect(origen.as_uri() + '?mode=ro', uri=True)
+   destino = sqlite3.connect(copia)
+   try:
+       lectura.backup(destino)
+   finally:
+       destino.close()
+       lectura.close()
+   bitacora = EvidenceLog(str(copia))
+   try:
+       cantidad = len(bitacora.events)
+       integra = bitacora.verify_chain()
+       print('eventos:', cantidad)
+       print('verify_chain:', integra)
+       if cantidad == 0:
+           raise SystemExit('Sin eventos: no hay evidencia del periodo para evaluar.')
+       if not integra:
+           raise SystemExit(1)
+   finally:
+       bitacora.close()
+   PY
    ```
 
-   La salida esperada es `verify_chain: True`.
+   La salida esperada incluye un número de eventos mayor que cero,
+   `verify_chain: True` y salida 0. Una ruta inexistente no debe crear una bitácora
+   vacía ni contarse como verificación válida. La copia queda en un directorio
+   temporal privado: se conserva solo mientras se documenta la comprobación y se
+   elimina junto con las demás copias al cierre (§10).
 2. `anchor verificar` de una muestra de eventos del periodo contra las raíces ancladas
    en Fabric: al menos 30 eventos elegidos al azar, con la semilla anotada.
 3. El estado del sellado en OpenTimestamps del último bloque del canal.

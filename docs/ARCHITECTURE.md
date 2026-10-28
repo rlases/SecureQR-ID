@@ -121,6 +121,14 @@ cualquier otro campo evita trabajar sobre un payload no confiable.
 | `verifier-service/` | Arranque de producción: compone `verifier/`, `revocation/` y `evidence-log/` | No contiene reglas de validación; si una dependencia no es confiable, no arranca |
 | `mi-app-qr/` (servidor) | Registro `cid` → titular, portal del titular y pedido de tokens a `issuer/` (ADR-0016) | Nunca firma ni conoce la contraseña de la clave: pide tokens al servicio local; no importa código de los módulos Python |
 
+`evaluation/` no es un módulo del protocolo sino una **herramienta de evaluación**
+(ADR-0019): la batería de ataques reproducible del objetivo 3. No firma, no valida y no
+agrega reglas. Arma un despliegue de prueba en una carpeta temporal (claves de prueba,
+lista firmada, las dos SQLite y un `verifier-service` real en `127.0.0.1`) y lo ataca
+solo por sus interfaces públicas. Usa `issuer/` como librería para fabricar tokens y lee
+el motivo de cada rechazo del registro interno del servicio; la respuesta pública sigue
+siendo genérica (ADR-0012).
+
 ## Decisiones de arquitectura pendientes
 
 Ninguna abierta por ahora. La distribución de la lista de revocación a verificadores

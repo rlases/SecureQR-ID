@@ -1,15 +1,16 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { release, type } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { ejecutarCasos } from './casos.js';
 import { ETIQUETA, cargarLineaBase } from './lineaBase.js';
 import { aCsv, resumen } from './resultados.js';
+import { csvComun, filasComunes } from './comun.js';
 
-// Uso: npm run brazo -- --salida <carpeta> [--intentos 200] [--semilla 20261028] [--repo <ruta>]
+// Uso: npm run brazo -- --salida <carpeta> [--intentos 200] [--control 1000] [--repo <ruta>]
 
 const AYUDA =
-  'Uso: npm run brazo -- --salida <carpeta> [--intentos N] [--semilla S] [--anio AAAA] [--repo <ruta>]';
+  'Uso: npm run brazo -- --salida <carpeta> [--intentos N] [--control N] [--semilla S] [--anio AAAA] [--repo <ruta>]';
 
 async function main(argv: string[]): Promise<number> {
   const { values } = parseArgs({
@@ -17,7 +18,8 @@ async function main(argv: string[]): Promise<number> {
     options: {
       salida: { type: 'string' },
       intentos: { type: 'string', default: '200' },
-      semilla: { type: 'string', default: '20261028' },
+      control: { type: 'string', default: '1000' },
+      semilla: { type: 'string', default: '20261027' },
       anio: { type: 'string' },
       repo: { type: 'string', default: resolve(import.meta.dirname, '../../..') },
     },
@@ -27,18 +29,25 @@ async function main(argv: string[]): Promise<number> {
     return 2;
   }
   const intentos = Number(values.intentos);
+  const control = Number(values.control);
   const semilla = Number(values.semilla);
   const anio = values.anio ? Number(values.anio) : new Date().getUTCFullYear();
-  if (![intentos, semilla, anio].every(Number.isInteger) || intentos < 1) {
+  if (![intentos, control, semilla, anio].every(Number.isInteger) || intentos < 1 || control < 1) {
     console.error(AYUDA);
     return 2;
   }
 
+  const carpeta = resolve(values.salida);
+  if (existsSync(carpeta) && readdirSync(carpeta).length > 0) {
+    console.error(`${carpeta} ya tiene contenido; no se sobrescriben resultados.`);
+    return 2;
+  }
   const lineaBase = await cargarLineaBase(values.repo);
   try {
-    const filas = ejecutarCasos(lineaBase.parseQrTextData, { intentos, semilla, anio });
-    const carpeta = resolve(values.salida);
+    const filas = ejecutarCasos(lineaBase.parseQrTextData, { intentos, control, semilla, anio });
     mkdirSync(carpeta, { recursive: true });
+    writeFileSync(join(carpeta, 'resultados.csv'), csvComun(filas));
+    writeFileSync(join(carpeta, 'resultados.json'), JSON.stringify(filasComunes(filas), null, 2) + '\n');
     writeFileSync(join(carpeta, 'tradicional.csv'), aCsv(filas));
     writeFileSync(join(carpeta, 'tradicional-resumen.json'), JSON.stringify(resumen(filas), null, 2) + '\n');
     writeFileSync(
@@ -48,6 +57,7 @@ async function main(argv: string[]): Promise<number> {
           etiqueta: ETIQUETA,
           commit: lineaBase.commit,
           intentos,
+          control,
           semilla,
           anio,
           node: process.version,

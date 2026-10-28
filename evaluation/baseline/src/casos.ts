@@ -21,6 +21,8 @@ export interface Fila {
 
 export interface Opciones {
   intentos: number;
+  /** Control independiente; por defecto conserva el tamaño pedido a esta función. */
+  control?: number;
   semilla: number;
   /** Año de referencia de la corrida; las vigencias se fijan respecto a él. */
   anio: number;
@@ -58,15 +60,17 @@ function presentar(
  */
 export function ejecutarCasos(leer: Lector, opciones: Opciones): Fila[] {
   const { intentos, semilla, anio } = opciones;
+  const control = opciones.control ?? intentos;
   if (!Number.isInteger(intentos) || intentos < 1) {
     throw new Error('intentos debe ser un entero positivo');
   }
+  if (!Number.isInteger(control) || control < 1) throw new Error('control debe ser un entero positivo');
   const azar = generador(semilla);
   const filas: Fila[] = [];
   const fila = (caso: Caso, variante: string, repeticion: number, texto: string) =>
     filas.push({ brazo: 'tradicional', caso, variante, repeticion, ...presentar(leer, texto) });
 
-  for (let i = 1; i <= intentos; i++) {
+  for (let i = 1; i <= control; i++) {
     fila('control', 'vigente', i, textoCarne(carneSintetico(azar, anio + 1)));
   }
   for (let i = 1; i <= intentos; i++) {
