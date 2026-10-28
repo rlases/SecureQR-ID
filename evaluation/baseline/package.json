@@ -1,0 +1,18 @@
+{
+  "name": "@secureqr-id/evaluation-baseline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Brazo tradicional de la batería de ADR-0019: la lectura de QR de baseline-o3.",
+  "scripts": {
+    "brazo": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
