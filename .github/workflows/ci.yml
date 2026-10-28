@@ -38,6 +38,7 @@ jobs:
       anchor-test: ${{ steps.filtro.outputs.anchor-test }}
       chaincode-test: ${{ steps.filtro.outputs.chaincode-test }}
       respaldo-test: ${{ steps.filtro.outputs.respaldo-test }}
+      evaluation-test: ${{ steps.filtro.outputs.evaluation-test }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,6 +81,7 @@ jobs:
           marcar anchor-test '^anchor/' '^anchor/chaincode/'
           marcar chaincode-test '^anchor/chaincode/' ''
           marcar respaldo-test '^infra/respaldo/' ''
+          marcar evaluation-test '^(evaluation|verifier-service|verifier|issuer|revocation|evidence-log)/' ''
 
   test:
     name: mi-app-qr — tests
@@ -320,6 +322,34 @@ jobs:
             evidence-log/pyproject.toml
 
       - run: python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ".[test]"
+      - run: python -m pytest
+
+  # Batería de ataques (ADR-0019): pruebas del paquete, que arrancan un verifier-service
+  # real en 127.0.0.1. La versión reducida de la batería se agrega en #156.
+  evaluation-test:
+    name: evaluation — tests
+    needs: cambios
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.evaluation-test == 'true') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: evaluation
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: |
+            evaluation/pyproject.toml
+            verifier-service/pyproject.toml
+            verifier/pyproject.toml
+            issuer/pyproject.toml
+            revocation/pyproject.toml
+            evidence-log/pyproject.toml
+
+      - run: python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ../verifier-service -e ".[test]"
       - run: python -m pytest
 
   anchor-test:

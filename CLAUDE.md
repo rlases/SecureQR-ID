@@ -51,6 +51,11 @@ go test ./...
 # Se crea una sola vez y después solo se detiene y arranca; nunca `network.sh down`,
 # que borra el ledger. Ver infra/fabric/README.md.
 
+# evaluation/ (batería de ataques, ADR-0019; herramienta de evaluación, no módulo)
+python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ../verifier-service -e ".[test]"
+python -m pytest
+secureqr-eval run --casos control --control 1000 --salida resultados/
+
 # verifier-web/ (Node.js 22.12+)
 npm ci
 npm test
@@ -68,6 +73,7 @@ npm run test:e2e
 | `evidence-log/` | encadena eventos por hash | no decide aceptar/rechazar |
 | `anchor/` | construye Merkle, ancla la raíz en Fabric y sella en OpenTimestamps el hash del último bloque del canal | no ve datos personales, solo hashes |
 | `verifier-service/` | arranca el verificador real componiendo los módulos | no añade reglas de validación |
+| `evaluation/` | herramienta de evaluación (ADR-0019): ataca el sistema armado y mide la tasa de detección | no es un módulo: no firma, no valida, no agrega reglas; nunca usa la clave institucional |
 
 La separación es deliberada: es lo que permite que la validación sea local y rápida
 mientras el anclaje corre asíncrono. No la colapses "por simplicidad".

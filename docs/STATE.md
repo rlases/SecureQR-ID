@@ -14,6 +14,20 @@ Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vig
 
 ---
 
+## Estado vigente — 2026-10-28
+
+### Sesión de Duverney — 2026-10-28 (madrugada, hora UTC)
+
+Lo más reciente; prevalece sobre lo que contradiga de las secciones siguientes.
+
+- **ADR-0019 aceptada** (#150, aprobada por Duverney). Empieza el lote #151–#157.
+- **#147 cerrado** (#158, revisado por Jhunier): el cierre del piloto y el plazo de conservación quitan la `nota` y el `motivo` libre de `cambios_configuracion`; el disparador solo admite esa limpieza.
+- **#151 en PR:** paquete `evaluation/` con entorno aislado, ejecutor, grupo de control e informe (`secureqr-eval run`). El catálogo solo tiene el grupo de control; los casos F/R, P/V y M llegan en #152, #153 y #154, apilados sobre este PR. El trabajo `evaluation-test` de CI corre por ahora las pruebas del paquete; #156 le agrega la versión reducida de la batería y la corrida completa a mano.
+- Decisiones de implementación de #151:
+  - el motivo interno se lee de un archivo JSON por líneas: la batería arranca `uvicorn` con `--log-config` sobre los loggers del servicio, sin tocar su código;
+  - la vigencia del token es 60 s y la tolerancia de reloj, 30 s; ambas quedan en `entorno.json`;
+  - la semilla fija del informe es `20261027`. Elige las variantes de cada caso; las claves y los nonces siguen saliendo del CSPRNG, así que dos corridas con la misma semilla no producen los mismos bytes.
+
 ## Estado vigente — 2026-10-27
 
 ### Sesión de Jhunier — 2026-10-27 (madrugada, hora UTC)
@@ -49,7 +63,7 @@ Ningún issue de #151 a #157 se empieza antes de aceptar ADR-0019. A Duverney ya
 abiertos #133 y #147.
 
 **Jhunier:** #155 y #157 cuando se acepte ADR-0019, y la revisión cruzada del resto del
-lote. El tag `v0.2.0` sigue sin crearse; va sobre `main` en `c9885e8` o después.
+lote. ~~El tag `v0.2.0` sigue sin crearse.~~ Corrección (2026-10-28): el tag `v0.2.0` ya existe, sobre `c9885e8`.
 
 ## Estado vigente — 2026-10-26
 
