@@ -29,7 +29,7 @@ async function main(argv: string[]): Promise<number> {
     console.log(
       r === null
         ? 'No hay plazo de conservación configurado: no se anonimizó nada.'
-        : `Anonimizados por plazo: ${r.registros} registros y ${r.consultas} consultas.`
+        : `Anonimizados por plazo: ${r.registros} registros, ${r.consultas} consultas y ${r.cambios} cambios.`
     );
     return 0;
   }
@@ -59,7 +59,7 @@ async function main(argv: string[]): Promise<number> {
   const r = anonimizarCierre(db, confirmacion, quien, new Date());
   db.close();
   console.log(
-    `Anonimizados: ${r.titulares} titulares, ${r.registros} registros y ${r.consultas} consultas.`
+    `Anonimizados: ${r.titulares} titulares, ${r.registros} registros, ${r.consultas} consultas y ${r.cambios} cambios.`
   );
   return 0;
 }

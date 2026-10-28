@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { canonicalCidSql } from '../titulares/identificadores.js';
+import { limpiarTextoLibreSql } from '../titulares/anonimizacion.js';
 
 // Índice y disparadores de `titulares`. DROP TABLE los elimina, así que la
 // reconstrucción de `migrarEstadosTitulares` los vuelve a crear con este mismo texto.
@@ -290,6 +291,7 @@ function runConservacionMigrations(db: Database.Database): void {
       titulares INTEGER NOT NULL,
       registros INTEGER NOT NULL,
       consultas INTEGER NOT NULL,
+      cambios INTEGER NOT NULL DEFAULT 0,
       ejecutado_por TEXT NOT NULL,
       ejecutado_en TEXT NOT NULL
     );
@@ -309,6 +311,31 @@ function runConservacionMigrations(db: Database.Database): void {
     )
     BEGIN SELECT RAISE(ABORT, 'el registro de consultas es de solo agregar'); END;
   `);
+  runCambiosMigrations(db);
+}
+
+// Texto libre del historial de cambios (enmienda de 2026-10-26 a ADR-0016, punto 1;
+// issue #147). La única modificación admitida es quitar `nota` y el `motivo` que no es
+// de lista cerrada de `valor_anterior` y `valor_nuevo`: ninguna otra columna cambia y no
+// se agrega contenido. El borrado sigue prohibido.
+function runCambiosMigrations(db: Database.Database): void {
+  db.exec(`
+    DROP TRIGGER IF EXISTS cambios_configuracion_no_update;
+    CREATE TRIGGER cambios_configuracion_no_update BEFORE UPDATE ON cambios_configuracion
+    WHEN NOT (
+      NEW.id = OLD.id AND NEW.usuario_id = OLD.usuario_id
+      AND NEW.entidad = OLD.entidad AND NEW.entidad_id IS OLD.entidad_id
+      AND NEW.accion = OLD.accion AND NEW.en = OLD.en
+      AND NEW.valor_anterior IS ${limpiarTextoLibreSql('OLD.valor_anterior')}
+      AND NEW.valor_nuevo IS ${limpiarTextoLibreSql('OLD.valor_nuevo')}
+    )
+    BEGIN SELECT RAISE(ABORT, 'el registro de cambios es de solo agregar'); END;
+  `);
+  // Las bases creadas antes de #147 no tienen la columna.
+  const columnas = db.pragma('table_info(anonimizaciones)') as { name: string }[];
+  if (!columnas.some((c) => c.name === 'cambios')) {
+    db.exec('ALTER TABLE anonimizaciones ADD COLUMN cambios INTEGER NOT NULL DEFAULT 0');
+  }
 }
 
 // Definición de `titulares`, compartida por la creación y por su reconstrucción
