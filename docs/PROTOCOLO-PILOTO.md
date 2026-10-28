@@ -130,7 +130,7 @@ sistema tradicional ofrece.
 | Caso | Pretest (`baseline-o3`) | Postest (SecureQR-ID) |
 |---|---|---|
 | F | QR impreso con el texto de un carné con nombre y documento inventados | QR impreso con un token SQRID/1 alterado, generado por la batería de `evaluation/` |
-| P | Foto del QR del carné de otro participante, presentada después de que él ya se registró | Captura del QR de otro participante presentada **después** de que él lo usó, o pasados sus 60 s |
+| P | Foto del QR del carné de otro participante, presentada después de que él ya se registró | Captura del QR de otro participante presentada **después** de que él lo usó, o pasada su ventana de aceptación (60 s más la tolerancia de reloj) |
 | V | Carné de un participante marcado como retirado en la planilla (la línea base no tiene revocación) | QR válido de un participante cuya credencial revocó el custodio para el estudio y que luego se reactiva |
 
 - **Tamaño:** 20 intentos por caso y por brazo (60 por brazo), repartidos entre los
@@ -140,8 +140,14 @@ sistema tradicional ofrece.
   (**aceptado** o **rechazado**). En el postest se agrega el motivo interno del registro
   de `verifier-service`.
 
+**Ventana de aceptación.** El verificador acepta un token hasta `exp` más la tolerancia
+de reloj configurada en `SQRID_CLOCK_SKEW_SECONDS`, no solo hasta `exp`. La tolerancia del
+piloto se anota en la planilla. La variante de P que espera a que el token venza debe
+presentarse **después** de esa ventana completa (60 s más la tolerancia); antes, el token
+todavía es válido y no se cuenta como intento.
+
 **Qué no se intenta en campo.** La captura del QR presentada **antes** que el titular,
-dentro de sus 60 s, se acepta por diseño (THREAT-MODEL, «Captura del QR en la pantalla
+dentro de su ventana de aceptación, se acepta por diseño (THREAT-MODEL, «Captura del QR en la pantalla
 del titular»). No forma parte de la tasa y se reporta como riesgo residual, igual que
 en la batería. En campo tampoco se hacen los casos R y M: se miden en el laboratorio
 (ADR-0019).
@@ -160,7 +166,16 @@ en la batería. En campo tampoco se hacen los casos R y M: se miden en el labora
 
 Al cierre del postest, sobre la bitácora del punto de control:
 
-1. `verify_chain()` sobre la bitácora completa (CLI de `evidence-log`).
+1. `verify_chain()` sobre la bitácora completa. La CLI de `evidence-log` no tiene un
+   comando para esto, así que se llama desde Python. Se hace sobre una **copia** de la
+   base, para no abrir con escritura la que usa el servicio:
+
+   ```bash
+   sqlite3 /var/lib/secureqr-id/evidence.sqlite3 ".backup /tmp/evidence-cierre.sqlite3"
+   /opt/secureqr-id/.venv/bin/python -c "from secureqr_evidence_log.evidence_log import EvidenceLog; print('verify_chain:', EvidenceLog('/tmp/evidence-cierre.sqlite3').verify_chain())"
+   ```
+
+   La salida esperada es `verify_chain: True`.
 2. `anchor verificar` de una muestra de eventos del periodo contra las raíces ancladas
    en Fabric: al menos 30 eventos elegidos al azar, con la semilla anotada.
 3. El estado del sellado en OpenTimestamps del último bloque del canal.
