@@ -54,12 +54,14 @@ class Presentacion:
     """Lo que la batería observa al presentar un token.
 
     `aceptado` es la decisión pública; `motivo`, el código interno del registro del
-    servicio (None si se aceptó); `ms`, el tiempo de ida y vuelta del lado del cliente.
+    servicio (None si se aceptó); `ms`, el tiempo de ida y vuelta del lado del cliente;
+    `variante`, cuál de las formas del caso se intentó, si tiene varias.
     """
 
     aceptado: bool
     motivo: str | None
     ms: float
+    variante: str | None = None
 
 
 def _puerto_libre() -> int:

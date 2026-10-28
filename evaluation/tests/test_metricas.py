@@ -29,7 +29,7 @@ def test_percentil_por_rango_mas_cercano() -> None:
 
 
 def _fila(caso: str, clase: str, malicioso: bool, decision: str, motivo=None, correcto=None) -> Fila:
-    return Fila("secureqr", caso, clase, 1, malicioso, decision, motivo, correcto, 1.0)
+    return Fila("secureqr", caso, clase, 1, None, malicioso, decision, motivo, correcto, 1.0)
 
 
 def test_resumen_por_clase_global_falso_rechazo_y_motivos_incorrectos() -> None:

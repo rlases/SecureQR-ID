@@ -61,5 +61,20 @@ intentos, pero no producen los mismos bytes.
 
 ## Catálogo
 
-Por ahora solo el grupo de control (`control`). Los casos F y R llegan en #152, P y V en
-#153 y M en #154; el brazo tradicional contra `baseline-o3`, en #155.
+Cada caso tiene un identificador estable que el documento de grado cita tal cual. Un caso
+malicioso debe terminar en rechazo, y por uno de sus motivos esperados.
+
+| Caso | Qué se presenta | Motivo esperado |
+|---|---|---|
+| `control` | Token legítimo, emitido y presentado una sola vez dentro de su vigencia | se acepta |
+| F1 | Bytes aleatorios (variante `bytes`) o un mapa con los siete campos y valores al azar (variante `mapa`), por turnos | `token_format` o `signature` |
+| F2 | Token válido con un bit de la firma cambiado | `signature` |
+| F3 | Un campo firmado alterado sin volver a firmar; `cid`, `exp`, `iat`, `n` y `kid` por turnos (la variante es el campo) | `signature` |
+| F4 | La misma firma con `s' = n − s`, que ECDSA acepta pero SQRID/1 no (*low-S*) | `signature` |
+| R1 | Token firmado con una clave P-256 ajena y el `kid` de confianza | `signature` |
+| R2 | El mismo, con el `kid` de la clave ajena | `signature` |
+| R3 | Firma válida de la clave de revocación, con su `kid` (ADR-0014) | `signature` |
+
+Los tokens maliciosos se fabrican con `cryptography` y el formato publicado en
+`docs/SQRID-1.md` (`sqrid.py`); la batería no importa `verifier/`. P y V llegan en #153 y
+M en #154; el brazo tradicional contra `baseline-o3`, en #155.
