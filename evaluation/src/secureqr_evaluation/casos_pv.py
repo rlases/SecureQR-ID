@@ -51,6 +51,8 @@ def _p2(entorno: Entorno, rng: random.Random, i: int) -> Presentacion:
             resultados.append(entorno.presentar(token))
         except BaseException as exc:  # noqa: BLE001 - se relanza en el hilo principal
             errores.append(exc)
+        finally:
+            entorno.cerrar_conexion()
 
     entorno.motivos_nuevos()
     hilos = [threading.Thread(target=presentar) for _ in range(2)]

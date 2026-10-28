@@ -238,11 +238,15 @@ class Entorno:
         self.detener()
         return False
 
-    def detener(self) -> None:
+    def cerrar_conexion(self) -> None:
+        """Cierra la conexión del hilo actual; la siguiente presentación abre otra."""
         conexion = getattr(self._local, "conexion", None)
         if conexion is not None:
             conexion.close()
             self._local.conexion = None
+
+    def detener(self) -> None:
+        self.cerrar_conexion()
         if self._proceso is None:
             return
         self._proceso.terminate()
