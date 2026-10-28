@@ -1,0 +1,91 @@
+name: Batería de ataques — corrida completa
+
+# Corrida completa de la batería de ADR-0019 (punto 7, issue #156): 200 intentos por caso,
+# 1000 tokens de control y la semilla fija del documento de grado, con M2 contra una red
+# Fabric real. Solo a mano: tarda decenas de minutos (M2 ancla un lote por intento). La
+# carpeta de resultados queda como artefacto: es la evidencia del anexo del documento de
+# grado, con su commit y su semilla en entorno.json. La red y su material criptográfico
+# son efímeros: se crean y se descartan con el runner.
+on:
+  workflow_dispatch:
+    inputs:
+      intentos:
+        description: Intentos por caso malicioso
+        default: '200'
+      control:
+        description: Tokens del grupo de control
+        default: '1000'
+      semilla:
+        description: Semilla (la del documento de grado es 20261027)
+        default: '20261027'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evaluacion-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bateria:
+    name: Batería completa (con Fabric)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar los parámetros
+        env:
+          INTENTOS: ${{ inputs.intentos }}
+          CONTROL: ${{ inputs.control }}
+          SEMILLA: ${{ inputs.semilla }}
+        run: |
+          for v in "$INTENTOS" "$CONTROL" "$SEMILLA"; do
+            [[ "$v" =~ ^[0-9]{1,9}$ ]] || { echo "parámetro no numérico: $v"; exit 1; }
+          done
+          echo "SQRID_FABRIC_HOME=$RUNNER_TEMP/fabric" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: anchor/chaincode/go.mod
+          cache-dependency-path: anchor/chaincode/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Instalar la batería y sus módulos
+        run: |
+          python -m pip install -e issuer -e "verifier[web]" -e revocation -e evidence-log \
+            -e verifier-service -e "evaluation[test]"
+
+      - name: Compilar anchor (M2) y el servidor de mi-app-qr (M3)
+        run: |
+          (cd anchor && npm ci && npm run build)
+          (cd mi-app-qr/server && npm install && npm run build)
+
+      - name: Crear la red Fabric y desplegar el contrato
+        run: infra/fabric/crear-red.sh
+
+      - name: Correr la batería
+        env:
+          INTENTOS: ${{ inputs.intentos }}
+          CONTROL: ${{ inputs.control }}
+          SEMILLA: ${{ inputs.semilla }}
+        run: |
+          secureqr-eval run --con-fabric --intentos "$INTENTOS" --control "$CONTROL" \
+            --semilla "$SEMILLA" --salida "$RUNNER_TEMP/resultados"
+          cat "$RUNNER_TEMP/resultados/informe.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar los resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluacion-${{ github.run_id }}
+          path: ${{ runner.temp }}/resultados
+          if-no-files-found: warn
+          retention-days: 90

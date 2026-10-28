@@ -120,3 +120,15 @@ El brazo tradicional contra `baseline-o3` llega en #155.
 ```bash
 SQRID_FABRIC_HOME=~/secureqr-fabric secureqr-eval run --con-fabric --salida resultados/
 ```
+
+## En CI
+
+- **`evaluation-test`** (`ci.yml`) corre en cada PR que toque `evaluation/`, los módulos
+  que ataca o el servidor de mi-app-qr. Ejecuta las pruebas del paquete y una versión
+  reducida de la batería: 10 intentos por caso, 100 de control y sin M2. Si falla, sube
+  el informe como artefacto.
+- **`evaluacion.yml`** es la corrida completa, solo a mano (*Actions → Batería de
+  ataques — corrida completa → Run workflow*). Usa 200 intentos por caso, 1000 de control
+  y la semilla fija, y corre M2 contra una red Fabric efímera creada en el runner. La
+  carpeta de resultados queda como artefacto `evaluacion-<run_id>` durante 90 días: hay
+  que descargarla y guardarla con el documento de grado.
