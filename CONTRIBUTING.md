@@ -74,6 +74,10 @@ GitHub para que la mecánica coincida con lo que dice este archivo — ver
   `revocation/` y `evidence-log/`. Desde esa carpeta: ejecutar
   `python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ".[test]"`
   y luego `python -m pytest`. El job `verifier-service-test` reproduce esos comandos.
+- **`evaluation/`** (batería de ataques, ADR-0019) usa pytest. Desde esa carpeta:
+  `python -m pip install -e ../issuer -e "../verifier[web]" -e ../revocation -e ../evidence-log -e ../verifier-service -e ".[test]"`
+  y luego `python -m pytest`. Las pruebas arrancan un `verifier-service` real en
+  `127.0.0.1`. El job `evaluation-test` reproduce esos comandos.
 - **El futuro módulo Python** `evidence-log/` debe usar pytest y un entorno virtual
   propio siguiendo el mismo patrón. `anchor/` definirá su runner de Node.js al
   implementarse.

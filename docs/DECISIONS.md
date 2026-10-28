@@ -1487,7 +1487,7 @@ anclaron, y quien se lleve el equipo o el disco lee todo sin necesitar ninguna c
 
 ## ADR-0019 — Prueba controlada del objetivo 3: batería de ataques reproducible
 
-**Estado:** Propuesta (2026-10-27, Jhunier; necesita la aprobación de Duverney)
+**Estado:** Aceptada (2026-10-28, aprobada por Duverney en #150)
 
 **Contexto.** La Fase 4 de `ROADMAP.md` exige una «batería de ataques (repetición,
 falsificación, reemplazo, manipulación interna)». El objetivo específico 3 la convierte
