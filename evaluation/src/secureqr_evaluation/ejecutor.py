@@ -52,6 +52,10 @@ def ejecutar(
         # Un generador por caso: agregar o quitar casos no cambia lo que hace otro.
         rng = random.Random(f"{semilla}:{caso.id}")
         total = control if caso.id == CONTROL else intentos
+        if total == 0:
+            continue
+        if caso.preparar is not None:
+            caso.preparar(entorno, total)
         for repeticion in range(1, total + 1):
             p = caso.intentar(entorno, rng, repeticion - 1)
             correcto = None
@@ -65,6 +69,8 @@ def ejecutar(
             )
             if progreso is not None:
                 progreso(caso.id, repeticion, total)
+        if caso.terminar is not None:
+            caso.terminar(entorno)
     return filas
 
 
