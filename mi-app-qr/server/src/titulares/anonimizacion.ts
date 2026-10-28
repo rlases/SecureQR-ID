@@ -4,11 +4,13 @@ import { canonicalCidSql } from './identificadores.js';
 // Eliminación o anonimización de datos personales (ADR-0016, punto 10; issue #90).
 //
 // - Al cierre del piloto (`anonimizarCierre`): se anonimizan los datos personales de todos
-//   los titulares, de los registros de asistencia y de las consultas, y se borran los
-//   intentos de recuperación. Después, ningún cid puede atribuirse a una persona.
+//   los titulares, de los registros de asistencia y de las consultas, se quita el texto
+//   libre del historial de cambios y se borran los intentos de recuperación. Después,
+//   ningún cid puede atribuirse a una persona.
 // - En un uso institucional posterior (`anonimizarVencidos`): el admin configura un plazo
-//   de conservación, y los registros y consultas más antiguos se anonimizan solos. El
-//   registro de consultas se conserva lo mismo que los registros a los que se refiere.
+//   de conservación, y los registros, consultas y cambios más antiguos se anonimizan
+//   solos. El registro de consultas se conserva lo mismo que los registros a los que se
+//   refiere.
 //
 // No se toca:
 // - la bitácora encadenada de evidence-log/, que solo contiene cid y vive en otro proceso;
@@ -24,6 +26,51 @@ export interface ResultadoAnonimizacion {
   titulares: number;
   registros: number;
   consultas: number;
+  cambios: number;
+}
+
+// Motivos de lista cerrada que se escriben en `cambios_configuracion` al resolver un alta
+// en revisión (`revision.ts`). No son texto del admin y se conservan; cualquier otro
+// `motivo` (revocar, desvincular, reactivar) es libre y se quita (issue #147).
+const MOTIVOS_CERRADOS = [
+  'documento_de_otra_persona',
+  'misma_persona',
+  'registro_anterior_indebido',
+  'sin_registro_anterior',
+];
+
+const CERRADOS_SQL = MOTIVOS_CERRADOS.map((m) => `'${m}'`).join(', ');
+
+function motivoLibreSql(valor: string): string {
+  return `(json_type(${valor}, '$.motivo') = 'text'
+    AND json_extract(${valor}, '$.motivo') NOT IN (${CERRADOS_SQL}))`;
+}
+
+function tieneTextoLibreSql(valor: string): string {
+  return `(json_valid(${valor}) AND json_type(${valor}) = 'object'
+    AND (json_type(${valor}, '$.nota') IS NOT NULL OR ${motivoLibreSql(valor)}))`;
+}
+
+/**
+ * `valor` sin `nota` ni el `motivo` libre; igual si no los tiene. El disparador de
+ * `cambios_configuracion` solo admite actualizar una fila a este resultado.
+ */
+export function limpiarTextoLibreSql(valor: string): string {
+  return `(CASE WHEN NOT ${tieneTextoLibreSql(valor)} THEN ${valor}
+    WHEN ${motivoLibreSql(valor)} THEN json_remove(${valor}, '$.nota', '$.motivo')
+    ELSE json_remove(${valor}, '$.nota') END)`;
+}
+
+function limpiarCambios(db: Database.Database, antesDe: string | null): number {
+  return db
+    .prepare(
+      `UPDATE cambios_configuracion
+       SET valor_anterior = ${limpiarTextoLibreSql('valor_anterior')},
+           valor_nuevo = ${limpiarTextoLibreSql('valor_nuevo')}
+       WHERE (${tieneTextoLibreSql('valor_anterior')} OR ${tieneTextoLibreSql('valor_nuevo')})
+         AND (? IS NULL OR en < ?)`
+    )
+    .run(antesDe, antesDe).changes;
 }
 
 function registrar(
@@ -34,9 +81,10 @@ function registrar(
   ahora: Date
 ): void {
   db.prepare(
-    `INSERT INTO anonimizaciones (alcance, titulares, registros, consultas, ejecutado_por, ejecutado_en)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(alcance, r.titulares, r.registros, r.consultas, quien, ahora.toISOString());
+    `INSERT INTO anonimizaciones
+       (alcance, titulares, registros, consultas, cambios, ejecutado_por, ejecutado_en)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(alcance, r.titulares, r.registros, r.consultas, r.cambios, quien, ahora.toISOString());
 }
 
 /**
@@ -76,9 +124,10 @@ export function anonimizarCierre(
         SET motivo = NULL, cid = CASE WHEN ${canonicalCidSql()} THEN cid ELSE 'anon-' || id END
         WHERE motivo IS NOT NULL OR (NOT ${canonicalCidSql()} AND cid <> 'anon-' || id)`)
       .run().changes;
+    const cambios = limpiarCambios(db, null);
     db.prepare('DELETE FROM intentos_recuperacion').run();
     db.prepare('DELETE FROM intentos_alta').run();
-    const resultado = { titulares, registros, consultas };
+    const resultado = { titulares, registros, consultas, cambios };
     registrar(db, 'cierre', resultado, quien, ahora);
     return resultado;
   })();
@@ -115,7 +164,7 @@ export function setPlazoConservacion(
   })();
 }
 
-/** Anonimiza registros y consultas más antiguos que el plazo configurado. */
+/** Anonimiza registros, consultas y cambios más antiguos que el plazo configurado. */
 export function anonimizarVencidos(
   db: Database.Database,
   ahora: Date,
@@ -141,10 +190,13 @@ export function anonimizarVencidos(
         SET motivo = NULL, cid = CASE WHEN ${canonicalCidSql()} THEN cid ELSE 'anon-' || id END
         WHERE en < ? AND (motivo IS NOT NULL OR (NOT ${canonicalCidSql()} AND cid <> 'anon-' || id))`)
       .run(limite.toISOString()).changes;
+    const cambios = limpiarCambios(db, limite.toISOString());
     db.prepare('DELETE FROM intentos_recuperacion WHERE en < ?').run(limite.toISOString());
     db.prepare('DELETE FROM intentos_alta WHERE en < ?').run(limite.toISOString());
-    const resultado = { titulares: 0, registros, consultas };
-    if (registros > 0 || consultas > 0) registrar(db, 'plazo', resultado, quien, ahora);
+    const resultado = { titulares: 0, registros, consultas, cambios };
+    if (registros > 0 || consultas > 0 || cambios > 0) {
+      registrar(db, 'plazo', resultado, quien, ahora);
+    }
     return resultado;
   })();
 }

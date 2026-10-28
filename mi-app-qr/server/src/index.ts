@@ -150,12 +150,14 @@ async function main(): Promise<void> {
   setInterval(reseteo, SEIS_HORAS_MS).unref();
 
   // Plazo de conservación (ADR-0016, punto 10): si el admin lo configuró, cada día se
-  // anonimizan los registros y consultas más antiguos.
+  // anonimizan los registros, consultas y cambios más antiguos.
   const conservacion = () => {
     try {
       const r = anonimizarVencidos(db, new Date());
-      if (r && (r.registros > 0 || r.consultas > 0)) {
-        console.log(`Anonimizados por plazo: ${r.registros} registros y ${r.consultas} consultas`);
+      if (r && (r.registros > 0 || r.consultas > 0 || r.cambios > 0)) {
+        console.log(
+          `Anonimizados por plazo: ${r.registros} registros, ${r.consultas} consultas y ${r.cambios} cambios`
+        );
       }
     } catch (error) {
       console.error('No se pudo aplicar el plazo de conservación:', error);

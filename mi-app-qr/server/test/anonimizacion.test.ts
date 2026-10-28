@@ -9,7 +9,8 @@ import { createApp } from '../src/app.js';
 import { openDatabase } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { seedAdminUser } from '../src/db/seed.js';
-import { crearEstamento, elegirBase } from '../src/estamentos/config.js';
+import { crearEstamento, elegirBase, registrarCambio } from '../src/estamentos/config.js';
+import { revocarCredencial } from '../src/titulares/gestion.js';
 import { registrarTitular } from '../src/titulares/repository.js';
 import { consultarCids } from '../src/titulares/consultas.js';
 import { verifyAsignaciones, listAsignaciones } from '../src/titulares/asignaciones.js';
@@ -110,7 +111,7 @@ describe('cierre del piloto', () => {
     const cids = poblar();
     expect(volcado()).toContain('Ana Sintética');
     const r = anonimizarCierre(db, FRASE_CIERRE, 'prueba', new Date());
-    expect(r).toEqual({ titulares: 2, registros: 2, consultas: 2 });
+    expect(r).toEqual({ titulares: 2, registros: 2, consultas: 2, cambios: 0 });
     const todo = volcado();
     for (const p of PERSONAS) {
       expect(todo).not.toContain(p.nombre);
@@ -146,6 +147,7 @@ describe('cierre del piloto', () => {
       titulares: 0,
       registros: 0,
       consultas: 0,
+      cambios: 0,
     });
     const filas = db.prepare('SELECT alcance, titulares, ejecutado_por FROM anonimizaciones').all();
     expect(filas).toEqual([
@@ -177,7 +179,7 @@ describe('cierre del piloto', () => {
     expect(db.prepare('SELECT cid FROM consultas_cid ORDER BY id').all()).toEqual([...cids.map((cid) => ({ cid })), { cid: 'anon-3' }, { cid: 'anon-4' }]);
     expect(db.prepare('SELECT id, usuario_id, titular_id, en FROM consultas_cid ORDER BY id').all()).toEqual(auditoria);
     expect(verifyAsignaciones(db)).toBe(true);
-    expect(anonimizarCierre(db, FRASE_CIERRE, 'prueba', new Date())).toEqual({ titulares: 0, registros: 0, consultas: 0 });
+    expect(anonimizarCierre(db, FRASE_CIERRE, 'prueba', new Date())).toEqual({ titulares: 0, registros: 0, consultas: 0, cambios: 0 });
   });
 
   it('solo permite sustituir un cid mal formado por la marca opaca de su fila', () => {
@@ -215,7 +217,7 @@ describe('comando de línea de comandos', () => {
     expect(ejecutar(['--cierre', '--confirmar', 'si']).code).toBe(1);
     const ok = ejecutar(['--cierre', '--confirmar', FRASE_CIERRE]);
     expect(ok.code).toBe(0);
-    expect(ok.out).toMatch(/2 titulares, 2 registros y 2 consultas/);
+    expect(ok.out).toMatch(/2 titulares, 2 registros, 2 consultas y 0 cambios/);
     db = openDatabase(testDbPath);
     expect(volcado()).not.toContain('Ana Sintética');
   }, 60_000);
@@ -241,7 +243,7 @@ describe('plazo de conservación', () => {
       "INSERT INTO registros (nombre, documento, rol, tipo, timestamp, creado_por_usuario_id) VALUES ('Viejo Sintético', '8000000009', 'estudiante', 'entrada', '2024-01-10 08:00:00', ?)"
     ).run(adminId);
     const r = anonimizarVencidos(db, new Date());
-    expect(r).toEqual({ titulares: 0, registros: 1, consultas: 0 });
+    expect(r).toEqual({ titulares: 0, registros: 1, consultas: 0, cambios: 0 });
     const todo = volcado();
     expect(todo).not.toContain('Viejo Sintético');
     expect(todo).toContain('Ana Sintética');
@@ -259,9 +261,105 @@ describe('plazo de conservación', () => {
     insertar.run(adminId, 'reciente@ejemplo.test', 'Dato reciente sintético', new Date().toISOString());
     setPlazoConservacion(db, 365, adminId, new Date());
     const r = anonimizarVencidos(db, new Date());
-    expect(r).toEqual({ titulares: 0, registros: 1, consultas: 1 });
+    expect(r).toEqual({ titulares: 0, registros: 1, consultas: 1, cambios: 0 });
     expect(db.prepare('SELECT motivo FROM registros WHERE id = 3').get()).toEqual({ motivo: 'Anonimizado' });
     expect(db.prepare('SELECT cid, motivo FROM consultas_cid WHERE id = 3').get()).toEqual({ cid: 'anon-3', motivo: null });
     expect(db.prepare('SELECT cid, motivo FROM consultas_cid WHERE id = 4').get()).toEqual({ cid: 'reciente@ejemplo.test', motivo: 'Dato reciente sintético' });
+  });
+});
+
+describe('texto libre del historial de cambios (#147)', () => {
+  const NOTA = 'Ana Sintética trajo la cédula 8000000001';
+  const MOTIVO = 'Ana Sintética reportó el teléfono robado';
+
+  /** Un cambio de cada forma: nota con motivo cerrado, motivo libre y sin texto libre. */
+  function poblarCambios(en: Date) {
+    registrarCambio(db, adminId, 'titular', 1, 'reemplazar',
+      { estado: 'en_revision' }, { estado: 'activo', motivo: 'misma_persona', nota: NOTA }, en);
+    registrarCambio(db, adminId, 'credencial', 1, 'revocar',
+      { estado: 'vigente' }, { estado: 'revocada', motivo: MOTIVO }, en);
+    registrarCambio(db, adminId, 'titular', 2, 'rechazar_alta',
+      { estado: 'en_revision' }, { estado: 'anonimizado', motivo: 'documento_de_otra_persona', nota: null }, en);
+  }
+
+  function cambios() {
+    return db.prepare('SELECT entidad, accion, valor_anterior, valor_nuevo FROM cambios_configuracion WHERE accion IN (?, ?, ?) ORDER BY id')
+      .all('reemplazar', 'revocar', 'rechazar_alta') as { valor_anterior: string; valor_nuevo: string }[];
+  }
+
+  it('el cierre quita la nota y el motivo libre y conserva lo demás', () => {
+    const [cid] = poblar();
+    const titularId = (db.prepare('SELECT titular_id FROM credenciales WHERE cid = ?').get(cid) as { titular_id: number }).titular_id;
+    revocarCredencial(db, adminId, titularId, MOTIVO, new Date());
+    poblarCambios(new Date());
+    const antes = db.prepare('SELECT id, usuario_id, entidad, entidad_id, accion, en FROM cambios_configuracion ORDER BY id').all();
+    const r = anonimizarCierre(db, FRASE_CIERRE, 'prueba', new Date());
+    // También cuenta la nota vacía (`null`): se quita la clave igual.
+    expect(r.cambios).toBe(4);
+    expect(volcado()).not.toContain('Ana Sintética');
+    expect(db.prepare('SELECT id, usuario_id, entidad, entidad_id, accion, en FROM cambios_configuracion ORDER BY id').all()).toEqual(antes);
+    expect(cambios().map((c) => [JSON.parse(c.valor_anterior), JSON.parse(c.valor_nuevo)])).toEqual([
+      [{ estado: 'vigente', titular: 'activo' }, { estado: 'revocada', titular: 'suspendido' }],
+      [{ estado: 'en_revision' }, { estado: 'activo', motivo: 'misma_persona' }],
+      [{ estado: 'vigente' }, { estado: 'revocada' }],
+      [{ estado: 'en_revision' }, { estado: 'anonimizado', motivo: 'documento_de_otra_persona' }],
+    ]);
+    expect(db.prepare('SELECT cambios FROM anonimizaciones').get()).toEqual({ cambios: 4 });
+    expect(anonimizarCierre(db, FRASE_CIERRE, 'prueba', new Date()).cambios).toBe(0);
+  });
+
+  it('el plazo limpia los cambios vencidos y deja los recientes', () => {
+    poblarCambios(new Date('2024-01-10T08:00:00Z'));
+    registrarCambio(db, adminId, 'credencial', 3, 'revocar', { estado: 'vigente' }, { estado: 'revocada', motivo: MOTIVO }, new Date());
+    setPlazoConservacion(db, 365, adminId, new Date());
+    expect(anonimizarVencidos(db, new Date())).toEqual({ titulares: 0, registros: 0, consultas: 0, cambios: 3 });
+    const filas = cambios();
+    expect(filas.slice(0, 3).map((c) => c.valor_nuevo).join()).not.toContain('Ana Sintética');
+    expect(JSON.parse(filas[3].valor_nuevo)).toEqual({ estado: 'revocada', motivo: MOTIVO });
+    expect(db.prepare("SELECT alcance, cambios FROM anonimizaciones").all()).toEqual([{ alcance: 'plazo', cambios: 3 }]);
+  });
+
+  it('el disparador solo admite esa limpieza', () => {
+    poblarCambios(new Date());
+    const id = (db.prepare("SELECT id FROM cambios_configuracion WHERE accion = 'reemplazar'").get() as { id: number }).id;
+    const cambiar = (set: string, ...args: unknown[]) => () =>
+      db.prepare(`UPDATE cambios_configuracion SET ${set} WHERE id = ?`).run(...args, id);
+    const limpio = JSON.stringify({ estado: 'activo', motivo: 'misma_persona' });
+    expect(cambiar("accion = 'otra'")).toThrow(/solo agregar/);
+    expect(cambiar("en = '2020-01-01T00:00:00.000Z'")).toThrow(/solo agregar/);
+    expect(cambiar('usuario_id = 999')).toThrow(/solo agregar/);
+    expect(cambiar('entidad_id = NULL')).toThrow(/solo agregar/);
+    expect(cambiar('valor_nuevo = NULL')).toThrow(/solo agregar/);
+    expect(cambiar('valor_anterior = ?', JSON.stringify({ estado: 'activo' }))).toThrow(/solo agregar/);
+    // Quitar también el motivo de lista cerrada, o agregar contenido, no se admite.
+    expect(cambiar('valor_nuevo = ?', JSON.stringify({ estado: 'activo' }))).toThrow(/solo agregar/);
+    expect(cambiar('valor_nuevo = ?', JSON.stringify({ estado: 'activo', motivo: 'misma_persona', nota: 'otra' }))).toThrow(/solo agregar/);
+    expect(cambiar('valor_nuevo = ?', JSON.stringify({ estado: 'activo', motivo: 'misma_persona', x: 1 }))).toThrow(/solo agregar/);
+    expect(() => db.prepare('DELETE FROM cambios_configuracion WHERE id = ?').run(id)).toThrow(/solo agregar/);
+    expect(cambiar('valor_nuevo = ?', limpio)).not.toThrow();
+    expect(db.prepare('SELECT valor_nuevo FROM cambios_configuracion WHERE id = ?').get(id)).toEqual({ valor_nuevo: limpio });
+  });
+
+  it('la migración funciona sobre una base existente', () => {
+    // Estado anterior a #147: disparador que rechaza todo y sin la columna `cambios`.
+    db.exec(`
+      DROP TRIGGER cambios_configuracion_no_update;
+      CREATE TRIGGER cambios_configuracion_no_update BEFORE UPDATE ON cambios_configuracion
+      BEGIN SELECT RAISE(ABORT, 'el registro de cambios es de solo agregar'); END;
+      ALTER TABLE anonimizaciones DROP COLUMN cambios;
+    `);
+    db.prepare(
+      "INSERT INTO anonimizaciones (alcance, titulares, registros, consultas, ejecutado_por, ejecutado_en) VALUES ('cierre', 0, 0, 0, 'antes', ?)"
+    ).run(new Date().toISOString());
+    poblarCambios(new Date());
+    expect(() => db.prepare("UPDATE cambios_configuracion SET valor_nuevo = json_remove(valor_nuevo, '$.nota')").run()).toThrow(/solo agregar/);
+    runMigrations(db);
+    runMigrations(db);
+    expect(anonimizarCierre(db, FRASE_CIERRE, 'prueba', new Date()).cambios).toBe(3);
+    expect(volcado()).not.toContain('Ana Sintética');
+    expect(db.prepare('SELECT ejecutado_por, cambios FROM anonimizaciones ORDER BY id').all()).toEqual([
+      { ejecutado_por: 'antes', cambios: 0 },
+      { ejecutado_por: 'prueba', cambios: 3 },
+    ]);
   });
 });
