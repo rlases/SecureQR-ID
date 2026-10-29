@@ -17,6 +17,14 @@ foreach ($target in @($installRoot, $reportRoot)) {
     if (Test-Path -LiteralPath $target) { throw 'La prueba requiere destinos nuevos.' }
 }
 $profiles = @('registro-qr', 'Registro QR') | ForEach-Object { Join-Path $env:APPDATA $_ }
+$installationCandidates = @(
+    $installRoot,
+    (Join-Path $env:LOCALAPPDATA 'Programs/registro-qr'),
+    (Join-Path $env:LOCALAPPDATA 'Programs/Registro QR')
+)
+foreach ($candidateInstallation in $installationCandidates) {
+    if (Test-Path -LiteralPath $candidateInstallation) { throw 'Existe una instalación previa; no se utiliza ni se modifica.' }
+}
 foreach ($candidateProfile in $profiles) {
     if (Test-Path -LiteralPath $candidateProfile) { throw 'Existe un perfil previo; no se utiliza ni se modifica.' }
 }
@@ -115,17 +123,42 @@ function StopTestApp {
 try {
     $installerProcess = Start-Process -FilePath $installers[0].FullName -ArgumentList @('/S', "/D=$installRoot") -WindowStyle Hidden -Wait -PassThru
     if ($installerProcess.ExitCode -ne 0) { throw 'El instalador no terminó correctamente.' }
-    $executable = Join-Path $installRoot 'Registro QR.exe'
-    if (-not (Test-Path -LiteralPath $executable)) { throw 'No apareció el ejecutable instalado.' }
+    # NSIS oneClick puede conservar la ubicación por usuario. Localizar el binario
+    # dentro de los destinos conocidos, sin confundir el nombre del paquete con
+    # productName ni dar por terminada la instalación al salir el lanzador inicial.
+    $executable = $null
+    $deadline = [DateTime]::UtcNow.AddSeconds(45)
+    while (-not $executable -and [DateTime]::UtcNow -lt $deadline) {
+        foreach ($candidateInstallation in $installationCandidates) {
+            if (Test-Path -LiteralPath $candidateInstallation) {
+                $binaries = @(Get-ChildItem -LiteralPath $candidateInstallation -Filter '*.exe' -File | Where-Object { $_.Name -notlike 'Uninstall*' })
+                if ($binaries.Count -eq 1) { $executable = $binaries[0].FullName; $installRoot = $candidateInstallation; break }
+            }
+        }
+        if (-not $executable) { Start-Sleep -Seconds 1 }
+    }
+    if (-not $executable) { throw 'No apareció un ejecutable único en los destinos previstos de NSIS.' }
+    $report.ejecutable = [IO.Path]::GetFileName($executable)
     $report.comprobaciones.instalacion_nsis = $true
     StartTestApp $executable
     $report.comprobaciones.arranque_https_sin_node_en_path = $true
+    $page = $script:client.GetAsync('https://localhost:4000/').GetAwaiter().GetResult()
+    try {
+        $html = $page.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        if ([int]$page.StatusCode -ne 200 -or $html -notmatch 'id="root"') { throw 'No se sirve el cliente compilado.' }
+    } finally { $page.Dispose() }
+    $report.comprobaciones.cliente_compilado_servido = $true
     $secretsPath = Join-Path $script:userProfile 'server-secrets.json'
     $secrets = Get-Content -LiteralPath $secretsPath -Raw | ConvertFrom-Json
     $keyBefore = $secrets.asignacionesKey
     $certBefore = (Get-FileHash -LiteralPath (Join-Path $script:userProfile 'tls/cert.pem')).Hash
     $session = JsonRequest $script:client POST '/api/auth/login' @{ username = $secrets.adminUsername; password = $secrets.adminPassword }
     if ($session.user.role -ne 'admin') { throw 'La cuenta inicial no pudo autenticarse.' }
+    $newUser = JsonRequest $script:client POST '/api/users' @{ username = 'operador-ensayo'; role = 'operador'; cargo = 'Prueba' } 201
+    $null = JsonRequest $script:client POST '/api/auth/logout' $null
+    $null = JsonRequest $script:client POST '/api/auth/login' @{ username = $newUser.user.username; password = $newUser.generatedPassword }
+    $null = JsonRequest $script:client GET '/api/users' $null 403
+    $report.comprobaciones.creacion_cuenta_y_autorizacion = $true
     $created = JsonRequest $script:client POST '/api/registros' @{ nombre = 'Ensayo Sintetico'; documento = '9000001234'; rol = 'Prueba'; tipo = 'entrada' } 201
     $recordId = $created.registro.id
     $records = JsonRequest $script:client GET '/api/registros' $null
