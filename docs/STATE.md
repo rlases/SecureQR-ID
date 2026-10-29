@@ -18,6 +18,28 @@ El resumen vigente de abajo distingue implementación, integración y pruebas.
 
 ## Estado vigente — 2026-10-28
 
+### Indicadores de carga — 2026-10-28 (en revisión)
+
+A petición de Jhunier se propone unificar los indicadores de espera con tres barras
+redondeadas y una onda CSS suave, basada en el ejemplo que aportó. `Loader` tiene
+tamaños de 18, 28 y 40 px, hereda el color del contexto y conserva su espacio al
+animarse. `LoadingState` añade el texto visible y `role="status"`; las barras son
+decorativas. Con `prefers-reduced-motion: reduce` permanecen estáticas.
+
+- **Aplicado en esta rama:** cámara, verificación y comprobación de conexión de
+  `verifier-web/`; autenticación, tablas, historial y portal del titular (incluida la
+  generación del QR) en `mi-app-qr/client`.
+- Cada aplicación conserva su compilación independiente y su acento acordado en #55:
+  índigo en el cliente y teal/blanco según el contexto en el verificador. Las dos
+  copias de `components/ui/loader.tsx` y `loader.css` deben mantenerse sincronizadas.
+- **Validación local:** cliente 117/117 pruebas; verificador 17/17; ambas compilaciones
+  de producción correctas. Se ajustaron cuatro consultas de pruebas para distinguir
+  los avisos finales del nuevo estado de carga accesible. Comprobación de los builds
+  en Chromium a 1440 y 375 px: sin desbordamiento, animación desactivada al reducir
+  movimiento e indicador retirado cuando termina la petición (respuestas simuladas).
+- **Pendiente:** CI del PR y revisión cruzada antes de integrar. Este cambio no altera
+  el protocolo ni la lógica de las peticiones y no acredita la ejecución del piloto.
+
 ### Alcance confirmado por el responsable del proyecto
 
 La instalación en el CCAV Pitalito se realizará si es posible, como agregado posterior
@@ -1495,4 +1517,5 @@ documentos fuente originales (propuesta de grado, entrega de Etapa 2, artículo 
 destilaron en `docs/raw/`, con los datos personales de identificación (cédula, teléfono,
 dirección de residencia) redactados antes de commitear — no pertenecen en un repositorio
 público. Pendiente: revisar `docs/raw/` con el otro autor y resolver ADR-0005 y ADR-0007.
+
 

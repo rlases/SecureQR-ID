@@ -1,3 +1,4 @@
+import { LoadingState } from './ui/loader';
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Registro } from '@mi-app-qr/shared';
@@ -135,8 +136,8 @@ export function HistorialCorreccionesModal({
           aria-label="Versiones del historial"
         >
           {isLoading && (
-            <div className="flex min-h-48 items-center justify-center" aria-live="polite">
-              <p className="text-sm text-muted-foreground">Cargando historial...</p>
+            <div className="flex min-h-48 items-center justify-center">
+              <LoadingState className="text-sm text-muted-foreground" label="Cargando historial..." />
             </div>
           )}
 

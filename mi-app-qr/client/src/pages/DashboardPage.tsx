@@ -1,3 +1,4 @@
+import { LoadingState } from '../components/ui/loader';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
@@ -176,7 +177,7 @@ export default function DashboardPage() {
           <span className="text-sm tabular-nums text-muted-foreground">{recentActivity.length}</span>
         </div>
 
-        {registrosQuery.isLoading && <p className="p-5 text-sm text-muted-foreground">Cargando actividad...</p>}
+        {registrosQuery.isLoading && <LoadingState className="p-5 text-sm text-muted-foreground" label="Cargando actividad..." />}
         {!registrosQuery.isLoading && recentActivity.length === 0 && (
           <p className="p-5 text-sm text-muted-foreground">Sin actividad registrada todavía.</p>
         )}

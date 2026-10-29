@@ -1,8 +1,8 @@
+import { Loader } from "./ui/loader";
 import {
   Camera,
   CameraOff,
   Keyboard,
-  LoaderCircle,
   Play,
   ScanLine,
   Send,
@@ -159,7 +159,7 @@ export function ScannerPanel({
 
             {cameraStatus === "requesting" ? (
               <div className="camera-empty-state" role="status">
-                <LoaderCircle className="spin" aria-hidden="true" size={30} />
+                <Loader size="lg" />
                 <strong>Solicitando cámara</strong>
               </div>
             ) : null}
@@ -239,7 +239,7 @@ export function ScannerPanel({
                 disabled={!manualToken.trim() || verificationPhase === "verifying"}
               >
                 {verificationPhase === "verifying" ? (
-                  <LoaderCircle className="spin" aria-hidden="true" size={18} />
+                  <Loader size="sm" />
                 ) : (
                   <Send aria-hidden="true" size={18} />
                 )}

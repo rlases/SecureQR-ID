@@ -62,7 +62,7 @@ describe('EstamentosPage', () => {
       dominios: [],
     });
     renderPage();
-    expect(await screen.findByRole('status')).toHaveTextContent(/no admite altas/);
+    expect(await screen.findByText(/no admite altas/)).toHaveAttribute('role', 'status');
     expect(screen.getByText(/Todavía no hay estamentos/)).toBeInTheDocument();
   });
 
@@ -99,7 +99,7 @@ describe('EstamentosPage', () => {
     });
     renderPage();
     expect(await screen.findByText('Base')).toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText(/no admite altas/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Elegir Docente como base' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Borrar Estudiante' })).not.toBeInTheDocument();
     expect(screen.getByText(/sin ventanas: no recibe QR/)).toBeInTheDocument();

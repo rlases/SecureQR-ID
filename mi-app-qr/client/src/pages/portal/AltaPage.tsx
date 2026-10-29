@@ -1,3 +1,4 @@
+import { LoadingState } from '../../components/ui/loader';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -135,7 +136,7 @@ export default function AltaPage() {
 
   return (
     <PortalLayout titulo="Registro del titular">
-      {info.isLoading && <p className="text-muted-foreground">Cargando el formulario de registro...</p>}
+      {info.isLoading && <LoadingState className="text-muted-foreground" label="Cargando el formulario de registro..." />}
       {info.isError && (
         <p role="alert" className="text-destructive">
           No se pudo cargar el formulario. Revisa que estés conectado a la red del CCAV.

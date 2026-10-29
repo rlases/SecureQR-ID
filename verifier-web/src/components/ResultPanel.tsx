@@ -1,7 +1,7 @@
+import { Loader } from "./ui/loader";
 import {
   ArrowRight,
   Check,
-  LoaderCircle,
   ScanQrCode,
   ShieldCheck,
   ShieldX,
@@ -34,7 +34,7 @@ function getStatusCopy(
       title: "Verificando credencial",
       description: "Espera un momento antes de presentar otro código.",
       tone: "working",
-      icon: LoaderCircle,
+      icon: ScanQrCode,
     };
   }
   if (phase === "accepted") {
@@ -79,7 +79,7 @@ function getStatusCopy(
       title: "Solicitando cámara",
       description: "Confirma el permiso en el navegador para continuar.",
       tone: "working",
-      icon: LoaderCircle,
+      icon: ScanQrCode,
     };
   }
   return {
@@ -135,11 +135,11 @@ export function ResultPanel({ cameraStatus, phase, onNext }: ResultPanelProps) {
         <div className="status-ring ring-outer" />
         <div className="status-ring ring-inner" />
         <div className="status-icon">
-          <Icon
-            className={status.tone === "working" ? "spin" : ""}
-            size={42}
-            strokeWidth={1.8}
-          />
+          {status.tone === "working" ? (
+            <Loader size="lg" />
+          ) : (
+            <Icon size={42} strokeWidth={1.8} />
+          )}
         </div>
       </div>
 

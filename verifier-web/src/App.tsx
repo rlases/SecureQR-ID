@@ -1,3 +1,4 @@
+import { Loader } from "./components/ui/loader";
 import { RefreshCw, ScanLine, Wifi, WifiOff } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
@@ -157,11 +158,11 @@ export default function App() {
             title="Comprobar conexión"
             onClick={() => void refreshService()}
           >
-            <RefreshCw
-              className={serviceStatus === "checking" ? "spin" : ""}
-              aria-hidden="true"
-              size={17}
-            />
+            {serviceStatus === "checking" ? (
+              <Loader size="sm" />
+            ) : (
+              <RefreshCw aria-hidden="true" size={17} />
+            )}
           </button>
           <div className="header-clock" aria-label="Fecha y hora actuales">
             <span>{DATE_FORMAT.format(now)}</span>

@@ -1,3 +1,4 @@
+import { LoadingState } from '../../components/ui/loader';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, getEstadoPortal } from '../../lib/apiClient';
@@ -19,7 +20,7 @@ export default function PortalPage() {
   if (isLoading) {
     return (
       <PortalLayout titulo="Mi credencial">
-        <p className="text-muted-foreground">Cargando tu credencial...</p>
+        <LoadingState className="text-muted-foreground" label="Cargando tu credencial..." />
       </PortalLayout>
     );
   }

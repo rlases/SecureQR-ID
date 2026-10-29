@@ -1,3 +1,4 @@
+import { LoadingState } from '../components/ui/loader';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -93,7 +94,7 @@ export default function UsuariosPage() {
 
       <div>
         <h2 className="mb-4 text-lg font-semibold text-foreground">Usuarios</h2>
-        {isLoading && <p className="text-muted-foreground">Cargando...</p>}
+        {isLoading && <LoadingState className="text-muted-foreground" label="Cargando..." />}
         {!isLoading && data && (
           <table className="w-full text-left text-sm">
             <thead>

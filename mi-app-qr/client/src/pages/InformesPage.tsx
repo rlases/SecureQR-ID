@@ -1,3 +1,4 @@
+import { LoadingState } from '../components/ui/loader';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, FilterX, RefreshCw } from 'lucide-react';
@@ -156,7 +157,7 @@ export default function InformesPage() {
           </p>
         </div>
 
-        {registrosQuery.isLoading && <p className="p-5 text-sm text-muted-foreground">Cargando registros...</p>}
+        {registrosQuery.isLoading && <LoadingState className="p-5 text-sm text-muted-foreground" label="Cargando registros..." />}
         {!registrosQuery.isLoading && filteredRegistros.length === 0 && (
           <p className="p-5 text-sm text-muted-foreground">No hay registros que coincidan con los filtros.</p>
         )}
