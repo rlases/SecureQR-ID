@@ -8,7 +8,7 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or
 }
 
 $runnerRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
-$installRoot = [IO.Path]::GetFullPath((Join-Path $runnerRoot 'SecureQR prueba'))
+$installRoot = [IO.Path]::GetFullPath((Join-Path $runnerRoot 'SecureQR-prueba'))
 $reportRoot = [IO.Path]::GetFullPath((Join-Path $runnerRoot 'secureqr-instalador-informe'))
 foreach ($target in @($installRoot, $reportRoot)) {
     if (-not $target.StartsWith($runnerRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
