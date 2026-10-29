@@ -33,6 +33,9 @@ jobs:
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
+        with:
+          # El brazo tradicional lee el parser original de baseline-o3.
+          fetch-depth: 0
 
       - name: Validar los parámetros
         env:
@@ -68,6 +71,10 @@ jobs:
           (cd anchor && npm ci && npm run build)
           (cd mi-app-qr/server && npm install && npm run build)
 
+      - name: Instalar el brazo tradicional
+        run: npm ci
+        working-directory: evaluation/baseline
+
       - name: Crear la red Fabric y desplegar el contrato
         run: infra/fabric/crear-red.sh
 
@@ -80,6 +87,20 @@ jobs:
           secureqr-eval run --con-fabric --intentos "$INTENTOS" --control "$CONTROL" \
             --semilla "$SEMILLA" --salida "$RUNNER_TEMP/resultados"
           cat "$RUNNER_TEMP/resultados/informe.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Correr el brazo tradicional y comparar las clases comunes
+        env:
+          INTENTOS: ${{ inputs.intentos }}
+          CONTROL: ${{ inputs.control }}
+          SEMILLA: ${{ inputs.semilla }}
+        run: |
+          node --import tsx src/cli.ts --intentos "$INTENTOS" --control "$CONTROL" \
+            --semilla "$SEMILLA" --salida "$RUNNER_TEMP/resultados/tradicional"
+          python comparar.py --tradicional "$RUNNER_TEMP/resultados/tradicional/resultados.json" \
+            --secureqr "$RUNNER_TEMP/resultados/resultados.json" \
+            --salida "$RUNNER_TEMP/resultados/comparacion"
+          cat "$RUNNER_TEMP/resultados/comparacion/comparacion.md" >> "$GITHUB_STEP_SUMMARY"
+        working-directory: evaluation/baseline
 
       - name: Guardar los resultados
         if: always()
