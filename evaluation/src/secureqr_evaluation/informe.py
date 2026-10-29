@@ -92,7 +92,9 @@ def informe_markdown(resumen: dict, entorno: dict) -> str:
         f"- Intentos por caso: {entorno['parametros']['intentos']} · "
         f"Tokens de control: {entorno['parametros']['control']}",
     ]
-    encabezado = ["| | Intentos | Rechazados | Tasa | IC 95 % (Wilson) |", "|---|---|---|---|---|"]
+    # En los casos maliciosos cuenta lo detectado; en el control, lo rechazado.
+    encabezado = ["| | Intentos | Detectados | Tasa | IC 95 % (Wilson) |", "|---|---|---|---|---|"]
+    encabezado_control = ["| | Intentos | Rechazados | Tasa | IC 95 % (Wilson) |", "|---|---|---|---|---|"]
     for brazo, r in resumen["brazos"].items():
         lineas += ["", f"## Brazo `{brazo}`", "", "### Tasa de detección", "", *encabezado]
         for clase, t in r["deteccion_por_clase"].items():
@@ -101,7 +103,7 @@ def informe_markdown(resumen: dict, entorno: dict) -> str:
         if r["deteccion_por_caso"]:
             lineas += ["", "### Por caso", "", *encabezado]
             lineas += [_fila_tasa(c, t) for c, t in r["deteccion_por_caso"].items()]
-        lineas += ["", "### Grupo de control", "", *encabezado]
+        lineas += ["", "### Grupo de control", "", *encabezado_control]
         lineas.append(_fila_tasa("Falso rechazo", r["falso_rechazo"]))
         t = r["tiempo_validacion_ms"]
         if t:

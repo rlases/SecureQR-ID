@@ -99,12 +99,9 @@ def resumir(filas: list[Fila]) -> dict[str, object]:
         detectados = lambda grupo: sum(f.decision == RECHAZADO for f in grupo)  # noqa: E731
         brazos[brazo] = {
             "deteccion_global": _tasa(detectados(maliciosas), len(maliciosas)),
-            "deteccion_por_clase": {
-                c: _tasa(detectados(g), len(g)) for c, g in sorted(por_clase.items())
-            },
-            "deteccion_por_caso": {
-                c: _tasa(detectados(g), len(g)) for c, g in sorted(por_caso.items())
-            },
+            # En el orden del catálogo (F, R, P, V, M), que es el de las filas.
+            "deteccion_por_clase": {c: _tasa(detectados(g), len(g)) for c, g in por_clase.items()},
+            "deteccion_por_caso": {c: _tasa(detectados(g), len(g)) for c, g in por_caso.items()},
             "falso_rechazo": _tasa(detectados(controles), len(controles)),
             "tiempo_validacion_ms": tiempos([f.ms for f in controles]),
             "motivos_incorrectos": [

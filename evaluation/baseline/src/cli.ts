@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { release, type } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -11,6 +12,12 @@ import { csvComun, filasComunes } from './comun.js';
 
 const AYUDA =
   'Uso: npm run brazo -- --salida <carpeta> [--intentos N] [--control N] [--semilla S] [--anio AAAA] [--repo <ruta>]';
+
+function estadoEvaluador() {
+  const raiz = resolve(import.meta.dirname, '../../..');
+  const git = (...args: string[]) => execFileSync('git', ['-C', raiz, ...args], { encoding: 'utf8' }).trim();
+  return { evaluador_commit: git('rev-parse', 'HEAD'), arbol_modificado: Boolean(git('status', '--porcelain')) };
+}
 
 async function main(argv: string[]): Promise<number> {
   const { values } = parseArgs({
@@ -56,6 +63,7 @@ async function main(argv: string[]): Promise<number> {
         {
           etiqueta: ETIQUETA,
           commit: lineaBase.commit,
+          ...estadoEvaluador(),
           intentos,
           control,
           semilla,

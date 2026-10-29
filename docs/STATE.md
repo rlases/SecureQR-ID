@@ -4,7 +4,7 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-27
+**Última actualización:** 2026-10-28
 **Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y piloto). Fases cerradas:
 
 - **Fase 2 (diseño)**, con tag `v0.1.0` en `690bfcc`: ADR-0005 y ADR-0007 aceptadas, `SQRID-1.md` sin borrador (ADR-0010) y objetivos unificados en tres (#4).
@@ -15,6 +15,40 @@ Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vig
 ---
 
 ## Estado vigente — 2026-10-28
+
+### Cierre técnico del frente de Jhunier — 2026-10-28 (Colombia)
+
+Esta sección prevalece sobre las notas anteriores del lote #151–#157.
+
+- **#159 actualizado contra `main` (`6ef5cb9`).** Se conservan sin cambios las fuentes
+  y pruebas Python de la batería de `main`, incluidos M, Wilson y el cierre de las
+  conexiones de P2. Ya no depende de una pila pendiente de #160–#162.
+- **Corrida oficial recuperada:** ejecución
+  [40635336117](https://github.com/rlases/SecureQR-ID/actions/runs/40635336117),
+  artefacto `evaluacion-40635336117` (id `12793788797`), commit `6ef5cb9`, semilla
+  `20261027`, con Fabric. Sus archivos originales se conservan para el anexo:
+  **3400/3400 ataques detectados**, **0/1000 falsos rechazos**, ningún motivo
+  incorrecto. Son resultados de laboratorio, no del piloto. #165 documenta esa corrida.
+- **Comparación de ambos brazos:** tradicional sobre `baseline-o3` (`1b4498a`),
+  200 intentos por clase F/P/V y 1000 controles. El comparador rechaza casos ajenos al
+  catálogo y motivos de detección sin verificar; conserva los hash y rutas relativas
+  de los archivos de entrada. El entorno tradicional identifica por separado el
+  commit del parser y el del evaluador, y si había cambios sin confirmar.
+- **Corridas futuras:** `evaluacion.yml` obtiene la etiqueta histórica y guarda
+  `tradicional/` y `comparacion/` junto a la batería en el mismo artefacto, con los
+  mismos parámetros. No cambia los controles ni la metodología de ADR-0019.
+- **Dependencias del evaluador tradicional:** Vitest 5.0.5, Vite 8.3.5 y tipos de
+  Node 22 fijados; auditoría de ese paquete sin vulnerabilidades conocidas.
+- **Pruebas locales:** 13/13 de Node y typecheck; 15/15 del comparador Python;
+  35/35 de la batería Python, con M2/M3 omitidos por falta de sus servicios locales.
+  Esos dos casos sí figuran en el artefacto oficial completo. `git diff --check` limpio.
+
+**Pendiente para cerrar el objetivo 3:** revisión cruzada e integración de #159,
+instalación real del CCAV (#133), consentimiento y ejecución del piloto de 75 personas,
+y análisis de los datos de campo según `PROTOCOLO-PILOTO.md`. No se declaran cumplidas
+las metas de 30 % de reducción de suplantación ni 40 % de reducción del tiempo de
+registro con los datos de laboratorio. No se fusiona el PR propio ni se cierra la
+Fase 4 antes de esas mediciones.
 
 ### Reanudación de Jhunier — 2026-10-27 (noche, Colombia)
 

@@ -32,6 +32,10 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--control", type=_entero_positivo, default=1000, help="tokens del grupo de control")
     run.add_argument("--semilla", type=int, default=SEMILLA_INFORME)
     run.add_argument("--salida", type=Path, required=True, help="carpeta de resultados (nueva o vacía)")
+    run.add_argument(
+        "--con-fabric", action="store_true",
+        help="incluye M2, contra la red Fabric creada con infra/fabric/crear-red.sh",
+    )
     sub.add_parser("casos", help="Lista los casos disponibles.")
     return parser
 
@@ -44,7 +48,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        seleccion = catalogo.seleccionar(args.casos)
+        seleccion = catalogo.seleccionar(
+            args.casos, frozenset({"fabric"}) if args.con_fabric else frozenset()
+        )
     except ValueError as exc:
         print(exc, file=sys.stderr)
         return 2
@@ -56,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         "casos": [c.id for c in seleccion],
         "intentos": args.intentos,
         "control": args.control,
+        "con_fabric": args.con_fabric,
     }
     # El entorno (claves de prueba, bases, registro) vive solo durante la corrida.
     with tempfile.TemporaryDirectory(prefix="secureqr-eval-") as temporal:

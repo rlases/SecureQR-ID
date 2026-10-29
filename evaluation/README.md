@@ -81,6 +81,9 @@ malicioso debe terminar en rechazo, y por uno de sus motivos esperados.
 | P5 | Token aceptado, `verifier-service` reiniciado y el token otra vez (los nonces persisten) | `replay` |
 | V1 | Token válido de un `cid` incluido en la lista firmada | `revoked` |
 | V2 | Token válido con la lista vigente vencida (el servicio arranca con ella) | `revocation_unavailable` |
+| M1 | Editar, borrar o reordenar un evento de la bitácora del servicio (por turnos) | `verify_chain`: el servicio no arranca |
+| M2 | Bitácora anclada en Fabric, reescrita con la cadena recalculada (`editar` o `reordenar`) | `raiz_fabric`: `anchor verificar` no coincide |
+| M3 | Alterar `asignaciones_cid` sin la clave: `editar_cid`, `reasignar` o `borrar` | `hmac`: `/api/titulares/integridad` da alerta |
 
 Los tokens maliciosos se fabrican con `cryptography` y el formato publicado en
 `docs/SQRID-1.md` (`sqrid.py`); la batería no importa `verifier/`.
@@ -94,4 +97,41 @@ Los tokens maliciosos se fabrican con `cryptography` y el formato publicado en
 - V1 y V2 cambian la lista del entorno y la restauran al terminar, así que el orden de
   los casos no altera los demás.
 
-M llega en #154; el brazo tradicional contra `baseline-o3`, en #155.
+- En los casos M, «detectado» significa que el sistema dio la alerta. La batería altera
+  las bases **solo en la carpeta temporal de la corrida**, quitando el disparador de solo
+  agregar como haría alguien con acceso al archivo, y las restaura después de cada intento.
+- **Límite declarado:** quitar el **último** eslabón de una cadena no rompe ninguna
+  verificación local, porque lo que queda sigue encadenado. Eso solo se detecta contra lo
+  anclado (M2), así que M1 y M3 quitan eslabones intermedios.
+
+El [brazo tradicional](baseline/README.md) ejecuta F/P/V y el control contra el parser
+original de `baseline-o3`. Su comparador presenta ambos brazos por clase, con Wilson,
+sin equiparar sus tiempos de laboratorio ni los globales de catálogos distintos.
+
+### Requisitos de M2 y M3
+
+- **M3** arranca el servidor de `mi-app-qr` con su base, su `ASIGNACIONES_KEY` y su admin
+  propios, y le habla solo por HTTP. Necesita Node y el servidor compilado
+  (`npm install && npm run build` en `mi-app-qr/server`). Los titulares son sintéticos.
+- **M2** necesita la red Fabric de `infra/fabric/` (`crear-red.sh`, con
+  `SQRID_FABRIC_HOME`) y `anchor/` compilado. Ancla cada intento con el ciclo real
+  (`evidence-log cycle` → `anchor anclar`), comprueba que la raíz verifica, reescribe la
+  bitácora y vuelve a verificar. Por eso `todos` lo omite salvo con `--con-fabric`, y no
+  corre en el CI reducido (ADR-0019, punto 7).
+
+```bash
+SQRID_FABRIC_HOME=~/secureqr-fabric secureqr-eval run --con-fabric --salida resultados/
+```
+
+## En CI
+
+- **`evaluation-test`** (`ci.yml`) corre en cada PR que toque `evaluation/`, los módulos
+  que ataca o el servidor de mi-app-qr. Ejecuta las pruebas del paquete y una versión
+  reducida de la batería: 10 intentos por caso, 100 de control y sin M2. Si falla, sube
+  el informe como artefacto.
+- **`evaluacion.yml`** es la corrida completa, solo a mano (*Actions → Batería de
+  ataques — corrida completa → Run workflow*). Usa 200 intentos por caso, 1000 de control
+  y la semilla fija, y corre M2 contra una red Fabric efímera creada en el runner. La
+  carpeta de resultados queda como artefacto `evaluacion-<run_id>` durante 90 días: hay
+  que descargarla y guardarla con el documento de grado.
+  Incluye también `tradicional/` y `comparacion/`, generados con los mismos parámetros.

@@ -16,6 +16,7 @@ npm run brazo -- --salida ../resultados/tradicional --intentos 200 --control 100
 ```
 
 Necesita la etiqueta `baseline-o3` en el clon (`git fetch --tags`).
+Requiere Node 22.12 o posterior, como el ejecutor de pruebas fijado en el lock.
 Los valores por defecto son 200 intentos por clase maliciosa, 1000 controles y
 semilla 20261027, como en #151. La carpeta de salida debe ser nueva o vacía: no se
 sobrescribe la evidencia de una corrida anterior.
@@ -48,7 +49,8 @@ registro se guarda.
 - `tradicional-resumen.json`: la tasa por caso (detección en F, P y V; falso rechazo en
   el control) con su intervalo de Wilson al 95 %, más la detección global;
 - `tradicional-entorno.json`: etiqueta, commit, intentos, semilla, año de referencia,
-  tamaño del grupo de control, Node, sistema operativo y fecha.
+  tamaño del grupo de control, Node, sistema operativo y fecha. `commit` identifica
+  el parser histórico; `evaluador_commit` y `arbol_modificado` identifican el ejecutor.
 
 ## Informe de ambos brazos
 
@@ -67,13 +69,20 @@ python -m pytest -q evaluation/baseline/test/test_comparar.py
 `comparar.py` usa las métricas reales de #151 y produce `comparacion.md` con F/P/V
 lado a lado y el falso rechazo del control, `comparacion.json` y las rutas/hash
 SHA-256 de los archivos de entrada en `comparacion-origen.json`. Rechaza brazos
-equivocados, filas inconsistentes, intentos duplicados y una salida no vacía.
+equivocados, casos ajenos al catálogo, motivos de rechazo sin verificar, filas
+inconsistentes, intentos duplicados y una salida no vacía. Las rutas de origen son
+relativas a la carpeta de comparación para conservar la procedencia al mover el paquete.
 Los archivos `tradicional-entorno.json` y `entorno.json` se conservan junto a los
 resultados originales: el resumen no reemplaza su procedencia.
 
 R/M se declaran no aplicables al brazo tradicional. No se comparan los globales
 cuando SecureQR-ID incluye esas clases adicionales. El informe de laboratorio no
 demuestra por sí solo H1 ni H2 del piloto.
+
+La corrida manual `evaluacion.yml` genera los dos brazos con los mismos parámetros y
+guarda también la comparación en su artefacto. Para comparar una corrida oficial ya
+descargada se usa el mismo comando, conservando su `entorno.json` original: no se
+atribuye al código actual una medición hecha sobre otro commit.
 
 Las identidades son sintéticas: nombres de una lista fija y documentos aleatorios. El
 generador con semilla (mulberry32) solo hace repetible la corrida; no es criptográfico ni

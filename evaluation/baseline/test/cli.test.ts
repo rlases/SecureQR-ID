@@ -13,6 +13,10 @@ it('la CLI exporta el contrato común, cuenta el control aparte y no sobrescribe
     const filas = JSON.parse(readFileSync(join(carpeta, 'resultados.json'), 'utf8'));
     expect(filas).toHaveLength(9);
     expect(filas.filter((f: { malicioso: boolean }) => !f.malicioso)).toHaveLength(3);
+    const entorno = JSON.parse(readFileSync(join(carpeta, 'tradicional-entorno.json'), 'utf8'));
+    expect(entorno.commit).toMatch(/^[a-f0-9]{40}$/);
+    expect(entorno.evaluador_commit).toMatch(/^[a-f0-9]{40}$/);
+    expect(typeof entorno.arbol_modificado).toBe('boolean');
     const csv = readFileSync(join(carpeta, 'resultados.csv'), 'utf8');
     expect(csv.trim().split('\n')).toHaveLength(10);
     expect(spawnSync(process.execPath, args).status).toBe(2);

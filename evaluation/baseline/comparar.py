@@ -8,12 +8,18 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 
+from secureqr_evaluation.casos import CASOS
 from secureqr_evaluation.ejecutor import Fila, resumir
 
 
 def cargar(path: Path, brazo: str) -> list[Fila]:
+    catalogo = (
+        {caso.id: caso.clase for caso in CASOS.values()}
+        if brazo == "secureqr" else {c: c for c in ("control", "F", "P", "V")}
+    )
     registros = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(registros, list) or not registros:
         raise ValueError(f"{path}: se requiere una lista de intentos no vacía")
@@ -28,12 +34,23 @@ def cargar(path: Path, brazo: str) -> list[Fila]:
             or (fila.caso == "control") != (fila.clase == "control")
             or not isinstance(fila.caso, str) or not fila.caso
             or not isinstance(fila.clase, str) or not fila.clase
+            or catalogo.get(fila.caso) != fila.clase
+            or (fila.variante is not None and not isinstance(fila.variante, str))
             or type(fila.repeticion) is not int or fila.repeticion < 1
             or type(fila.ms) not in (int, float) or not math.isfinite(fila.ms) or fila.ms < 0
             or (fila.motivo is not None and not isinstance(fila.motivo, str))
             or (fila.motivo_correcto is not None and type(fila.motivo_correcto) is not bool)
         ):
             raise ValueError(f"{path}: intento inválido")
+        if brazo == "secureqr":
+            esperado = fila.malicioso and fila.decision == "rechazado"
+            if (
+                (esperado and (fila.motivo_correcto is not True or fila.motivo not in CASOS[fila.caso].motivos_esperados))
+                or (not esperado and fila.motivo_correcto is not None)
+            ):
+                raise ValueError(f"{path}: motivo no verificado; no se publica una comparación de una batería inválida")
+        elif fila.motivo_correcto is not None:
+            raise ValueError(f"{path}: el parser tradicional no verifica motivos de seguridad")
         identidad = (fila.caso, fila.repeticion)
         if identidad in vistos:
             raise ValueError(f"{path}: intento duplicado")
@@ -75,7 +92,7 @@ def comparar(tradicional: Path, secureqr: Path, salida: Path) -> None:
         "Este informe resume archivos de laboratorio; no demuestra H1 ni H2 del piloto.",
     ]
     origen = {
-        brazo: {"archivo": str(path.resolve()), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        brazo: {"archivo": os.path.relpath(path.resolve(), salida.resolve()), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
         for brazo, path in (("tradicional", tradicional), ("secureqr", secureqr))
     }
     salida.mkdir(parents=True, exist_ok=True)

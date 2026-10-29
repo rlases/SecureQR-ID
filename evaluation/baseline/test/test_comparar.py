@@ -13,8 +13,11 @@ spec.loader.exec_module(modulo)
 
 
 def fila(brazo, clase="F", decision="aceptado"):
-    return dict(brazo=brazo, caso=clase, clase=clase, repeticion=1, variante=None, malicioso=clase != "control",
-                decision=decision, motivo=None, motivo_correcto=None, ms=1.0)
+    rechazado = brazo == "secureqr" and clase == "F" and decision == "rechazado"
+    return dict(brazo=brazo, caso="F2" if brazo == "secureqr" and clase == "F" else clase,
+                clase=clase, repeticion=1, variante=None, malicioso=clase != "control",
+                decision=decision, motivo="signature" if rechazado else None,
+                motivo_correcto=True if rechazado else None, ms=1.0)
 
 
 def archivos(tmp_path):
@@ -54,6 +57,19 @@ def test_no_cuenta_un_intento_duplicado_dos_veces(tmp_path):
     entrada.write_text(json.dumps([fila("tradicional"), fila("tradicional")]))
     with pytest.raises(ValueError, match="duplicado"):
         modulo.cargar(entrada, "tradicional")
+
+
+@pytest.mark.parametrize("cambio", [
+    {"caso": "inventado"}, {"clase": "V"}, {"variante": ["firma"]},
+    {"motivo_correcto": False}, {"motivo_correcto": None}, {"motivo": "expired"},
+])
+def test_no_publica_detecciones_de_una_bateria_invalida(tmp_path, cambio):
+    t, s = archivos(tmp_path)
+    s.write_text(json.dumps([{**fila("secureqr", decision="rechazado"), **cambio}]))
+    salida = tmp_path / "informe"
+    with pytest.raises(ValueError):
+        modulo.comparar(t, s, salida)
+    assert not salida.exists()
 
 
 def test_la_cli_node_exporta_el_contrato_real_de_python(tmp_path):
