@@ -1,3 +1,4 @@
+import { LoadingState } from '../components/ui/loader';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -162,7 +163,7 @@ export default function RegistrosPage() {
           <p>No fue posible cargar los registros.</p>
           <Button type="button" variant="outline" onClick={() => void refetch()}>Reintentar</Button>
         </div>}
-        {isLoading && <p className="text-muted-foreground">Cargando...</p>}
+        {isLoading && <LoadingState className="text-muted-foreground" label="Cargando..." />}
         {!isLoading && data?.registros.length === 0 && (
           <p className="text-muted-foreground">Sin registros todavía.</p>
         )}

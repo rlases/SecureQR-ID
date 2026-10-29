@@ -1,3 +1,4 @@
+import { LoadingState } from '../components/ui/loader';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Trash2 } from 'lucide-react';
@@ -567,7 +568,7 @@ function SeccionCambios() {
       <h3 id="cambios-title" className="text-base font-semibold text-foreground">
         Registro de cambios
       </h3>
-      {isLoading && <p className="text-sm text-muted-foreground">Cargando registro de cambios...</p>}
+      {isLoading && <LoadingState className="text-sm text-muted-foreground" label="Cargando registro de cambios..." />}
       {isError && (
         <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
           No se pudo cargar el registro de cambios.{' '}
@@ -636,7 +637,7 @@ export default function EstamentosPage() {
         <p className="text-sm font-medium text-muted-foreground">Portal del titular</p>
         <h2 className="text-2xl font-semibold text-foreground">Estamentos y horarios</h2>
       </div>
-      {isLoading && <p className="text-muted-foreground">Cargando estamentos...</p>}
+      {isLoading && <LoadingState className="text-muted-foreground" label="Cargando estamentos..." />}
       {isError && (
         <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">
           No se pudo cargar la configuración de estamentos.{' '}

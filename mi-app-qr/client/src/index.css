@@ -41,3 +41,11 @@
     @apply bg-primary/20 text-foreground;
   }
 }
+
+.sq-loading-state {
+  color: hsl(var(--muted-foreground));
+}
+
+.sq-loading-state .sq-loader {
+  color: hsl(var(--primary));
+}

@@ -1,3 +1,4 @@
+import { LoadingState } from '../components/ui/loader';
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, RefreshCw } from 'lucide-react';
@@ -479,7 +480,7 @@ export default function TitularesPage() {
             </select>
           </div>
         </div>
-        {isLoading && <p className="text-sm text-muted-foreground">Cargando titulares...</p>}
+        {isLoading && <LoadingState className="text-sm text-muted-foreground" label="Cargando titulares..." />}
         {isError && (
           <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
             No se pudo cargar la lista de titulares.{' '}

@@ -1,0 +1,73 @@
+/* Mismo indicador en mi-app-qr/client y verifier-web (compilaciones independientes).
+   Mantener ambas copias sincronizadas. Inspirado en las tres barras propuestas. */
+.sq-loader {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 20%);
+  align-items: center;
+  justify-content: space-between;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+
+.sq-loader--sm {
+  width: 18px;
+  height: 18px;
+}
+
+.sq-loader--lg {
+  width: 40px;
+  height: 40px;
+}
+
+.sq-loader > span {
+  height: 100%;
+  border-radius: 999px;
+  background: currentColor;
+  transform: scaleY(0.3);
+  animation: sq-loader-wave 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.sq-loader > span:nth-child(1) {
+  animation-delay: -0.3s;
+}
+
+.sq-loader > span:nth-child(2) {
+  animation-delay: -0.15s;
+}
+
+.sq-loading-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@keyframes sq-loader-wave {
+  0%, 70%, 100% {
+    transform: scaleY(0.3);
+    opacity: 0.65;
+  }
+  35% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-loader > span {
+    animation: none;
+    transform: scaleY(0.5);
+    opacity: 1;
+  }
+
+  .sq-loader > span:nth-child(2) {
+    transform: scaleY(0.9);
+  }
+
+  .sq-loader > span:nth-child(3) {
+    transform: scaleY(0.65);
+  }
+}
