@@ -47,6 +47,15 @@ Esta sección prevalece sobre las notas anteriores del lote #151–#157.
 - **Pruebas locales:** 13/13 de Node y typecheck; 15/15 del comparador Python;
   35/35 de la batería Python, con M2/M3 omitidos por falta de sus servicios locales.
   Esos dos casos sí figuran en el artefacto oficial completo. `git diff --check` limpio.
+- **CI verificado sobre `4686cde`:** [flujo general 40809106435](https://github.com/rlases/SecureQR-ID/actions/runs/40809106435)
+  y [línea base/contrato 40809106411](https://github.com/rlases/SecureQR-ID/actions/runs/40809106411),
+  ambos correctos. Las fuentes de la batería siguen idénticas a `main`.
+- **Flujo integrado verificado con Fabric:** [40808907607](https://github.com/rlases/SecureQR-ID/actions/runs/40808907607),
+  sobre `b159eda`, completó batería, brazo tradicional, comparación y artefacto en verde
+  (10 intentos por caso, 100 controles, semilla `20261027`). Es una comprobación del
+  flujo ampliado; no sustituye la corrida oficial de 200/1000 conservada arriba.
+  La corrección posterior de rutas portables (`5840c51`) está cubierta por el CI de
+  `4686cde`. Esta última constancia cambia solo documentación.
 
 **Pendiente para cerrar el objetivo 3:** revisión cruzada e integración de #159,
 instalación real del CCAV (#133), consentimiento y ejecución del piloto de 75 personas,
