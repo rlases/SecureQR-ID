@@ -1,0 +1,48 @@
+name: Evaluación — brazo tradicional
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+    paths:
+      - 'evaluation/**'
+      - '.github/workflows/evaluation-baseline.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    name: Línea base y contrato entre brazos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: evaluation/baseline/package-lock.json
+      - run: npm ci
+        working-directory: evaluation/baseline
+      - run: npm test
+        working-directory: evaluation/baseline
+      - run: npm run typecheck
+        working-directory: evaluation/baseline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: |
+            evaluation/pyproject.toml
+            issuer/pyproject.toml
+            verifier/pyproject.toml
+            verifier-service/pyproject.toml
+            revocation/pyproject.toml
+            evidence-log/pyproject.toml
+      - run: python -m pip install -e ./issuer -e './verifier[web]' -e ./revocation -e ./evidence-log -e ./verifier-service -e './evaluation[test]'
+      - run: python -m pytest -q evaluation/baseline/test/test_comparar.py

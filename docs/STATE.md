@@ -4,17 +4,142 @@
 > entre sesiones y entre los dos autores. Si solo mantienes un documento al día, que sea
 > este.
 
-**Última actualización:** 2026-10-27
-**Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y piloto). Fases cerradas:
+**Última actualización:** 2026-10-28
+**Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y evaluación controlada). Fases cerradas:
 
 - **Fase 2 (diseño)**, con tag `v0.1.0` en `690bfcc`: ADR-0005 y ADR-0007 aceptadas, `SQRID-1.md` sin borrador (ADR-0010) y objetivos unificados en tres (#4).
 - **Fase 3 (desarrollo tecnológico)**, con tag `v0.2.0`: los cinco módulos (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`) implementados y probados en laboratorio, incluido el anclaje real contra Fabric 2.5 (#125, #126; prueba de integración en verde, ADR-0017).
 
-Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vigente de abajo distingue implementación, integración y pruebas.
+La instalación en el servidor del CCAV (#133) y su eventual piloto son un agregado
+opcional. No bloquean el desarrollo completo ni el cierre técnico del objetivo 3.
+El resumen vigente de abajo distingue implementación, integración y pruebas.
 
 ---
 
 ## Estado vigente — 2026-10-28
+
+### Alcance confirmado por el responsable del proyecto
+
+La instalación en el CCAV Pitalito se realizará si es posible, como agregado posterior
+al desarrollo. Se retira como dependencia del objetivo 3 y del cierre técnico del
+proyecto (aclaración de ADR-0019). El protocolo y la guía de instalación se conservan
+para esa extensión opcional. Las notas históricas que condicionan el avance a la sede
+quedan sustituidas por este alcance; no significan que falte desarrollar el sistema.
+
+### Cierre técnico del frente de Jhunier — 2026-10-28 (Colombia)
+
+Esta sección prevalece sobre las notas anteriores del lote #151–#157.
+
+- **#159 actualizado contra `main` (`6ef5cb9`).** Se conservan sin cambios las fuentes
+  y pruebas Python de la batería de `main`, incluidos M, Wilson y el cierre de las
+  conexiones de P2. Ya no depende de una pila pendiente de #160–#162.
+- **Corrida oficial recuperada:** ejecución
+  [40635336117](https://github.com/rlases/SecureQR-ID/actions/runs/40635336117),
+  artefacto `evaluacion-40635336117` (id `12793788797`), commit `6ef5cb9`, semilla
+  `20261027`, con Fabric. Sus archivos originales se conservan para el anexo:
+  **3400/3400 ataques detectados**, **0/1000 falsos rechazos**, ningún motivo
+  incorrecto. Son resultados de laboratorio, no del piloto. #165 documenta esa corrida.
+  Se verificó el digest del ZIP contra GitHub y se recalculó el resumen desde las filas.
+  [Paquete versionado y comparación](../evaluation/evidencia/2026-10-28/README.md):
+  incluye las cinco salidas oficiales intactas, las 1600 presentaciones tradicionales
+  con árbol limpio en `5840c51`, la comparación y un manifiesto de hashes. Conserva la
+  evidencia después del vencimiento del artefacto (2027-01-26).
+- **Comparación de ambos brazos:** tradicional sobre `baseline-o3` (`1b4498a`),
+  200 intentos por clase F/P/V y 1000 controles. El comparador rechaza casos ajenos al
+  catálogo y motivos de detección sin verificar; conserva los hash y rutas relativas
+  de los archivos de entrada. El entorno tradicional identifica por separado el
+  commit del parser y el del evaluador, y si había cambios sin confirmar.
+- **Corridas futuras:** `evaluacion.yml` obtiene la etiqueta histórica y guarda
+  `tradicional/` y `comparacion/` junto a la batería en el mismo artefacto, con los
+  mismos parámetros. No cambia los controles ni la metodología de ADR-0019.
+- **Dependencias del evaluador tradicional:** Vitest 5.0.5, Vite 8.3.5 y tipos de
+  Node 22 fijados; auditoría de ese paquete sin vulnerabilidades conocidas.
+- **Pruebas locales:** 13/13 de Node y typecheck; 15/15 del comparador Python;
+  35/35 de la batería Python, con M2/M3 omitidos por falta de sus servicios locales.
+  Esos dos casos sí figuran en el artefacto oficial completo. `git diff --check` limpio.
+- **CI verificado sobre `4686cde`:** [flujo general 40809106435](https://github.com/rlases/SecureQR-ID/actions/runs/40809106435)
+  y [línea base/contrato 40809106411](https://github.com/rlases/SecureQR-ID/actions/runs/40809106411),
+  ambos correctos. Las fuentes de la batería siguen idénticas a `main`.
+- **Flujo integrado verificado con Fabric:** [40808907607](https://github.com/rlases/SecureQR-ID/actions/runs/40808907607),
+  sobre `b159eda`, completó batería, brazo tradicional, comparación y artefacto en verde
+  (10 intentos por caso, 100 controles, semilla `20261027`). Es una comprobación del
+  flujo ampliado; no sustituye la corrida oficial de 200/1000 conservada arriba.
+  La corrección posterior de rutas portables (`5840c51`) está cubierta por el CI de
+  `4686cde`. Esta última constancia cambia solo documentación.
+
+**Pendiente de integración del objetivo 3:** revisión cruzada e integración de #159.
+La implementación, la comparación controlada y su evidencia están desarrolladas y
+probadas; la instalación del CCAV no es un bloqueo. No se fusiona el PR propio.
+
+**Extensión opcional:** instalación real en el CCAV (#133) y eventual aplicación del
+protocolo de 75 participantes, con consentimiento y análisis propios. Las metas de
+30 % de reducción de suplantación y 40 % de reducción del tiempo de registro en campo
+solo podrán informarse como medidas si se realiza esa extensión. Los resultados de
+laboratorio mantienen su alcance y no se presentan como resultados de campo.
+
+### Reanudación de Jhunier — 2026-10-27 (noche, Colombia)
+
+**Los pendientes antiguos de #102–#115 ya están integrados.** No volver a distribuir
+aquellos arreglos ni investigar el fixture de reseteo: el cierre posterior de Duverney
+documenta su corrección. Los issues actuales de Jhunier son #155 y #157, en **#159**.
+
+**#159 se apila sobre #162 (pila #160–#162; #151–#153)**, porque el brazo tradicional y su comparador
+necesitan el contrato del ejecutor Python. Se conserva el contenido previo del protocolo,
+incluidas la tolerancia `exp + SQRID_CLOCK_SKEW_SECONDS` y la copia de integridad.
+
+- El brazo tradicional conserva `tradicional.csv` para el detalle de variantes y
+  añade `resultados.csv/json` con las diez columnas exactas (incluida `variante`, añadida en #161) de
+  `secureqr_evaluation.ejecutor.Fila`. Los motivos internos no disponibles quedan
+  nulos; no se inventa equivalencia con códigos de seguridad.
+- `--control` separa los 1000 controles de los 200 intentos de cada clase
+  maliciosa. La semilla por defecto es 20261027, alineada con #151.
+- `evaluation/baseline/comparar.py` usa `resumir` de #151 para presentar F/P/V
+  lado a lado, falso rechazo e intervalos de Wilson. Guarda los hash de las entradas;
+  rechaza datos inconsistentes/duplicados y no sobrescribe evidencia. R/M son no
+  aplicables al tradicional; no se equiparan globales con distinto catálogo ni los
+  tiempos del parser y de HTTP.
+- Flujo `evaluation-baseline.yml`: checkout con tags, instalación bloqueada de
+  Node, 13 pruebas, typecheck y nueve pruebas Python del contrato. Complementa el
+  trabajo general de batería/artefactos de #156 (Duverney), sin sustituirlo.
+- El procedimiento de integridad de #157 abre el origen en solo lectura, respalda
+  con SQLite y cierra conexiones; no declara válida una base inexistente o vacía.
+
+**Verificación local:** 13/13 de Node (también con Node 22.16), typecheck correcto, 9/9 de comparación contra
+el ejecutor real de #162 (`ab82121`), incluida una exportación Node leída por Python. Se usaron Vitest/TypeScript coincidentes con
+el lock; tsx local 4.23.12 frente a 4.23.15 del lock, que valida el CI. El parser y
+su commit de prueba se reconstruyeron desde los objetos originales de GitHub,
+comprobando sus SHA: `baseline-o3 = 1b4498af0d2a76ceeadce0a114c40d9d758c7aab`.
+La corrida de 1600 presentaciones produjo 600/600 ataques aceptados (detección 0 %)
+y 0/1000 controles rechazados; no son resultados del piloto ni del brazo SecureQR-ID.
+Las 1600 filas se exportaron también con el contrato final de #162 y se compararon con el servicio real, con separación
+correcta de ataques y control. Procedimiento de integridad probado con origen válido,
+ruta ausente y base vacía.
+
+**Revisión adicional:** 32/32 pruebas de la pila #160–#162 contra el servicio real.
+Corrida reducida: 140 ataques F/R/P/V rechazados por el motivo esperado y 100 controles
+aceptados. La comparación real muestra F 40/40, P 50/50 y V 20/20 detectados por
+SecureQR-ID, frente a 0/200 por clase en el tradicional. Son validaciones de laboratorio
+sobre las fuentes fijadas; sus metadatos locales sin checkout completo no se citan como
+resultado formal del documento de grado. Falta M y la corrida completa de #156.
+
+**Durante la revisión #160 se integró en main** (3ffc936); #161/#162 recibieron esa
+base sin cambiar el árbol probado. Se conserva la integración ordenada y no se fusiona
+el PR propio #159.
+
+**CI de los cambios funcionales verificado** sobre `31671dc`: flujo general
+[40628298156](https://github.com/rlases/SecureQR-ID/actions/runs/40628298156) y flujo del
+brazo tradicional [40628299164](https://github.com/rlases/SecureQR-ID/actions/runs/40628299164),
+ambos correctos. Se publicaron aprobaciones técnicas de #161 (`27c6b26`) y #162
+(`b2540d3`) tras comprobar la igualdad de sus árboles con las fuentes probadas.
+Esta última constancia solo cambia documentación; consultar las comprobaciones
+vigentes al integrar.
+
+**Pendiente:** revisión cruzada de Duverney sobre #159;
+completar #154/#156 (Duverney), instalación y piloto. La corrida de tamaño completo y
+el piloto no se declaran completados. Se conservan #133 (servidor del CCAV) y el reparto vigente de 3 a 1.
+No se fusionan PR propios ni se cierran #155/#157 antes de la revisión/integración.
+
+
 
 ### Sesión de Duverney — 2026-10-28 (madrugada, hora UTC)
 

@@ -1570,9 +1570,12 @@ Sin eso, la métrica principal no se puede calcular.
    una tasa de detección del 100 % no vale si también se rechaza a los titulares
    legítimos.
 4. **Brazo tradicional (`baseline-o3`).** Se ejecuta la misma intención de ataque contra
-   la lectura de QR de la línea base: la función `parseQrUrlData`, en un `git worktree`
-   de la etiqueta, con Node y un DOM de pruebas. Se cuenta como **aceptado** todo QR que
-   la línea base lee como válido.
+   la lectura de QR de la línea base: la función `parseQrTextData`, extraída de la
+   etiqueta con `git show` a una carpeta temporal y cargada con Node. Es la que usa la pantalla de registro (`RegistrosPage`) con
+   el texto del carné; `parseQrUrlData` existe en el mismo archivo, pero la pantalla no
+   la usa. Se cuenta como **aceptado** todo QR que la línea base lee como válido. Que el
+   documento ya tenga una entrada abierta no es un rechazo: la pantalla solo pide
+   confirmar, y el registro se guarda.
    - Solo aplican las clases F (un texto con nombre y documento inventados), P (el mismo
      texto otra vez) y V (el carné de alguien retirado).
    - R no tiene equivalente porque la línea base no firma, y M tampoco porque no tiene
@@ -1625,3 +1628,17 @@ Sin eso, la métrica principal no se puede calcular.
   portería. Así se declara en el documento de grado.
 - Se agrega una carpeta de primer nivel. `ARCHITECTURE.md` y la tabla de módulos de
   `CLAUDE.md` la nombran como herramienta de evaluación, no como módulo.
+
+### Aclaración de alcance — 2026-10-28
+
+Por indicación expresa del responsable del proyecto, la instalación en el CCAV Pitalito
+es un agregado opcional, sujeto a viabilidad. No condiciona el desarrollo completo,
+la evaluación controlada del objetivo 3 ni su integración y documentación. El protocolo
+de campo queda preparado para una eventual ejecución, separado de los criterios de
+cierre técnico. Esta aclaración prevalece sobre las dependencias de instalación y
+piloto que figuran en planes y notas de estado anteriores.
+
+La aclaración no modifica el catálogo ni las métricas de laboratorio. Los resultados
+conservan su alcance: una prueba controlada no acredita operación en la sede ni las
+metas de reducción de tiempo de registro y suplantación en campo. Si se ejecuta el
+piloto, esas conclusiones requieren sus propias mediciones y consentimiento.
