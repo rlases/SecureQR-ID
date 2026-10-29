@@ -29,6 +29,11 @@ Esta sección prevalece sobre las notas anteriores del lote #151–#157.
   `20261027`, con Fabric. Sus archivos originales se conservan para el anexo:
   **3400/3400 ataques detectados**, **0/1000 falsos rechazos**, ningún motivo
   incorrecto. Son resultados de laboratorio, no del piloto. #165 documenta esa corrida.
+  Se verificó el digest del ZIP contra GitHub y se recalculó el resumen desde las filas.
+  [Paquete versionado y comparación](../evaluation/evidencia/2026-10-28/README.md):
+  incluye las cinco salidas oficiales intactas, las 1600 presentaciones tradicionales
+  con árbol limpio en `5840c51`, la comparación y un manifiesto de hashes. Conserva la
+  evidencia después del vencimiento del artefacto (2027-01-26).
 - **Comparación de ambos brazos:** tradicional sobre `baseline-o3` (`1b4498a`),
   200 intentos por clase F/P/V y 1000 controles. El comparador rechaza casos ajenos al
   catálogo y motivos de detección sin verificar; conserva los hash y rutas relativas
