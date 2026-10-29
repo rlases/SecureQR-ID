@@ -123,7 +123,7 @@ function StopTestApp {
 }
 
 try {
-    $installerProcess = Start-Process -FilePath $installers[0].FullName -ArgumentList @('/S', "/D=$installRoot") -WindowStyle Hidden -Wait -PassThru
+    $installerProcess = Start-Process -FilePath $installers[0].FullName -ArgumentList @('/S', '/currentuser', "/D=$installRoot") -WindowStyle Hidden -Wait -PassThru
     if ($installerProcess.ExitCode -ne 0) { throw 'El instalador no terminó correctamente.' }
     # NSIS oneClick puede conservar la ubicación por usuario. Localizar el binario
     # dentro de los destinos conocidos, sin confundir el nombre del paquete con
