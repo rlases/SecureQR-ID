@@ -20,7 +20,9 @@ $profiles = @('registro-qr', 'Registro QR') | ForEach-Object { Join-Path $env:AP
 $installationCandidates = @(
     $installRoot,
     (Join-Path $env:LOCALAPPDATA 'Programs/registro-qr'),
-    (Join-Path $env:LOCALAPPDATA 'Programs/Registro QR')
+    (Join-Path $env:LOCALAPPDATA 'Programs/Registro QR'),
+    (Join-Path $env:ProgramFiles 'Registro QR'),
+    (Join-Path $env:ProgramFiles 'registro-qr')
 )
 foreach ($candidateInstallation in $installationCandidates) {
     if (Test-Path -LiteralPath $candidateInstallation) { throw 'Existe una instalación previa; no se utiliza ni se modifica.' }
@@ -128,18 +130,33 @@ try {
     # productName ni dar por terminada la instalación al salir el lanzador inicial.
     # Electron también instala ejecutables auxiliares (p. ej. chrome_crashpad_handler.exe).
     # Buscar el ejecutable de productName, no exigir que toda la carpeta tenga un solo EXE.
+    $uninstallKeys = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*')
+    $registered = @(Get-ItemProperty -Path $uninstallKeys -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -eq 'Registro QR' })
+    foreach ($entry in $registered) {
+        if ($entry.PSObject.Properties['InstallLocation'] -and $entry.InstallLocation) {
+            $installationCandidates += $entry.InstallLocation
+        }
+    }
     $executable = $null
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
     while (-not $executable -and [DateTime]::UtcNow -lt $deadline) {
         foreach ($candidateInstallation in $installationCandidates) {
             if (Test-Path -LiteralPath $candidateInstallation) {
-                $binaries = @(Get-ChildItem -LiteralPath $candidateInstallation -Filter 'Registro QR.exe' -File)
+                $binaries = @(Get-ChildItem -LiteralPath $candidateInstallation -File | Where-Object { $_.Name -in @('Registro QR.exe', 'registro-qr.exe') })
                 if ($binaries.Count -eq 1) { $executable = $binaries[0].FullName; $installRoot = $candidateInstallation; break }
             }
         }
         if (-not $executable) { Start-Sleep -Seconds 1 }
     }
-    if (-not $executable) { throw 'No apareció un ejecutable único en los destinos previstos de NSIS.' }
+    if (-not $executable) {
+        foreach ($candidateInstallation in $installationCandidates) {
+            Write-Host "Destino: $candidateInstallation"
+            if (Test-Path -LiteralPath $candidateInstallation) {
+                Get-ChildItem -LiteralPath $candidateInstallation -Filter '*.exe' -File | ForEach-Object { Write-Host $_.Name }
+            }
+        }
+        throw 'No apareció el ejecutable principal en los destinos de NSIS.'
+    }
     $report.ejecutable = [IO.Path]::GetFileName($executable)
     $report.comprobaciones.instalacion_nsis = $true
     StartTestApp $executable
