@@ -126,12 +126,14 @@ try {
     # NSIS oneClick puede conservar la ubicación por usuario. Localizar el binario
     # dentro de los destinos conocidos, sin confundir el nombre del paquete con
     # productName ni dar por terminada la instalación al salir el lanzador inicial.
+    # Electron también instala ejecutables auxiliares (p. ej. chrome_crashpad_handler.exe).
+    # Buscar el ejecutable de productName, no exigir que toda la carpeta tenga un solo EXE.
     $executable = $null
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
     while (-not $executable -and [DateTime]::UtcNow -lt $deadline) {
         foreach ($candidateInstallation in $installationCandidates) {
             if (Test-Path -LiteralPath $candidateInstallation) {
-                $binaries = @(Get-ChildItem -LiteralPath $candidateInstallation -Filter '*.exe' -File | Where-Object { $_.Name -notlike 'Uninstall*' })
+                $binaries = @(Get-ChildItem -LiteralPath $candidateInstallation -Filter 'Registro QR.exe' -File)
                 if ($binaries.Count -eq 1) { $executable = $binaries[0].FullName; $installRoot = $candidateInstallation; break }
             }
         }
