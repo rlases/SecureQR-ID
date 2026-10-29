@@ -97,7 +97,7 @@ function StartTestApp([string]$Executable) {
             $script:userProfile = $profiles | Where-Object { Test-Path -LiteralPath (Join-Path $_ 'tls/cert.pem') } | Select-Object -First 1
         }
         if ($script:userProfile -and -not $script:client) {
-            $cert = [Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPemFile((Join-Path $script:userProfile 'tls/cert.pem'))
+            $cert = [Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPem((Get-Content -LiteralPath (Join-Path $script:userProfile 'tls/cert.pem') -Raw))
             try { $script:client = [SecureQrPinnedClient]::Create($cert.GetCertHashString([Security.Cryptography.HashAlgorithmName]::SHA256)) }
             finally { $cert.Dispose() }
         }
