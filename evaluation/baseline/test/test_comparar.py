@@ -37,7 +37,10 @@ def test_compara_los_dos_brazos_y_conserva_no_aplica(tmp_path):
     texto = (salida / "comparacion.md").read_text()
     assert "| P | Sin intentos | Sin intentos |" in texto
     assert "R y M: no aplican" in texto
-    assert len(json.loads((salida / "comparacion-origen.json").read_text())["tradicional"]["sha256"]) == 64
+    origen = json.loads((salida / "comparacion-origen.json").read_text())["tradicional"]
+    assert len(origen["sha256"]) == 64
+    assert "\\" not in origen["archivo"]
+    assert (salida / origen["archivo"]).resolve() == t.resolve()
     original = (salida / "comparacion.md").read_bytes()
     with pytest.raises(ValueError, match="nueva o vacía"):
         modulo.comparar(t, s, salida)

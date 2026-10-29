@@ -92,7 +92,7 @@ def comparar(tradicional: Path, secureqr: Path, salida: Path) -> None:
         "Este informe resume archivos de laboratorio; no demuestra H1 ni H2 del piloto.",
     ]
     origen = {
-        brazo: {"archivo": os.path.relpath(path.resolve(), salida.resolve()), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        brazo: {"archivo": Path(os.path.relpath(path.resolve(), salida.resolve())).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
         for brazo, path in (("tradicional", tradicional), ("secureqr", secureqr))
     }
     salida.mkdir(parents=True, exist_ok=True)
