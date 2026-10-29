@@ -24,7 +24,10 @@ La [corrida oficial](https://github.com/rlases/SecureQR-ID/actions/runs/40635336
 es anterior a la ampliación del flujo que reúne ambos brazos. Por eso este paquete
 conserva dos procedencias y no afirma que se midieran en una misma máquina o versión.
 Los tiempos del parser y de HTTP no son tiempos comparables de registro en campo.
-Las metas de reducción de suplantación y de tiempo requieren todavía el piloto.
+Las metas de reducción de suplantación y de tiempo de registro en campo solo se podrán
+medir si se realiza el piloto opcional. La instalación en el CCAV y esas mediciones
+no condicionan el desarrollo completo ni la evaluación controlada del objetivo 3
+(aclaración de ADR-0019, 2026-10-28).
 
 ## Conservación y reproducción
 

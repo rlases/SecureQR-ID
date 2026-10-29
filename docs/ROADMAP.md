@@ -4,6 +4,12 @@ Alineada con el cronograma de ocho meses de la propuesta de grado. Cada fase cie
 un tag en el repositorio, de modo que el historial de versiones sirva como evidencia
 del avance.
 
+**Alcance vigente (2026-10-28):** por indicación del responsable del proyecto, la
+instalación en el CCAV Pitalito es un agregado opcional que se realiza si es viable.
+El desarrollo completo, las pruebas, la evaluación controlada y la documentación se
+completan de forma independiente. Esta aclaración de ADR-0019 prevalece sobre la
+dependencia de despliegue presencial del cronograma original.
+
 ---
 
 ## Fase 1 — Investigación y diagnóstico ✅
@@ -42,24 +48,34 @@ sistema sin nada que anclar durante semanas.
 
 ---
 
-## Fase 4 — Pruebas de seguridad y piloto → `v0.3.0`
+## Fase 4 — Pruebas de seguridad y evaluación controlada → `v0.3.0`
 
 Batería de ataques (repetición, falsificación, reemplazo, manipulación interna),
-despliegue en UNAD CCAV Pitalito con la muestra prevista, recolección de métricas.
+comparación con `baseline-o3`, métricas y evidencia reproducible de laboratorio.
 
-**Métricas comprometidas en la propuesta:**
+**Cierre técnico:** implementación e integración revisadas, pruebas aprobadas e
+informe controlado con sus datos, versiones y limitaciones. La instalación en la sede
+y la ejecución del piloto no son condiciones de cierre.
+
+**Métricas de la evaluación controlada:**
 
 - Tasa de detección de credenciales inválidas (métrica principal)
-- Reducción de intentos de suplantación ≥ 30 %
-- Reducción del tiempo promedio de registro ≥ 40 %
+- Falso rechazo del grupo de control y tiempo de validación en laboratorio
 - Integridad verificable de los registros de acceso
+
+**Extensión opcional en el CCAV:** instalación y piloto con la muestra prevista,
+según `PROTOCOLO-PILOTO.md`. Las metas originales de reducción de intentos de
+suplantación ≥ 30 % y del tiempo promedio de registro ≥ 40 % se conservan para esa
+medición de campo; no se consideran demostradas con los datos de laboratorio.
 
 ---
 
 ## Fase 5 — Implementación final y cierre → `v1.0.0`
 
-Despliegue definitivo, capacitación (≥ 20 funcionarios), manual técnico y de usuario,
-análisis estadístico, documento final bajo APA 7.
+Entrega del sistema completo, manual técnico y de usuario, análisis estadístico de
+los resultados disponibles y documento final bajo APA 7. La instalación definitiva
+en la sede y la capacitación presencial (≥ 20 funcionarios en el plan original)
+pertenecen a la extensión opcional, si se realiza.
 
 ---
 

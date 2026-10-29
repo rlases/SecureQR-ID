@@ -1628,3 +1628,17 @@ Sin eso, la métrica principal no se puede calcular.
   portería. Así se declara en el documento de grado.
 - Se agrega una carpeta de primer nivel. `ARCHITECTURE.md` y la tabla de módulos de
   `CLAUDE.md` la nombran como herramienta de evaluación, no como módulo.
+
+### Aclaración de alcance — 2026-10-28
+
+Por indicación expresa del responsable del proyecto, la instalación en el CCAV Pitalito
+es un agregado opcional, sujeto a viabilidad. No condiciona el desarrollo completo,
+la evaluación controlada del objetivo 3 ni su integración y documentación. El protocolo
+de campo queda preparado para una eventual ejecución, separado de los criterios de
+cierre técnico. Esta aclaración prevalece sobre las dependencias de instalación y
+piloto que figuran en planes y notas de estado anteriores.
+
+La aclaración no modifica el catálogo ni las métricas de laboratorio. Los resultados
+conservan su alcance: una prueba controlada no acredita operación en la sede ni las
+metas de reducción de tiempo de registro y suplantación en campo. Si se ejecuta el
+piloto, esas conclusiones requieren sus propias mediciones y consentimiento.

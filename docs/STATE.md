@@ -5,16 +5,26 @@
 > este.
 
 **Última actualización:** 2026-10-28
-**Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y piloto). Fases cerradas:
+**Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y evaluación controlada). Fases cerradas:
 
 - **Fase 2 (diseño)**, con tag `v0.1.0` en `690bfcc`: ADR-0005 y ADR-0007 aceptadas, `SQRID-1.md` sin borrador (ADR-0010) y objetivos unificados en tres (#4).
 - **Fase 3 (desarrollo tecnológico)**, con tag `v0.2.0`: los cinco módulos (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`) implementados y probados en laboratorio, incluido el anclaje real contra Fabric 2.5 (#125, #126; prueba de integración en verde, ADR-0017).
 
-Falta la instalación en el servidor del CCAV (#133) y el piloto. El resumen vigente de abajo distingue implementación, integración y pruebas.
+La instalación en el servidor del CCAV (#133) y su eventual piloto son un agregado
+opcional. No bloquean el desarrollo completo ni el cierre técnico del objetivo 3.
+El resumen vigente de abajo distingue implementación, integración y pruebas.
 
 ---
 
 ## Estado vigente — 2026-10-28
+
+### Alcance confirmado por el responsable del proyecto
+
+La instalación en el CCAV Pitalito se realizará si es posible, como agregado posterior
+al desarrollo. Se retira como dependencia del objetivo 3 y del cierre técnico del
+proyecto (aclaración de ADR-0019). El protocolo y la guía de instalación se conservan
+para esa extensión opcional. Las notas históricas que condicionan el avance a la sede
+quedan sustituidas por este alcance; no significan que falte desarrollar el sistema.
 
 ### Cierre técnico del frente de Jhunier — 2026-10-28 (Colombia)
 
@@ -57,12 +67,15 @@ Esta sección prevalece sobre las notas anteriores del lote #151–#157.
   La corrección posterior de rutas portables (`5840c51`) está cubierta por el CI de
   `4686cde`. Esta última constancia cambia solo documentación.
 
-**Pendiente para cerrar el objetivo 3:** revisión cruzada e integración de #159,
-instalación real del CCAV (#133), consentimiento y ejecución del piloto de 75 personas,
-y análisis de los datos de campo según `PROTOCOLO-PILOTO.md`. No se declaran cumplidas
-las metas de 30 % de reducción de suplantación ni 40 % de reducción del tiempo de
-registro con los datos de laboratorio. No se fusiona el PR propio ni se cierra la
-Fase 4 antes de esas mediciones.
+**Pendiente de integración del objetivo 3:** revisión cruzada e integración de #159.
+La implementación, la comparación controlada y su evidencia están desarrolladas y
+probadas; la instalación del CCAV no es un bloqueo. No se fusiona el PR propio.
+
+**Extensión opcional:** instalación real en el CCAV (#133) y eventual aplicación del
+protocolo de 75 participantes, con consentimiento y análisis propios. Las metas de
+30 % de reducción de suplantación y 40 % de reducción del tiempo de registro en campo
+solo podrán informarse como medidas si se realiza esa extensión. Los resultados de
+laboratorio mantienen su alcance y no se presentan como resultados de campo.
 
 ### Reanudación de Jhunier — 2026-10-27 (noche, Colombia)
 

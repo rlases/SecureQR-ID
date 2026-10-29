@@ -1,5 +1,10 @@
 # Protocolo de la medición de campo del piloto
 
+**Extensión opcional:** este protocolo se aplica si resulta viable instalar y realizar
+el piloto en el CCAV Pitalito. No es una condición para completar el desarrollo ni
+la evaluación controlada del objetivo 3 (aclaración de ADR-0019, 2026-10-28).
+Los requisitos siguientes rigen únicamente cuando se ejecute esa medición de campo.
+
 Protocolo de la medición de campo del objetivo 3 en el CCAV Pitalito (ADR-0019, punto 8;
 issue #157). Complementa la batería de laboratorio de `evaluation/` (ADR-0019, puntos 1
 a 7): la batería mide qué detecta el sistema con miles de intentos repetibles, y este
