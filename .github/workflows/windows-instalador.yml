@@ -1,0 +1,86 @@
+name: Windows — instalador y persistencia
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'mi-app-qr/**'
+      - '.github/workflows/windows-instalador.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-instalador-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cambios:
+    runs-on: ubuntu-latest
+    outputs:
+      probar: ${{ steps.filtro.outputs.probar }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filtro
+        env:
+          BASE: ${{ github.event.before || github.event.pull_request.base.sha }}
+          EVENTO: ${{ github.event_name }}
+        run: |
+          if [ "$EVENTO" = workflow_dispatch ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo 'probar=true' >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE" HEAD | grep -Eq '^(\.github/workflows/windows-instalador\.yml|mi-app-qr/(main\.js|preload\.js|package(-lock)?\.json|server/|client/|shared/|src/lib/|scripts/))'; then
+            echo 'probar=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'probar=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  instalador:
+    needs: cambios
+    if: ${{ !cancelled() && (needs.cambios.result == 'failure' || needs.cambios.outputs.probar == 'true') }}
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: mi-app-qr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            mi-app-qr/package-lock.json
+            mi-app-qr/server/package-lock.json
+            mi-app-qr/client/package-lock.json
+      - name: Instalar dependencias bloqueadas
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm --prefix server ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm --prefix client ci
+          exit $LASTEXITCODE
+      - name: Compilar y empaquetar NSIS sin publicar
+        run: |
+          npm run prepack
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & ./node_modules/.bin/electron-builder.cmd --win nsis --x64 --publish never
+          exit $LASTEXITCODE
+      - name: Instalar, arrancar y comprobar persistencia
+        run: ./scripts/probar-instalador.ps1
+      - name: Conservar solo el instalador y el informe sin secretos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-instalador-${{ github.run_id }}
+          path: |
+            mi-app-qr/dist/*.exe
+            ${{ runner.temp }}/secureqr-instalador-informe/*.json
+          if-no-files-found: warn
+          retention-days: 30

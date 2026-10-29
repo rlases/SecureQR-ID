@@ -44,12 +44,18 @@ un evento puntual se hace recalculando el camino desde su hash hasta la raíz an
 |---|---|---|
 | [`issuer/`](issuer/) | Emisión y firma ECDSA de tokens QR; gestión del par de claves institucional | Implementado y probado — issue #5 |
 | [`verifier/`](verifier/) | Motor del portal de escaneo; verifica firma, marca temporal, nonce y revocación | Implementado y probado — issue #6 |
-| [`verifier-web/`](verifier-web/) | Portal accesible de escaneo; captura el token y consume el verificador sin persistir datos sensibles | En desarrollo — issue #30 |
-| `evidence-log/` | Bitácora local de eventos encadenada por hash | Pendiente |
-| `anchor/` | Construcción del árbol de Merkle y anclaje periódico en Hyperledger Fabric | Pendiente — ver ADR-0007 |
-| `revocation/` | Lista de revocación firmada y su distribución a los verificadores | Pendiente |
-| [`mi-app-qr/`](mi-app-qr/) | Prototipo de escritorio ya funcional: registro de asistencia por QR de texto plano, sin las capas de seguridad de este diseño. Línea base para la evaluación comparativa (Fase 4). | Hecho, sin cifrado |
-| `docs/` | Arquitectura, decisiones, modelo de amenazas, especificación del formato | En curso |
+| [`verifier-web/`](verifier-web/) | Portal accesible de escaneo; captura el token y consume el verificador sin persistir datos sensibles | Implementado y probado |
+| [`evidence-log/`](evidence-log/) | Bitácora local de eventos encadenada por hash | Implementado e integrado |
+| [`anchor/`](anchor/) | Merkle, anclaje real en Fabric y comandos de sellado OpenTimestamps | Implementado; integración Fabric probada |
+| [`revocation/`](revocation/) | Lista firmada, recarga y distribución a los verificadores | Implementado e integrado |
+| [`verifier-service/`](verifier-service/) | Servicio HTTP que compone verificador, revocación y bitácora | Implementado y probado |
+| [`mi-app-qr/`](mi-app-qr/) | Registros administrativos, titulares y portal que solicita QR al emisor local | Implementado; cliente y servidor con pruebas |
+| [`evaluation/`](evaluation/) | Batería controlada, brazo tradicional e informe comparable | Implementado; evidencia conservada |
+| [`docs/`](docs/) | Arquitectura, resultados, manuales y criterios de entrega | Documentación de cierre preparada |
+
+La línea base tradicional se conserva en la etiqueta `baseline-o3`; no es el estado
+actual de `mi-app-qr`. La emisión, la verificación y el registro administrativo
+mantienen sus límites de proceso y sus funciones separadas.
 
 ## Documentación
 
@@ -70,17 +76,32 @@ Lee esto antes de tocar código:
 - [`docs/raw/`](docs/raw/) — material fuente destilado (propuesta de grado, entregas por etapa, artículo SMS)
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — cómo trabajamos: ramas, PR, revisión cruzada y pruebas
 
+Para utilizar, evaluar o entregar el sistema:
+
+- [`docs/MANUAL-USUARIO.md`](docs/MANUAL-USUARIO.md) — titulares, operadores y administradores.
+- [`docs/MANUAL-TECNICO.md`](docs/MANUAL-TECNICO.md) — instalación, custodia, operación y recuperación.
+- [`docs/RESULTADOS-OBJETIVO-3.md`](docs/RESULTADOS-OBJETIVO-3.md) — método, métricas, comparación y límites.
+- [`evaluation/evidencia/2026-10-28/README.md`](evaluation/evidencia/2026-10-28/README.md) — datos originales y reproducción.
+- [`docs/ENTREGA.md`](docs/ENTREGA.md) — aceptación del instalador y pendientes reales de `v1.0.0`.
+
 ## Instalación
 
-### Prototipo `mi-app-qr/` (funcional hoy)
+### Cliente administrativo `mi-app-qr/`
 
 ```bash
 git clone https://github.com/rlases/SecureQR-ID.git
-cd SecureQR-ID/mi-app-qr
-npm install
-npm run electron-dev   # modo desarrollo
-npm run dist           # empaqueta el instalador de escritorio
+cd SecureQR-ID
+npm --prefix mi-app-qr ci
+npm --prefix mi-app-qr/server ci
+npm --prefix mi-app-qr/client ci
+npm --prefix mi-app-qr/server run build
+npm --prefix mi-app-qr/client run build
+npm --prefix mi-app-qr run electron-dev
 ```
+
+Electron utiliza el cliente de `mi-app-qr/client` y el servidor compilados. El emisor
+Python se configura y arranca por separado. El empaquetado Windows y sus límites se
+describen en el [manual técnico](docs/MANUAL-TECNICO.md).
 
 ### Emisor criptográfico `issuer/`
 
@@ -101,7 +122,7 @@ La configuración de claves y los comandos de emisión están documentados en
 cd SecureQR-ID/verifier
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-python -m pip install -e ../issuer -e ".[test]"
+python -m pip install -e ../issuer -e ../evidence-log -e ".[test]"
 python -m pytest
 ```
 
@@ -123,15 +144,19 @@ conectarlo al adaptador real está en [`verifier-web/README.md`](verifier-web/RE
 
 ## Estado
 
-**Fase actual:** diseño y desarrollo tecnológico. `issuer/` y `verifier/` forman el
-núcleo criptográfico funcional; `verifier-web/` incorpora el flujo visual de escaneo y
-`mi-app-qr/` sigue siendo la línea base de registro por QR sin esas capas de seguridad.
-El detalle vive en [`docs/STATE.md`](docs/STATE.md), que se actualiza al cierre de cada
-sesión de trabajo.
+**Fase 4 completada técnicamente:** módulos integrados, batería y comparación
+controladas. La corrida oficial detectó 3400/3400 ataques del catálogo, con 0/1000
+falsos rechazos. Son resultados de laboratorio, con los límites y procedencias del
+[informe](docs/RESULTADOS-OBJETIVO-3.md).
+
+**Fase 5:** documentación de entrega, validación del instalador y documento de grado
+completo. La publicación `v0.3.0` identifica la evaluación; `v1.0.0` requiere los
+criterios de [ENTREGA.md](docs/ENTREGA.md). El estado y los pendientes reales se
+mantienen en [`docs/STATE.md`](docs/STATE.md).
 
 ## Seguridad
 
-Este repositorio implementa (o implementará) primitivas criptográficas. Antes de
+Este repositorio utiliza bibliotecas criptográficas establecidas. Antes de
 contribuir o desplegar, lee [`SECURITY.md`](SECURITY.md). **Nunca** commitees claves
 privadas, tokens reales ni datos personales de estudiantes.
 

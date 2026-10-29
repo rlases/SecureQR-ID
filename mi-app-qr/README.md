@@ -1,70 +1,51 @@
-# Getting Started with Create React App
+# Registro administrativo y portal del titular
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Aplicación Electron que inicia un servidor Express/SQLite y el cliente actual de
+`client/`. Gestiona registros administrativos, usuarios, estamentos, titulares y
+el vínculo del teléfono. El portal solicita los tokens SQRID/1 al servicio local
+de `issuer/`, que debe arrancar el custodio por separado.
 
-## Available Scripts
+La versión histórica de lectura de texto se conserva en `baseline-o3`. El cliente
+actual no se arranca con el antiguo `npm start` de Create React App.
 
-In the project directory, you can run:
+## Desarrollo
 
-### `npm start`
+Desde la raíz del repositorio, con Node 22.12 o posterior:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```bash
+npm --prefix mi-app-qr ci
+npm --prefix mi-app-qr/server ci
+npm --prefix mi-app-qr/client ci
+npm --prefix mi-app-qr/server run build
+npm --prefix mi-app-qr/client run build
+npm --prefix mi-app-qr run electron-dev
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Electron crea el certificado y los secretos de la instalación, y abre el servidor
+HTTPS en el puerto 4000. El primer inicio entrega las credenciales del administrador.
+No se copian `server-secrets.json`, bases ni claves privadas al repositorio.
 
-### `npm test`
+## Pruebas y empaquetado
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Raíz: `npm test -- --watchAll=false` con el modo CI correspondiente.
+- Servidor: `npm test` y `npm run build` dentro de `server/`.
+- Cliente: `npm test` y `npm run build` dentro de `client/`.
+- Instalador: instalar las dependencias anteriores y ejecutar `npm run dist` en
+  esta carpeta. `prepack` compila servidor y cliente, reinstala las dependencias
+  de producción del servidor y reconstruye el módulo nativo para Electron.
 
-### `npm run build`
+El instalador no configura por sí solo el emisor Python, la revocación ni Fabric.
+El flujo `windows-instalador.yml` prepara un NSIS y prueba su instalación y persistencia
+en un runner desechable; consultar su resultado antes de dar por aceptado un binario.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Guías
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- [Manual de usuario](../docs/MANUAL-USUARIO.md).
+- [Manual técnico](../docs/MANUAL-TECNICO.md).
+- [API, variables y operación del servidor](server/README.md).
+- [Criterios de entrega y comprobación Windows](../docs/ENTREGA.md).
+- [Instalación opcional del CCAV](../docs/INSTALACION-CCAV.md).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Validar un token en `verifier-web` y guardar una asistencia en Registros son
+operaciones diferentes. No se interpreta una lectura de texto del carné como
+una verificación criptográfica de SQRID/1.

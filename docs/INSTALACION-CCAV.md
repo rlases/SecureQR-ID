@@ -171,7 +171,9 @@ sudo -u secureqr-issuer env \
    Sin `config.json`, la app usa `userData/issuer.secret` y `userData/anclaje/`. Si no
    encuentra el secreto, arranca igual, pero avisa que el portal no entregará QR.
 
-3. **Primer arranque.** Anota la contraseña inicial del `admin` que muestra y cámbiala.
+3. **Primer arranque.** Custodia la contraseña inicial del `admin` en un gestor.
+   Esta versión no ofrece cambio de contraseña desde la interfaz; no se prescribe
+   ese paso como si existiera. Las cuentas nuevas se crean en **Usuarios**.
 4. **Respaldo de la clave HMAC.** Copia `server-secrets.json` (contiene `ASIGNACIONES_KEY`)
    al medio externo de claves (§3).
 5. **Huella del certificado.** Ábrela en la página de alta del portal, que la muestra con

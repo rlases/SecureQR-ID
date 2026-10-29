@@ -5,10 +5,12 @@
 > este.
 
 **Última actualización:** 2026-10-28
-**Fase actual:** Fase 4 de `ROADMAP.md` (pruebas de seguridad y evaluación controlada). Fases cerradas:
+**Fase actual:** Fase 5 de `ROADMAP.md` (documentación y comprobación de la entrega final). Fases cerradas:
 
 - **Fase 2 (diseño)**, con tag `v0.1.0` en `690bfcc`: ADR-0005 y ADR-0007 aceptadas, `SQRID-1.md` sin borrador (ADR-0010) y objetivos unificados en tres (#4).
 - **Fase 3 (desarrollo tecnológico)**, con tag `v0.2.0`: los cinco módulos (`issuer/`, `verifier/`, `evidence-log/`, `revocation/`, `anchor/`) implementados y probados en laboratorio, incluido el anclaje real contra Fabric 2.5 (#125, #126; prueba de integración en verde, ADR-0017).
+- **Fase 4 (evaluación controlada)**, con [versión `v0.3.0`](https://github.com/rlases/SecureQR-ID/releases/tag/v0.3.0)
+  sobre `2d09e4e`: #159 y #165 integrados, batería oficial, comparación y evidencia preservadas.
 
 La instalación en el servidor del CCAV (#133) y su eventual piloto son un agregado
 opcional. No bloquean el desarrollo completo ni el cierre técnico del objetivo 3.
@@ -18,7 +20,44 @@ El resumen vigente de abajo distingue implementación, integración y pruebas.
 
 ## Estado vigente — 2026-10-28
 
-### Indicadores de carga — 2026-10-28 (en revisión)
+### Entrega de Fase 4 y documentación de Fase 5
+
+Este resumen sustituye los pendientes de las sesiones históricas de abajo.
+
+- **Integrados:** #159 (comparación y alcance opcional del CCAV), #166 (indicadores de
+  carga) y #165 (registro de la corrida oficial y cierre de #156). No quedan revisiones
+  pendientes de esos PR. El único issue operativo abierto al iniciar este cierre era
+  #133, que pertenece a la extensión opcional del CCAV.
+- **Publicada `v0.3.0`**, como versión de investigación, sobre el `main` revisado
+  `2d09e4edc9156ba86e0c0a13448720949128a782`. Adjunta el ZIP de evidencia sin cambios
+  y `SHA256SUMS.txt`. Sus notas distinguen el commit publicado del commit de medición
+  oficial `6ef5cb9`. Los documentos nuevos de este cierre se integran por PR separado.
+- **Preparados para revisión cruzada:** [informe de resultados](RESULTADOS-OBJETIVO-3.md),
+  [manual técnico](MANUAL-TECNICO.md), [manual de usuario](MANUAL-USUARIO.md) y
+  [registro de entrega](ENTREGA.md). Las métricas se cotejan con los originales;
+  no se inventan observaciones de campo ni se afirma tener el documento de grado completo.
+- README principal y README de `mi-app-qr` actualizados al cliente real. Se corrigen
+  dos instrucciones obsoletas: cambiar una contraseña desde una pantalla que no existe,
+  y afirmar que el texto libre de los cambios no se limpia al anonimizar (#147).
+- **Nueva comprobación Windows:** `windows-instalador.yml` compila un NSIS y ejecuta
+  `scripts/probar-instalador.ps1` en un runner desechable. Comprueba instalación,
+  arranque HTTPS fijando el certificado, autenticación, registro sintético, cierre de
+  sesión, persistencia de datos/certificado/HMAC tras reiniciar y desinstalación.
+  El proceso instalado se arranca sin el Node del build en PATH. Solo se publican
+  instalador e informe de resultados; nunca el perfil ni los secretos.
+
+**Pendientes de `v1.0.0`:** revisión cruzada de esta documentación y comprobación
+Windows, completar la evidencia de aceptación del instalador, y reunir/revisar el
+documento de grado completo con sus capítulos, referencias y anexos. Los límites y
+los casos todavía no comprobados quedan en `ENTREGA.md`. La instalación y el piloto
+del CCAV no se incluyen como bloqueos.
+
+## Historial de sesiones
+
+Los estados de revisión y pendientes de estas notas reflejan su fecha; para planificar
+trabajo nuevo prevalecen el resumen vigente y `ENTREGA.md`.
+
+### Indicadores de carga — 2026-10-28 (integrados en #166)
 
 A petición de Jhunier se propone unificar los indicadores de espera con tres barras
 redondeadas y una onda CSS suave, basada en el ejemplo que aportó. `Loader` tiene
@@ -37,8 +76,9 @@ decorativas. Con `prefers-reduced-motion: reduce` permanecen estáticas.
   los avisos finales del nuevo estado de carga accesible. Comprobación de los builds
   en Chromium a 1440 y 375 px: sin desbordamiento, animación desactivada al reducir
   movimiento e indicador retirado cuando termina la petición (respuestas simuladas).
-- **Pendiente:** CI del PR y revisión cruzada antes de integrar. Este cambio no altera
-  el protocolo ni la lógica de las peticiones y no acredita la ejecución del piloto.
+- **Integrado:** #166 revisado y fusionado; CI de `main`
+  [40811758348](https://github.com/rlases/SecureQR-ID/actions/runs/40811758348) correcto.
+  No altera el protocolo ni acredita la ejecución del piloto.
 
 ### Alcance confirmado por el responsable del proyecto
 
@@ -89,9 +129,9 @@ Esta sección prevalece sobre las notas anteriores del lote #151–#157.
   La corrección posterior de rutas portables (`5840c51`) está cubierta por el CI de
   `4686cde`. Esta última constancia cambia solo documentación.
 
-**Pendiente de integración del objetivo 3:** revisión cruzada e integración de #159.
-La implementación, la comparación controlada y su evidencia están desarrolladas y
-probadas; la instalación del CCAV no es un bloqueo. No se fusiona el PR propio.
+**Integración del objetivo 3 completada:** #159 fue revisado por Duverney y fusionado
+en `309e7aa`; #165 completa el registro oficial en `2d09e4e`. La implementación,
+la comparación controlada y su evidencia están desarrolladas y probadas.
 
 **Extensión opcional:** instalación real en el CCAV (#133) y eventual aplicación del
 protocolo de 75 participantes, con consentimiento y análisis propios. Las metas de

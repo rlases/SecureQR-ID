@@ -50,6 +50,10 @@ sistema sin nada que anclar durante semanas.
 
 ## Fase 4 — Pruebas de seguridad y evaluación controlada → `v0.3.0`
 
+**Cerrada técnicamente (2026-10-28):** [versión publicada](https://github.com/rlases/SecureQR-ID/releases/tag/v0.3.0)
+sobre `2d09e4e`, con la evidencia de laboratorio. El análisis desarrollado se recoge
+en [RESULTADOS-OBJETIVO-3.md](RESULTADOS-OBJETIVO-3.md).
+
 Batería de ataques (repetición, falsificación, reemplazo, manipulación interna),
 comparación con `baseline-o3`, métricas y evidencia reproducible de laboratorio.
 
@@ -71,6 +75,9 @@ medición de campo; no se consideran demostradas con los datos de laboratorio.
 ---
 
 ## Fase 5 — Implementación final y cierre → `v1.0.0`
+
+**En curso:** manuales y documentación de cierre preparados para revisión; comprobación
+del instalador y documento de grado completo según [ENTREGA.md](ENTREGA.md).
 
 Entrega del sistema completo, manual técnico y de usuario, análisis estadístico de
 los resultados disponibles y documento final bajo APA 7. La instalación definitiva
