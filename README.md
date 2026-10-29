@@ -53,6 +53,11 @@ un evento puntual se hace recalculando el camino desde su hash hasta la raíz an
 
 ## Documentación
 
+**Alcance del desarrollo:** la instalación en el CCAV Pitalito es un agregado opcional
+que se realizará si es viable. El desarrollo completo, la evaluación controlada del
+objetivo 3 y su documentación no dependen de instalar el sistema en esa sede.
+Ver la aclaración de alcance en [`docs/ROADMAP.md`](docs/ROADMAP.md) y ADR-0019.
+
 Lee esto antes de tocar código:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — cómo está montado el sistema

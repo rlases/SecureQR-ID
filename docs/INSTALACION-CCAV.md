@@ -1,5 +1,10 @@
 # Instalación del piloto en el servidor del CCAV Pitalito
 
+**Agregado opcional:** se sigue esta guía si es viable realizar la instalación en la
+sede. Su ejecución y el cierre del issue #133 no condicionan el desarrollo completo
+del proyecto ni la evaluación controlada del objetivo 3 (aclaración de ADR-0019,
+2026-10-28).
+
 Guía operativa para dejar SecureQR-ID funcionando en el servidor del CCAV (issue #133).
 Reúne lo que está repartido en los README de cada módulo y en ADR-0008 y ADR-0014 a ADR-0018.
 También incluye los pendientes que salieron de las revisiones de #121 a #126 y #131.

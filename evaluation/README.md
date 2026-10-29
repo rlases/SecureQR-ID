@@ -104,7 +104,9 @@ Los tokens maliciosos se fabrican con `cryptography` y el formato publicado en
   verificación local, porque lo que queda sigue encadenado. Eso solo se detecta contra lo
   anclado (M2), así que M1 y M3 quitan eslabones intermedios.
 
-El brazo tradicional contra `baseline-o3` llega en #155.
+El [brazo tradicional](baseline/README.md) ejecuta F/P/V y el control contra el parser
+original de `baseline-o3`. Su comparador presenta ambos brazos por clase, con Wilson,
+sin equiparar sus tiempos de laboratorio ni los globales de catálogos distintos.
 
 ### Requisitos de M2 y M3
 
@@ -132,3 +134,4 @@ SQRID_FABRIC_HOME=~/secureqr-fabric secureqr-eval run --con-fabric --salida resu
   y la semilla fija, y corre M2 contra una red Fabric efímera creada en el runner. La
   carpeta de resultados queda como artefacto `evaluacion-<run_id>` durante 90 días: hay
   que descargarla y guardarla con el documento de grado.
+  Incluye también `tradicional/` y `comparacion/`, generados con los mismos parámetros.
