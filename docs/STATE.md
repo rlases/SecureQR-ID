@@ -134,10 +134,13 @@ en `309e7aa`; #165 completa el registro oficial en `2d09e4e`. La implementación
 la comparación controlada y su evidencia están desarrolladas y probadas.
 
 **Extensión opcional:** instalación real en el CCAV (#133) y eventual aplicación del
-protocolo de 75 participantes, con consentimiento y análisis propios. Las metas de
-30 % de reducción de suplantación y 40 % de reducción del tiempo de registro en campo
-solo podrán informarse como medidas si se realiza esa extensión. Los resultados de
-laboratorio mantienen su alcance y no se presentan como resultados de campo.
+protocolo de 75 participantes, con consentimiento y análisis propios. La meta de
+30 % de reducción de suplantación queda medida en laboratorio: en F, P y V el lector
+tradicional aceptó 600/600 intentos maliciosos y SecureQR-ID 0/2200, una reducción del
+100 % en la tasa de aceptación (RESULTADOS-OBJETIVO-3.md). La meta de 40 % de reducción
+del tiempo de registro solo podrá informarse como medida si se realiza esa extensión.
+Los resultados de laboratorio mantienen su alcance y no se presentan como resultados
+de campo.
 
 ### Reanudación de Jhunier — 2026-10-27 (noche, Colombia)
 

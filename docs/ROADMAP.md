@@ -68,9 +68,13 @@ y la ejecución del piloto no son condiciones de cierre.
 - Integridad verificable de los registros de acceso
 
 **Extensión opcional en el CCAV:** instalación y piloto con la muestra prevista,
-según `PROTOCOLO-PILOTO.md`. Las metas originales de reducción de intentos de
-suplantación ≥ 30 % y del tiempo promedio de registro ≥ 40 % se conservan para esa
-medición de campo; no se consideran demostradas con los datos de laboratorio.
+según `PROTOCOLO-PILOTO.md`. La meta de reducción de intentos de suplantación
+≥ 30 % se midió en laboratorio: en las clases comparables (F, P y V) el lector
+tradicional aceptó 600/600 intentos maliciosos y SecureQR-ID 0/2200, una reducción
+del 100 % en la tasa de aceptación (ver [RESULTADOS-OBJETIVO-3.md](RESULTADOS-OBJETIVO-3.md#reducción-de-suplantación-medida-en-laboratorio)).
+Su confirmación con personas y la meta del tiempo promedio de registro ≥ 40 % se
+conservan para esa medición de campo; la segunda no se considera demostrada con los
+datos de laboratorio.
 
 ---
 
