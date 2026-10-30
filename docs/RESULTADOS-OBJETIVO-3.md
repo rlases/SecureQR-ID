@@ -89,6 +89,22 @@ por clase son distintos porque SecureQR-ID tiene varios casos por clase. El glob
 de 3400 intentos de SecureQR-ID no se enfrenta al global tradicional como si ambos
 representaran el mismo catálogo o una muestra de ataques reales con igual frecuencia.
 
+## Reducción de suplantación medida en laboratorio
+
+La meta del objetivo de reducir al menos 30 % los intentos de suplantación aceptados
+se mide aquí sobre las clases que ambos brazos comparten (F, P y V):
+
+| Brazo | Intentos maliciosos aceptados | Tasa de aceptación | IC 95 % (Wilson) |
+|---|---:|---:|---|
+| Tradicional | 600/600 | 100 % | 99,36–100 % |
+| SecureQR-ID | 0/2200 | 0 % | 0–0,17 % |
+
+La tasa de aceptación de intentos de suplantación baja del 100 % al 0 %, una reducción
+del 100 %; aun tomando los extremos desfavorables de ambos intervalos, la reducción
+supera el 99 %, por encima de la meta del 30 %. Es una medida de laboratorio sobre el
+catálogo definido por el proyecto: no reemplaza la medición con participantes del
+piloto opcional ni se extiende a R y M, que no tienen equivalente en la línea base.
+
 ## Tiempo de validación
 
 Sobre los 1000 controles del brazo SecureQR-ID, medidos del lado del cliente HTTP:
@@ -140,7 +156,8 @@ privada están fuera de la tasa. La red Fabric del laboratorio tampoco acredita 
 gobernanza descentralizada entre instituciones independientes.
 
 No se midieron aceptación de usuarios, rendimiento en una red institucional, consumo
-de recursos bajo carga ni las metas de reducción de suplantación y tiempo en campo.
+de recursos bajo carga ni las metas de reducción de suplantación y tiempo en campo;
+la reducción de suplantación se informa solo como medida en laboratorio.
 No se presenta una prueba T ni un valor p de campo sin observaciones de participantes.
 Si se realiza la extensión opcional, se aplica [el protocolo del piloto](PROTOCOLO-PILOTO.md).
 
