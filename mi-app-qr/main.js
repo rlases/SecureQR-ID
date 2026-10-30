@@ -216,7 +216,8 @@ async function startServer() {
     serverProcess = spawn(command, commandArgs, {
         env: { ...serverEnv, ...extraEnv },
         stdio: 'pipe',
-        shell: process.platform === 'win32',
+        // Ejecutar el binario directamente conserva rutas con espacios en Windows.
+        shell: false,
     });
 
     serverProcess.stdout.on('data', (data) => console.log(`[servidor] ${data}`.trim()));

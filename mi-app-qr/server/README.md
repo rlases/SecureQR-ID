@@ -142,8 +142,9 @@ criterio se aplica a las filas vencidas al configurar un plazo de conservación.
   Cada día se anonimizan los registros y las consultas más antiguos, que se conservan el
   mismo tiempo (ADR-0016). `npm run anonimizar -- --vencidos` lo aplica a mano.
 - Cada ejecución queda en `anonimizaciones`.
-- Límite: los motivos escritos en el registro de cambios no se anonimizan; el formulario
-  pide no escribir datos personales en ellos.
+- Al cierre y por plazo también se eliminan `nota` y `motivo` libre del registro de
+  cambios, conforme a #147. Los motivos de lista cerrada y la estructura del historial
+  se conservan. El formulario sigue pidiendo no escribir datos personales en texto libre.
 
 ## Compromiso externo del historial cid → titular (issue #119)
 
