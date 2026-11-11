@@ -1,0 +1,136 @@
+name: Publicar ejecutables de Registro QR
+
+# Compila el instalador de Windows (NSIS) y el AppImage de Linux de mi-app-qr
+# y los adjunta a la versión de GitHub de la etiqueta, con sus SHA-256.
+# El .exe se publica solo si pasa la misma prueba de instalación, arranque,
+# persistencia y desinstalación que windows-instalador.yml.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      etiqueta:
+        description: 'Etiqueta existente a la que se adjuntan los ejecutables (p. ej. v1.0.0)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publicar-ejecutables-${{ github.event.inputs.etiqueta || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  ETIQUETA: ${{ github.event.inputs.etiqueta || github.ref_name }}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: mi-app-qr
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.ETIQUETA }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            mi-app-qr/package-lock.json
+            mi-app-qr/server/package-lock.json
+            mi-app-qr/client/package-lock.json
+      - name: Instalar dependencias bloqueadas
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm --prefix server ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm --prefix client ci
+          exit $LASTEXITCODE
+      - name: Compilar y empaquetar NSIS sin publicar
+        run: |
+          npm run prepack
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & ./node_modules/.bin/electron-builder.cmd --win nsis --x64 --publish never
+          exit $LASTEXITCODE
+      - name: Instalar, arrancar y comprobar persistencia
+        run: ./scripts/probar-instalador.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ejecutable-windows
+          path: mi-app-qr/dist/*.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mi-app-qr
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.ETIQUETA }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            mi-app-qr/package-lock.json
+            mi-app-qr/server/package-lock.json
+            mi-app-qr/client/package-lock.json
+      - name: Instalar dependencias bloqueadas
+        run: |
+          npm ci
+          npm --prefix server ci
+          npm --prefix client ci
+      - name: Pruebas de servidor y cliente
+        run: |
+          npm --prefix server test
+          npm --prefix client test
+      - name: Compilar y empaquetar AppImage sin publicar
+        run: |
+          npm run prepack
+          ./node_modules/.bin/electron-builder --linux AppImage --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ejecutable-linux
+          path: mi-app-qr/dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 7
+
+  publicar:
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ejecutable-*
+          path: ejecutables
+          merge-multiple: true
+      - name: Calcular SHA-256
+        working-directory: ejecutables
+        run: |
+          sha256sum -- * > SHA256SUMS-ejecutables.txt
+          cat SHA256SUMS-ejecutables.txt
+      - name: Adjuntar a la versión
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        working-directory: ejecutables
+        run: |
+          if ! gh release view "$ETIQUETA" >/dev/null 2>&1; then
+            gh release create "$ETIQUETA" --verify-tag --title "$ETIQUETA" \
+              --notes "Ejecutables de Registro QR (mi-app-qr) compilados desde $ETIQUETA. Comprueba los hashes con SHA256SUMS-ejecutables.txt. Los instaladores no están firmados con certificado de código."
+          fi
+          gh release upload "$ETIQUETA" -- * --clobber

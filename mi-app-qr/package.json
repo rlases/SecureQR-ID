@@ -83,10 +83,15 @@
       "target": "nsis",
       "icon": "public/favicon.ico"
     },
+    "nsis": {
+      "artifactName": "Registro-QR-Setup-${version}.${ext}"
+    },
     "linux": {
       "target": "AppImage",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "artifactName": "Registro-QR-${version}.${ext}"
     },
+    "publish": null,
     "extraMetadata": {
       "main": "main.js"
     }

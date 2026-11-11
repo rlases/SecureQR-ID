@@ -27,11 +27,14 @@ Rutas de ejemplo para Linux. En Windows, las equivalentes están en los README e
 | Equipo servidor con 8 GB de RAM o más (Fabric usa unos 4 GB) | Todo corre en el mismo equipo |
 | **IP fija** en la red del CCAV (reserva de DHCP o dirección estática) | El certificado autofirmado se regenera si cambia la IP, y con él la huella publicada (ADR-0008, ADR-0016) |
 | **Disco cifrado** (LUKS2 o BitLocker) desde la instalación del sistema operativo | Las bases quedan en claro en el disco sin él (ADR-0018) |
-| Docker Engine, `git`, `curl`, Go (solo para empaquetar el contrato) | Red Fabric (`infra/fabric/README.md`) |
+| Docker Engine (repositorio oficial de Docker, no `docker.io`), `git`, `curl` | Red Fabric (`infra/fabric/README.md`) |
+| Go 1.25 o superior (solo para empaquetar el contrato), **visible también desde `sudo`** (ver abajo) | `anchor/chaincode/go.mod` pide `go 1.25.0`; el Go de `apt` en Ubuntu 24.04 es más viejo |
+| `libfuse2t64` (Ubuntu 24.04) | Sin FUSE 2 el AppImage de `mi-app-qr` no abre: `dlopen(): error loading libfuse.so.2` |
+| `nginx` y `openssl` | HTTPS del punto de control (§6) |
 | `age` (`apt install age`) | Respaldo diario cifrado de las bases (§11) |
 | Python 3.11 o superior | `issuer/`, `evidence-log/`, `revocation/`, `verifier-service/` |
 | Node.js 22 | `anchor/`, `verifier-web/` |
-| Instalador de la app de escritorio `mi-app-qr` (Registro QR), versión con #131 | Registro de credenciales y portal del titular |
+| Instalador de la app de escritorio `mi-app-qr` (Registro QR), versión con #131: el `.AppImage` (Linux) o el `.exe` (Windows) adjunto a la [versión publicada](https://github.com/rlases/SecureQR-ID/releases), con su `SHA256SUMS-ejecutables.txt` | Registro de credenciales y portal del titular |
 | Dos medios externos para respaldos, que no sean equipos de trabajo | Custodia de claves y respaldo de Fabric |
 | Gestor de contraseñas de Jhunier listo para recibir copias | Respaldo de contraseñas (ADR-0016, punto 6) |
 
@@ -57,6 +60,18 @@ activar sin reinstalar o sin una conversión arriesgada.
 El cifrado de disco protege el equipo apagado o robado, no el equipo encendido. Contra
 eso siguen las cuentas separadas (§1) y el HMAC del historial.
 
+### Go visible para `sudo`
+
+Los scripts de Fabric corren con `sudo -u secureqr`, y `sudo` usa `secure_path`, que no
+incluye `/usr/local/go/bin`. Sin el enlace, `crear-red.sh` termina con «falta Go (para
+empaquetar el contrato)».
+
+```bash
+sudo ln -sf /usr/local/go/bin/go /usr/local/bin/go
+sudo ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+sudo -u nobody go version     # debe imprimir go1.25 o mayor
+```
+
 ---
 
 ## 1. Cuentas del sistema operativo
@@ -75,7 +90,27 @@ sudo useradd --system --create-home --home /var/lib/secureqr-id secureqr
 sudo install -d -o secureqr-issuer -g secureqr-issuer -m 0700 /var/lib/secureqr-issuer
 sudo install -d -o secureqr -g secureqr -m 0750 /var/lib/secureqr-id/anclaje /var/lib/secureqr-id/sellos
 sudo install -d -o secureqr -g secureqr -m 0750 /var/log/secureqr-id
+sudo install -d -m 0755 /etc/secureqr-id
+
+# secureqr debe poder atravesar la carpeta del emisor para leer issuer.secret (§3),
+# sin listarla. El PEM sigue en 0600 y no lo lee.
+sudo chgrp secureqr /var/lib/secureqr-issuer
+sudo chmod 0710 /var/lib/secureqr-issuer
 ```
+
+Con `0700`, la cuenta `secureqr` no llega a `issuer.secret` y el portal no entrega QR.
+
+**Docker y el contrato.** Los scripts de Fabric corren como `secureqr` y llaman a `docker`,
+y `network.sh deployCC` escribe `vendor/` dentro de `anchor/chaincode`:
+
+```bash
+sudo usermod -aG docker secureqr
+sudo chown -R secureqr:secureqr /opt/secureqr-id/anchor/chaincode
+sudo -u secureqr docker ps          # sin error de permisos
+```
+
+El grupo `docker` equivale a control de administrador sobre el equipo. Está declarado
+como riesgo residual en `docs/THREAT-MODEL.md`.
 
 ---
 
@@ -90,15 +125,39 @@ sudo -u secureqr env SQRID_FABRIC_HOME=/var/lib/secureqr-id/fabric infra/fabric/
 
 - **Nunca** `network.sh down` ni `network.sh up`: borran el ledger.
 - Los contenedores quedan con reinicio `unless-stopped` y vuelven solos tras un reinicio del servidor.
-- **Respaldo inicial**, apenas creada la red, y luego **uno por semana**:
+- **Respaldo inicial**, apenas creada la red, y luego **uno por semana**. Se corre como
+  `secureqr` y con `SQRID_FABRIC_HOME`; sin la variable, los scripts buscan la red en
+  `~/secureqr-fabric` y no la encuentran. Se escribe primero en el servidor, porque el
+  medio cifrado lo monta la sesión del custodio, y luego se copia:
 
 ```bash
-infra/fabric/detener-red.sh
-infra/fabric/respaldar-red.sh /media/respaldo/fabric
-infra/fabric/arrancar-red.sh
+cd /opt/secureqr-id
+F="env SQRID_FABRIC_HOME=/var/lib/secureqr-id/fabric"
+sudo install -d -o secureqr -g secureqr -m 0700 /var/lib/secureqr-id/respaldo-fabric
+sudo -u secureqr $F infra/fabric/detener-red.sh
+sudo -u secureqr $F infra/fabric/respaldar-red.sh /var/lib/secureqr-id/respaldo-fabric
+sudo -u secureqr $F infra/fabric/arrancar-red.sh
+# Con el medio de respaldos desbloqueado en la sesión del custodio:
+sudo cp -a /var/lib/secureqr-id/respaldo-fabric/fabric-* /media/$USER/RESPALDOS/
+sudo rm -rf /var/lib/secureqr-id/respaldo-fabric/fabric-*
+(cd /media/$USER/RESPALDOS/fabric-* && sha256sum -c SHA256SUMS)
 ```
 
   El respaldo contiene claves privadas de la red: el medio se cifra y lo guarda el custodio.
+
+- **Puertos de Fabric cerrados hacia la red del CCAV.** La `test-network` publica 7050,
+  7051, 9051 y otros en todas las interfaces, y las reglas de Docker se saltan `ufw`.
+  Desde otro equipo, `curl -kv https://<IP>:7051` no debe conectar. Para bloquear
+  conexiones nuevas que entren por la interfaz de red hacia los contenedores:
+
+```bash
+IFACE=$(ip route show default | awk '{print $5; exit}')
+sudo iptables -I DOCKER-USER -i "$IFACE" -m conntrack --ctstate NEW -j DROP
+sudo apt install -y iptables-persistent      # guarda las reglas actuales
+sudo netfilter-persistent save
+```
+
+  El ciclo de anclaje usa `localhost:7051`, que no pasa por esa interfaz.
 
 - Guarda las variables `SQRID_FABRIC_*` que imprime `infra/fabric/entorno-anchor.sh`, en
   `/etc/secureqr-id/anchor.env` (dueño `secureqr`, `0600`). Las usa el ciclo de anclaje.
@@ -119,6 +178,17 @@ Se crean una vez, en la sede, con el custodio presente.
 | Material criptográfico de Fabric | `crear-red.sh` | `/var/lib/secureqr-id/fabric` | Respaldo semanal cifrado (§2) | No se puede seguir anclando en esa red |
 | Identidad de **respaldo** (`age`) | `age-keygen \| age -p > respaldo.age.key.age`, en el equipo del custodio (§11) | **Fuera del servidor**, con el custodio; en el servidor solo su pública, `/etc/secureqr-id/respaldo.age.pub` | Copia en el medio externo de claves; su frase de paso, en el gestor de Jhunier | No se pueden descifrar los respaldos de las bases |
 | Frase de paso del **disco** (LUKS o BitLocker) | Al instalar el sistema (§0) | La escribe el custodio al encender | Gestor de Jhunier, con la clave de recuperación de BitLocker | Sin ella el servidor no arranca y los datos son irrecuperables |
+
+`generate-secret` crea el secreto con `0600`. Para que lo lea `secureqr` por grupo:
+
+```bash
+sudo -u secureqr-issuer /opt/secureqr-id/.venv-issuer/bin/secureqr-issuer generate-secret \
+  --output /var/lib/secureqr-issuer/issuer.secret
+sudo chgrp secureqr /var/lib/secureqr-issuer/issuer.secret
+sudo chmod 0640 /var/lib/secureqr-issuer/issuer.secret
+sudo -u secureqr test -r /var/lib/secureqr-issuer/issuer.secret && echo "secureqr lo puede leer"
+sudo -u secureqr test -r /var/lib/secureqr-issuer/emision.pem || echo "secureqr NO lee el PEM (correcto)"
+```
 
 > Ningún respaldo de claves va en el mismo medio que el respaldo de la base de
 > `mi-app-qr` o de la bitácora. Quien tenga la base y la clave HMAC juntas puede
@@ -150,6 +220,22 @@ sudo -u secureqr-issuer env \
 
 1. Instala la app con la cuenta `secureqr`. Su `userData` queda en
    `~secureqr/.config/registro-qr/` (en Windows, `%APPDATA%\registro-qr\`).
+   - **Linux:** descarga `Registro-QR-<versión>.AppImage` y `SHA256SUMS-ejecutables.txt` de la
+     versión publicada, comprueba el hash y déjalo en `/opt/registro-qr/`:
+
+     ```bash
+     sha256sum -c --ignore-missing SHA256SUMS-ejecutables.txt
+     sudo install -d -m 0755 /opt/registro-qr
+     sudo install -m 0755 Registro-QR-*.AppImage /opt/registro-qr/RegistroQR.AppImage
+     ```
+
+   - **Windows:** ejecuta `Registro-QR-Setup-<versión>.exe` en la sesión de la cuenta
+     que correrá la app. El instalador no está firmado: SmartScreen pide «Más
+     información» → «Ejecutar de todas formas». Comprueba antes el hash con
+     `Get-FileHash .\Registro-QR-Setup-*.exe -Algorithm SHA256`.
+   - Si no hay versión publicada, se compila desde `mi-app-qr/` con `npm ci`,
+     `npm --prefix server ci`, `npm --prefix client ci` y `npm run dist`
+     (ver `mi-app-qr/README.md`).
 2. Antes del primer arranque, crea `userData/config.json` (#131):
 
    ```json
@@ -171,7 +257,18 @@ sudo -u secureqr-issuer env \
    Sin `config.json`, la app usa `userData/issuer.secret` y `userData/anclaje/`. Si no
    encuentra el secreto, arranca igual, pero avisa que el portal no entregará QR.
 
-3. **Primer arranque.** Custodia la contraseña inicial del `admin` en un gestor.
+3. **Primer arranque.** Registro QR es una app gráfica, y `secureqr` es una cuenta de
+   sistema que no inicia sesión. Se abre desde la sesión gráfica del custodio, con esa
+   cuenta (`ALTA_MAX_POR_IP` va en el entorno del proceso, ver §8):
+
+   ```bash
+   xhost +SI:localuser:secureqr
+   sudo -u secureqr env DISPLAY="$DISPLAY" ALTA_MAX_POR_IP=10 \
+     /opt/registro-qr/RegistroQR.AppImage
+   sudo ufw allow 4000/tcp comment 'Registro QR portal'
+   ```
+
+   Custodia la contraseña inicial del `admin` en un gestor.
    Esta versión no ofrece cambio de contraseña desde la interfaz; no se prescribe
    ese paso como si existiera. Las cuentas nuevas se crean en **Usuarios**.
 4. **Respaldo de la clave HMAC.** Copia `server-secrets.json` (contiene `ASIGNACIONES_KEY`)
@@ -199,12 +296,86 @@ variable de entorno del sistema para la cuenta `secureqr`, no de `config.json`. 
   - `SQRID_VERIFIER_ID=ccav-pitalito-porteria-1`; su bitácora es la que ancla el ciclo (§7).
   - `SQRID_TRUSTED_KEYS_DIR` lleva la clave pública de **emisión**.
   - `SQRID_REVOCATION_KEYS_DIR`, otro directorio, lleva la pública de **revocación**.
+- **Arranque con systemd.** Las variables de `verifier-service/README.md` van en
+  `/etc/secureqr-id/verifier.env` (dueño `root`, grupo `secureqr`, `0640`), y esta
+  unidad lo deja arrancando solo tras cada reinicio:
+
+```ini
+# /etc/systemd/system/secureqr-verifier.service
+[Unit]
+Description=SecureQR-ID verifier-service (punto de control)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=secureqr
+Group=secureqr
+EnvironmentFile=/etc/secureqr-id/verifier.env
+WorkingDirectory=/var/lib/secureqr-id
+ExecStart=/opt/secureqr-id/.venv/bin/uvicorn --factory secureqr_verifier_service:create_app_from_environment --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now secureqr-verifier
+curl -s http://127.0.0.1:8000/api/health
+```
+
+  Si no arranca, `journalctl -u secureqr-verifier -n 50` nombra la variable o la etapa
+  que falla, sin mostrar claves.
+
 - **`verifier-web`:** se sirve bajo el mismo origen HTTPS que la API (ADR-0012), con la
   terminación TLS delante de `verifier-service`. Sobre HTTP plano la cámara no funciona
-  fuera de `localhost`.
+  fuera de `localhost`. Con `nginx`, un certificado autofirmado para la IP fija y el
+  puerto 8443:
+
+```bash
+IP=<IP>
+sudo openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 400 \
+  -keyout /etc/ssl/private/secureqr-control.key -out /etc/ssl/certs/secureqr-control.crt \
+  -subj "/CN=SecureQR-ID punto de control" -addext "subjectAltName=IP:${IP}"
+sudo chmod 0600 /etc/ssl/private/secureqr-control.key
+```
+
+```nginx
+# /etc/nginx/sites-available/secureqr-control (enlazado en sites-enabled; se quita default)
+server {
+    listen 8443 ssl;
+    http2 on;
+    ssl_certificate     /etc/ssl/certs/secureqr-control.crt;
+    ssl_certificate_key /etc/ssl/private/secureqr-control.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    root /opt/secureqr-id/verifier-web/dist;
+    add_header Cache-Control "no-store" always;
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        client_max_body_size 8k;
+    }
+    location / {
+        try_files $uri /index.html;
+    }
+}
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+sudo ufw allow 8443/tcp comment 'SecureQR-ID punto de control'
+curl -sk https://127.0.0.1:8443/api/health
+```
+
+  En la tableta de portería se instala `secureqr-control.crt` como certificado de
+  confianza, para que el navegador trate la página como segura y permita la cámara.
 - **Lista de revocación:**
   - antes de abrir el punto de control, el custodio firma la primera lista (aunque esté vacía) con `secureqr-revocation sign`;
-  - la cuenta `secureqr` la recibe por `python -m secureqr_verifier_service.sync` o copiada a mano.
+  - en un piloto de un solo equipo, el custodio firma directo a `SQRID_REVOCATION_LIST_PATH` y el verificador la recarga cada `SQRID_REVOCATION_REFRESH_SECONDS` (300 s). `python -m secureqr_verifier_service.sync` solo sirve si la lista se publica en una URL `https://` (`SQRID_REVOCATION_URL`).
 
 ---
 
@@ -229,8 +400,9 @@ ruta completa del intérprete de ese entorno, y `sellar.sh` lo recibe en `PYTHON
 # Respaldo diario cifrado de las dos bases (ADR-0018, §11).
 41 2 * * * secureqr SQRID_RESPALDO_DESTINATARIOS=/etc/secureqr-id/respaldo.age.pub SQRID_APP_DB=/var/lib/secureqr-id/.config/registro-qr/server-data/app.db SQRID_EVIDENCE_DB=/var/lib/secureqr-id/evidence.sqlite3 SQRID_ANCLAJE_DIR=/var/lib/secureqr-id/anclaje PYTHON=/opt/secureqr-id/.venv/bin/python /opt/secureqr-id/infra/respaldo/respaldar-datos.sh /var/backups/secureqr-id >> /var/log/secureqr-id/respaldo.log 2>&1
 
-# Sincronización de la lista de revocación publicada.
-*/10 * * * * secureqr /opt/secureqr-id/.venv/bin/python -m secureqr_verifier_service.sync >> /var/log/secureqr-id/revocacion.log 2>&1
+# Sincronización de la lista publicada: solo con SQRID_REVOCATION_URL https:// (§6).
+# En un piloto de un solo equipo queda comentada.
+#*/10 * * * * secureqr /opt/secureqr-id/.venv/bin/python -m secureqr_verifier_service.sync >> /var/log/secureqr-id/revocacion.log 2>&1
 ```
 
 - `--db` es la misma base de la bitácora de `verifier-service` (`SQRID_EVIDENCE_DB_PATH`).
@@ -397,6 +569,10 @@ Complétalo la primera vez que se siga esta guía en el servidor del CCAV. Con e
 | §7 Primer sello (pendiente o completo) | | | |
 | §8 Topología del Wi-Fi comprobada | | | |
 | §9 Calendarios de OpenTimestamps responden | | | |
+| §1 Permisos de la carpeta del emisor (`0710`) y `secureqr` en el grupo `docker` | | | |
+| §2 Puertos de Fabric cerrados hacia la red | | | |
+| §5 Versión del instalador de Registro QR y su SHA-256 | | | |
+| §6 `secureqr-verifier` activo y HTTPS del punto de control en la tableta | | | |
 | §0 Disco cifrado comprobado (`lsblk -f` o `manage-bde`) | | | |
 | §11 Primer respaldo diario cifrado | | | |
 | §11 Prueba de restauración | | | |

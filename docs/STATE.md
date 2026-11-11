@@ -52,6 +52,26 @@ documento de grado completo con sus capítulos, referencias y anexos. Los límit
 los casos todavía no comprobados quedan en `ENTREGA.md`. La instalación y el piloto
 del CCAV no se incluyen como bloqueos.
 
+### Ejecutables publicables y guía del CCAV — 2026-11-11
+
+- `publicar-ejecutables.yml`: con una etiqueta `v*` (o a mano) compila el NSIS de
+  Windows, lo prueba con `probar-instalador.ps1`, compila el AppImage de Linux tras las
+  pruebas de servidor y cliente, y adjunta ambos a la versión con
+  `SHA256SUMS-ejecutables.txt`. `package.json` fija nombres sin espacios
+  (`Registro-QR-Setup-<versión>.exe`, `Registro-QR-<versión>.AppImage`) y
+  `publish: null`, porque sin repositorio detectable electron-builder 24 falla al
+  generar `latest-linux.yml` (la app no usa actualización automática).
+- Comprobado en Linux: servidor 253/253 y cliente 117/117; el AppImage arranca con un
+  perfil nuevo, sirve `/api/health` y el cliente por HTTPS en el puerto 4000 y carga
+  `better-sqlite3`. El `.exe` no se compiló en esta sesión (sin Windows).
+- `INSTALACION-CCAV.md` incorpora los ajustes que salieron de revisar la guía contra
+  el código: carpeta del emisor `0710`, secreto `0640`, Go visible para `sudo`,
+  `secureqr` en el grupo `docker` (riesgo residual en `THREAT-MODEL.md`), respaldo de
+  Fabric con `SQRID_FABRIC_HOME`, puertos de Fabric cerrados, apertura de la app
+  gráfica como `secureqr`, unidad systemd y `nginx` del punto de control, y `sync` de
+  revocación comentado sin URL publicada. #133 sigue abierto: se cierra con el
+  registro de ejecución en la sede, o como opcional si no se instala.
+
 ## Historial de sesiones
 
 Los estados de revisión y pendientes de estas notas reflejan su fecha; para planificar

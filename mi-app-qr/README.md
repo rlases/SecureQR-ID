@@ -34,6 +34,12 @@ No se copian `server-secrets.json`, bases ni claves privadas al repositorio.
   esta carpeta. `prepack` compila servidor y cliente, reinstala las dependencias
   de producción del servidor y reconstruye el módulo nativo para Electron.
 
+Ejecutables publicados: al crear una etiqueta `v*`, el flujo `publicar-ejecutables.yml`
+compila `Registro-QR-Setup-<versión>.exe` (Windows, NSIS, tras pasar la prueba de
+instalación) y `Registro-QR-<versión>.AppImage` (Linux) y los adjunta a la versión de
+GitHub con `SHA256SUMS-ejecutables.txt`. También se lanza a mano con la etiqueta como
+entrada. Los instaladores no están firmados con certificado de código.
+
 El instalador no configura por sí solo el emisor Python, la revocación ni Fabric.
 El flujo `windows-instalador.yml` prepara un NSIS y prueba su instalación y persistencia
 en un runner desechable; consultar su resultado antes de dar por aceptado un binario.
