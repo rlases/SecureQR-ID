@@ -84,7 +84,14 @@
       "icon": "public/favicon.ico"
     },
     "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
       "artifactName": "Registro-QR-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "requestExecutionLevel": "user",
+      "artifactName": "Registro-QR-Portable-${version}.${ext}"
     },
     "linux": {
       "target": "AppImage",

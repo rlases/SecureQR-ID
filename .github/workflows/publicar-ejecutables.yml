@@ -1,6 +1,7 @@
 name: Publicar ejecutables de Registro QR
 
-# Compila el instalador de Windows (NSIS) y el AppImage de Linux de mi-app-qr
+# Compila el instalador de Windows (NSIS por usuario, sin permisos de administrador),
+# el ejecutable portable de Windows y el AppImage de Linux de mi-app-qr
 # y los adjunta a la versión de GitHub de la etiqueta, con sus SHA-256.
 # El .exe se publica solo si pasa la misma prueba de instalación, arranque,
 # persistencia y desinstalación que windows-instalador.yml.
@@ -54,11 +55,11 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           npm --prefix client ci
           exit $LASTEXITCODE
-      - name: Compilar y empaquetar NSIS sin publicar
+      - name: Compilar y empaquetar NSIS por usuario y portable, sin publicar
         run: |
           npm run prepack
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          & ./node_modules/.bin/electron-builder.cmd --win nsis --x64 --publish never
+          & ./node_modules/.bin/electron-builder.cmd --win nsis portable --x64 --publish never
           exit $LASTEXITCODE
       - name: Instalar, arrancar y comprobar persistencia
         run: ./scripts/probar-instalador.ps1

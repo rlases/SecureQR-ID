@@ -230,7 +230,12 @@ sudo -u secureqr-issuer env \
      ```
 
    - **Windows:** ejecuta `Registro-QR-Setup-<versión>.exe` en la sesión de la cuenta
-     que correrá la app. El instalador no está firmado: SmartScreen pide «Más
+     que correrá la app. Instala solo para ese usuario, **sin permisos de
+     administrador** (`%LOCALAPPDATA%\Programs\registro-qr`); si ni eso se permite,
+     usa `Registro-QR-Portable-<versión>.exe`, que no instala nada. Para que los
+     teléfonos lleguen al portal, sistemas de la sede debe permitir el puerto 4000
+     entrante en el Firewall de Windows: es lo único que pide un administrador.
+     El instalador no está firmado: SmartScreen pide «Más
      información» → «Ejecutar de todas formas». Comprueba antes el hash con
      `Get-FileHash .\Registro-QR-Setup-*.exe -Algorithm SHA256`.
    - Si no hay versión publicada, se compila desde `mi-app-qr/` con `npm ci`,

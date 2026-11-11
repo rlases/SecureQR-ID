@@ -61,6 +61,9 @@ del CCAV no se incluyen como bloqueos.
   (`Registro-QR-Setup-<versión>.exe`, `Registro-QR-<versión>.AppImage`) y
   `publish: null`, porque sin repositorio detectable electron-builder 24 falla al
   generar `latest-linux.yml` (la app no usa actualización automática).
+- Windows sin administrador (equipos institucionales): NSIS explícito por usuario,
+  sin elevación, y un segundo ejecutable portable. Queda como dependencia de sistemas
+  la regla del Firewall de Windows para el puerto 4000 entrante.
 - Comprobado en Linux: servidor 253/253 y cliente 117/117; el AppImage arranca con un
   perfil nuevo, sirve `/api/health` y el cliente por HTTPS en el puerto 4000 y carga
   `better-sqlite3`. El `.exe` no se compiló en esta sesión (sin Windows).

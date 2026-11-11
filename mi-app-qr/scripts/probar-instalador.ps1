@@ -33,7 +33,7 @@ foreach ($candidateProfile in $profiles) {
 if (Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue) {
     throw 'El puerto 4000 está ocupado antes del ensayo.'
 }
-$installers = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot '../dist') -Filter '*.exe' -File)
+$installers = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot '../dist') -Filter '*.exe' -File | Where-Object { $_.Name -notlike '*Portable*' })
 if ($installers.Count -ne 1) { throw 'Se esperaba un único instalador NSIS.' }
 New-Item -ItemType Directory -Path $reportRoot | Out-Null
 $report = [ordered]@{
