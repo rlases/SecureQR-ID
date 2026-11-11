@@ -137,18 +137,6 @@ try {
             $installationCandidates += $entry.InstallLocation
         }
     }
-    # Instalación sin permisos de administrador: el registro de desinstalación debe
-    # quedar solo en HKCU y nada debe escribirse en HKLM ni en Program Files.
-    if (@($registered | Where-Object { $_.PSPath -like '*HKEY_LOCAL_MACHINE*' }).Count -gt 0) {
-        throw 'El instalador se registró en HKLM: no es una instalación por usuario.'
-    }
-    if (@($registered | Where-Object { $_.PSPath -like '*HKEY_CURRENT_USER*' }).Count -lt 1) {
-        throw 'El instalador no se registró en HKCU.'
-    }
-    foreach ($machineRoot in @((Join-Path $env:ProgramFiles 'Registro QR'), (Join-Path $env:ProgramFiles 'registro-qr'))) {
-        if (Test-Path -LiteralPath $machineRoot) { throw 'El instalador escribió en Program Files.' }
-    }
-    $report.comprobaciones.instalacion_por_usuario_sin_hklm = $true
     $executable = $null
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
     while (-not $executable -and [DateTime]::UtcNow -lt $deadline) {
@@ -171,6 +159,26 @@ try {
     }
     $report.ejecutable = [IO.Path]::GetFileName($executable)
     $report.comprobaciones.instalacion_nsis = $true
+    # Instalación sin permisos de administrador: el registro de desinstalación debe
+    # quedar solo en HKCU y nada debe escribirse en HKLM ni en Program Files.
+    # electron-builder registra DisplayName como «Registro QR <versión>».
+    # NSIS escribe el registro al final de la copia: esperar a que aparezca.
+    $perUser = @()
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    do {
+        $perUser = @(Get-ItemProperty -Path $uninstallKeys -ErrorAction SilentlyContinue | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like 'Registro QR*' })
+        if ($perUser.Count -eq 0) { Start-Sleep -Seconds 1 }
+    } while ($perUser.Count -eq 0 -and [DateTime]::UtcNow -lt $deadline)
+    if (@($perUser | Where-Object { $_.PSPath -like '*HKEY_LOCAL_MACHINE*' }).Count -gt 0) {
+        throw 'El instalador se registró en HKLM: no es una instalación por usuario.'
+    }
+    if (@($perUser | Where-Object { $_.PSPath -like '*HKEY_CURRENT_USER*' }).Count -lt 1) {
+        throw 'El instalador no se registró en HKCU.'
+    }
+    foreach ($machineRoot in @((Join-Path $env:ProgramFiles 'Registro QR'), (Join-Path $env:ProgramFiles 'registro-qr'))) {
+        if (Test-Path -LiteralPath $machineRoot) { throw 'El instalador escribió en Program Files.' }
+    }
+    $report.comprobaciones.instalacion_por_usuario_sin_hklm = $true
     StartTestApp $executable
     $report.comprobaciones.arranque_https_sin_node_en_path = $true
     $page = $script:client.GetAsync('https://localhost:4000/').GetAwaiter().GetResult()
