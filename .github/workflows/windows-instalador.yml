@@ -72,6 +72,8 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           & ./node_modules/.bin/electron-builder.cmd --win nsis portable --x64 --publish never
           exit $LASTEXITCODE
+      - name: SHA-256 de los ejecutables
+        run: Get-ChildItem dist -Filter *.exe -File | ForEach-Object { '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
       - name: Instalar, arrancar y comprobar persistencia
         run: ./scripts/probar-instalador.ps1
       - name: Conservar solo el instalador y el informe sin secretos
