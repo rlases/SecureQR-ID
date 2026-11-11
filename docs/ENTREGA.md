@@ -45,6 +45,11 @@ cuentas ni claves de una instalación real. No se prueba sobre un perfil de prod
 | Confirmar errores de dependencia | Sin emisor no se entrega QR; fallo del servicio no se presenta como aceptación | Pendiente |
 | Retirar instalación de prueba | Desinstalación documentada y tratamiento explícito del perfil de datos | Pendiente |
 
+El flujo `publicar-ejecutables.yml` adjunta a la versión de cada etiqueta el `.exe`
+(solo si pasa `probar-instalador.ps1`), el `.AppImage` y `SHA256SUMS-ejecutables.txt`.
+Esa prueba en un runner desechable no sustituye la aceptación en una máquina Windows
+limpia de la tabla anterior.
+
 No se adjuntan a la entrega `server-secrets.json`, PEM privados, bases con titulares,
 tokens vigentes ni contraseñas de prueba. El informe público registra resultados y
 hashes; el material efímero del ensayo se destruye al terminar.

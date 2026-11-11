@@ -83,10 +83,22 @@
       "target": "nsis",
       "icon": "public/favicon.ico"
     },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "artifactName": "Registro-QR-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "requestExecutionLevel": "user",
+      "artifactName": "Registro-QR-Portable-${version}.${ext}"
+    },
     "linux": {
       "target": "AppImage",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "artifactName": "Registro-QR-${version}.${ext}"
     },
+    "publish": null,
     "extraMetadata": {
       "main": "main.js"
     }
