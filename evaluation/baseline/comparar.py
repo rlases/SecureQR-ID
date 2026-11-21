@@ -59,11 +59,19 @@ def cargar(path: Path, brazo: str) -> list[Fila]:
     return filas
 
 
+def _decimal(valor: float) -> str:
+    # Coma decimal, como en informe.md y en el documento de grado.
+    return f"{valor:.2f}".replace(".", ",")
+
+
 def porcentaje(tasa: dict) -> str:
     if tasa["tasa"] is None:
         return "Sin intentos"
     inferior, superior = tasa["ic95"]
-    return f"{tasa['exitos']}/{tasa['intentos']} ({100*tasa['tasa']:.2f} %; IC95 {100*inferior:.2f}–{100*superior:.2f} %)"
+    return (
+        f"{tasa['exitos']}/{tasa['intentos']} ({_decimal(100 * tasa['tasa'])} %; "
+        f"IC95 {_decimal(100 * inferior)}–{_decimal(100 * superior)} %)"
+    )
 
 
 def comparar(tradicional: Path, secureqr: Path, salida: Path) -> None:
