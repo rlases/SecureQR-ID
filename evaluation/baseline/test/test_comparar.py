@@ -89,3 +89,8 @@ def test_la_cli_node_exporta_el_contrato_real_de_python(tmp_path):
     filas = modulo.cargar(salida / "resultados.json", "tradicional")
     assert len(filas) == 4
     assert set(filas[0].como_dict()) == set(Fila.__dataclass_fields__)
+
+
+def test_porcentajes_con_coma_decimal_como_informe_md():
+    tasa = {"exitos": 200, "intentos": 200, "tasa": 1.0, "ic95": [0.9812, 1.0]}
+    assert modulo.porcentaje(tasa) == "200/200 (100,00 %; IC95 98,12–100,00 %)"
